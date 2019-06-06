@@ -1,0 +1,39 @@
+use std::fs;
+
+use secp256k1::{Secp256k1, All};
+
+use bitcoin::network::constants::Network;
+use bitcoin::util::bip32::{ExtendedPrivKey, ChildNumber};
+use lightning::util::ser::Writer;
+
+use rand::{thread_rng, Rng};
+
+fn gen_key() -> [u8; 32] {
+    let mut key = [0; 32];
+    thread_rng().fill_bytes(&mut key);
+    key
+}
+
+pub fn get_key(data_path: String) -> [u8; 32] {
+    let key_path = data_path + "/key_seed";
+    if let Ok(seed) = fs::read(&key_path) {
+        assert_eq!(seed.len(), 32);
+        let mut key = [0; 32];
+        key.copy_from_slice(&seed);
+        key
+    } else {
+        let key = gen_key();
+        let mut f = fs::File::create(&key_path).unwrap();
+        f.write_all(&key).expect("Failed to write seed to disk");
+        f.sync_all().expect("Failed to sync seed to disk");
+        key
+    }
+}
+
+// bitcoin version
+// pub fn extprivkey(network: Network, &our_node_seed: &[u8; 32], secp_ctx: Secp256k1<All>) {
+//     ExtendedPrivKey::new_master(network, &our_node_seed).map(|extpriv| {
+//         (extpriv.ckd_priv(&secp_ctx, ChildNumber::from_hardened_idx(1)).unwrap().secret_key,
+//          extpriv.ckd_priv(&secp_ctx, ChildNumber::from_hardened_idx(2)).unwrap().secret_key)
+//     }).unwrap();
+// }
