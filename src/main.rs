@@ -146,24 +146,15 @@ fn main() {
 
 	let logger = Arc::new(LogPrinter {});
 
-	let our_node_seed = if let Ok(seed) = fs::read(data_path.clone() + "/key_seed") {
-		assert_eq!(seed.len(), 32);
-		let mut key = [0; 32];
-		key.copy_from_slice(&seed);
-		key
-	} else {
-		let mut key = [0; 32];
-		thread_rng().fill_bytes(&mut key);
-		let mut f = fs::File::create(data_path.clone() + "/key_seed").unwrap();
-		f.write_all(&key).expect("Failed to write seed to disk");
-		f.sync_all().expect("Failed to sync seed to disk");
-		key
-	};
+  let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
+
 	let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
-	let (import_key_1, import_key_2) = bip32::ExtendedPrivKey::new_master(network, &our_node_seed).map(|extpriv| {
+  let (import_key_1, import_key_2) = bip32::ExtendedPrivKey::new_master(network, &our_node_seed).map(|extpriv| {
 		(extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap()).unwrap().private_key.key,
 		 extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap()).unwrap().private_key.key)
 	}).unwrap();
+
+  // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
 	let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone()));
 
 	let mut rt = tokio::runtime::Runtime::new().unwrap();
@@ -185,35 +176,18 @@ fn main() {
 		config.channel_options.fee_proportional_millionths = FEE_PROPORTIONAL_MILLIONTHS;
 		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
 
-		let channel_manager = if let Ok(mut f) = fs::File::open(data_path.clone() + "/manager_data") {
-			let (last_block_hash, manager) = {
-				let mut monitors_refs = HashMap::new();
-				for (outpoint, monitor) in monitors_loaded.iter() {
-					monitors_refs.insert(*outpoint, monitor);
-				}
-				<(Sha256dHash, channelmanager::ChannelManager)>::read(&mut f, channelmanager::ChannelManagerReadArgs {
-					keys_manager: keys.clone(),
-					fee_estimator: fee_estimator.clone(),
-					monitor: monitor.clone(),
-					chain_monitor: chain_monitor.clone(),
-					tx_broadcaster: chain_monitor.clone(),
-					logger: logger.clone(),
-					default_config: config,
-					channel_monitors: &monitors_refs,
-				}).expect("Failed to deserialize channel manager")
-			};
-			monitor.load_from_vec(monitors_loaded);
-			//TODO: Rescan
-			let manager = Arc::new(manager);
-			let manager_as_listener: Arc<chaininterface::ChainListener> = manager.clone();
-			chain_monitor.register_listener(Arc::downgrade(&manager_as_listener));
-			manager
-		} else {
-			if !monitors_loaded.is_empty() {
-				panic!("Found some channel monitors but no channel state!");
-			}
-			channelmanager::ChannelManager::new(network, fee_estimator.clone(), monitor.clone(), chain_monitor.clone(), chain_monitor.clone(), logger.clone(), keys.clone(), config).unwrap()
-		};
+		let channel_manager = lnbridge::channel_manager::get_channel_manager(
+      data_path.clone(),
+      network.clone(),
+      monitors_loaded,
+      keys.clone(),
+      fee_estimator.clone(),
+      monitor.clone(),
+      chain_monitor.clone(), // chain watcher
+      chain_monitor.clone(), // chain broadcaster
+      logger.clone(),
+      config.clone(),
+    );
 		let router = Arc::new(router::Router::new(PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()), chain_monitor.clone(), logger.clone()));
 
 		let peer_manager = Arc::new(peer_handler::PeerManager::new(peer_handler::MessageHandler {
