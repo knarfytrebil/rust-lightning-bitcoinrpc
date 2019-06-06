@@ -17,7 +17,6 @@ use bitcoin::network::constants;
 use bitcoin_hashes::Hash;
 
 use lightning::chain::keysinterface::{KeysManager, KeysInterface};
-use lightning::chain::chaininterface::BroadcasterInterface;
 use lightning::ln::peer_handler::PeerManager;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage, ChannelManager};
 use lightning::ln::router;
