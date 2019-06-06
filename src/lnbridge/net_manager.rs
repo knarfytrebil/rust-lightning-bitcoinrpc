@@ -22,7 +22,6 @@ use futures::sync::mpsc;
 
 use lightning::ln::peer_handler::{SocketDescriptor, PeerManager};
 
-
 pub struct LnPeerConnector {
 	writer: Option<mpsc::Sender<bytes::Bytes>>,
 	event_notify: mpsc::UnboundedSender<()>,

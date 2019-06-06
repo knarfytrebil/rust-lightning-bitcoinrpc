@@ -28,7 +28,13 @@ use utils::*;
 mod chain_monitor;
 use chain_monitor::*;
 
-use lightning_net_tokio::{Connection, SocketDescriptor};
+mod event_handler;
+use event_handler::*;
+
+mod channel_monitor;
+use channel_monitor::{ChannelMonitor};
+
+use lightning_net_tokio::{Connection};
 
 use futures::future;
 use futures::future::Future;
@@ -43,12 +49,11 @@ use rand::{thread_rng, Rng};
 use lightning::chain;
 use lightning::chain::chaininterface;
 use lightning::chain::chaininterface::ChainWatchInterface;
-use lightning::chain::keysinterface::{KeysInterface, KeysManager, SpendableOutputDescriptor};
+use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::{peer_handler, router, channelmanager, channelmonitor};
 use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage};
 use lightning::util::events::{Event, EventsProvider};
-use lightning::util::logger::{Logger, Record};
 use lightning::util::ser::{ReadableArgs, Writeable};
 use lightning::util::config;
 
@@ -61,7 +66,6 @@ use bitcoin::consensus::encode;
 
 use bitcoin_hashes::Hash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
-use bitcoin_hashes::hex::{ToHex, FromHex};
 
 use std::{env, mem};
 use std::collections::HashMap;
@@ -72,247 +76,16 @@ use std::time::{Instant, Duration};
 use std::io::{Cursor, Write};
 use std::fs;
 
+mod lnbridge;
+use lnbridge::log_printer::LogPrinter;
+
 const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
-const ANNOUNCE_CHANNELS: bool = false;
+const ANNOUNCE_CHANNELS: bool = true;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
 	// We assume 64-bit usizes here. If your platform has 32-bit usizes, wtf are you doing?
 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
-}
-
-struct EventHandler {
-	network: constants::Network,
-	file_prefix: String,
-	rpc_client: Arc<RPCClient>,
-	peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
-	channel_manager: Arc<channelmanager::ChannelManager>,
-	monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
-	broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
-	txn_to_broadcast: Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
-	payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-}
-impl EventHandler {
-	fn setup(network: constants::Network, file_prefix: String, rpc_client: Arc<RPCClient>, peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>, monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>, channel_manager: Arc<channelmanager::ChannelManager>, broadcaster: Arc<chain::chaininterface::BroadcasterInterface>, payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>) -> mpsc::Sender<()> {
-		let us = Arc::new(Self { network, file_prefix, rpc_client, peer_manager, channel_manager, monitor, broadcaster, txn_to_broadcast: Mutex::new(HashMap::new()), payment_preimages });
-		let (sender, receiver) = mpsc::channel(2);
-		let mut self_sender = sender.clone();
-		tokio::spawn(receiver.for_each(move |_| {
-			us.peer_manager.process_events();
-			let mut events = us.channel_manager.get_and_clear_pending_events();
-			events.append(&mut us.monitor.get_and_clear_pending_events());
-			for event in events {
-				match event {
-					Event::FundingGenerationReady { temporary_channel_id, channel_value_satoshis, output_script, .. } => {
-						let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], match us.network {
-								constants::Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
-								constants::Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
-								constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
-							}
-						).expect("LN funding tx should always be to a SegWit output").to_address();
-						let us = us.clone();
-						let mut self_sender = self_sender.clone();
-						return future::Either::A(us.rpc_client.make_rpc_call("createrawtransaction", &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)], false).and_then(move |tx_hex| {
-							us.rpc_client.make_rpc_call("fundrawtransaction", &[&format!("\"{}\"", tx_hex.as_str().unwrap())], false).and_then(move |funded_tx| {
-								let changepos = funded_tx["changepos"].as_i64().unwrap();
-								assert!(changepos == 0 || changepos == 1);
-								us.rpc_client.make_rpc_call("signrawtransactionwithwallet", &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())], false).and_then(move |signed_tx| {
-									assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
-									let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
-									let outpoint = chain::transaction::OutPoint {
-										txid: tx.txid(),
-										index: if changepos == 0 { 1 } else { 0 },
-									};
-									us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
-									us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
-									let _ = self_sender.try_send(());
-									println!("Generated funding tx!");
-									Ok(())
-								})
-							})
-						}));
-					},
-					Event::FundingBroadcastSafe { funding_txo, .. } => {
-						let mut txn = us.txn_to_broadcast.lock().unwrap();
-						let tx = txn.remove(&funding_txo).unwrap();
-						us.broadcaster.broadcast_transaction(&tx);
-						println!("Broadcast funding tx {}!", tx.txid());
-					},
-					Event::PaymentReceived { payment_hash, amt } => {
-						let images = us.payment_preimages.lock().unwrap();
-						if let Some(payment_preimage) = images.get(&payment_hash) {
-							if us.channel_manager.claim_funds(payment_preimage.clone()) {
-								println!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
-							} else {
-								println!("Failed to claim money we were told we had?");
-							}
-						} else {
-							us.channel_manager.fail_htlc_backwards(&payment_hash);
-							println!("Received payment but we didn't know the preimage :(");
-						}
-						let _ = self_sender.try_send(());
-					},
-					Event::PaymentSent { payment_preimage } => {
-						println!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
-					},
-					Event::PaymentFailed { payment_hash, rejected_by_dest } => {
-						println!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
-					},
-					Event::PendingHTLCsForwardable { time_forwardable } => {
-						let us = us.clone();
-						let mut self_sender = self_sender.clone();
-						tokio::spawn(tokio::timer::Delay::new(time_forwardable).then(move |_| {
-							us.channel_manager.process_pending_htlc_forwards();
-							let _ = self_sender.try_send(());
-							Ok(())
-						}));
-					},
-					Event::SpendableOutputs { mut outputs } => {
-						for output in outputs.drain(..) {
-							match output {
-								SpendableOutputDescriptor:: StaticOutput { outpoint, .. } => {
-									println!("Got on-chain output Bitcoin Core should know how to claim at {}:{}", hex_str(&outpoint.txid[..]), outpoint.vout);
-								},
-								SpendableOutputDescriptor::DynamicOutputP2WSH { .. } => {
-									println!("Got on-chain output we should claim...");
-									//TODO: Send back to Bitcoin Core!
-								},
-								SpendableOutputDescriptor::DynamicOutputP2WPKH { .. } => {
-									println!("Got on-chain output we should claim...");
-									//TODO: Send back to Bitcoin Core!
-								},
-							}
-						}
-					},
-				}
-			}
-
-			let filename = format!("{}/manager_data", us.file_prefix);
-			let tmp_filename = filename.clone() + ".tmp";
-
-			{
-				let mut f = fs::File::create(&tmp_filename).unwrap();
-				us.channel_manager.write(&mut f).unwrap();
-			}
-			fs::rename(&tmp_filename, &filename).unwrap();
-
-			future::Either::B(future::result(Ok(())))
-		}).then(|_| { Ok(()) }));
-		sender
-	}
-}
-
-struct ChannelMonitor {
-	monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
-	file_prefix: String,
-}
-impl ChannelMonitor {
-	fn load_from_disk(file_prefix: &String) -> Vec<(chain::transaction::OutPoint, channelmonitor::ChannelMonitor)> {
-		let mut res = Vec::new();
-		for file_option in fs::read_dir(file_prefix).unwrap() {
-			let mut loaded = false;
-			let file = file_option.unwrap();
-			if let Some(filename) = file.file_name().to_str() {
-				if filename.is_ascii() && filename.len() > 65 {
-					if let Ok(txid) = Sha256dHash::from_hex(filename.split_at(64).0) {
-						if let Ok(index) = filename.split_at(65).1.split('.').next().unwrap().parse() {
-							if let Ok(contents) = fs::read(&file.path()) {
-								if let Ok((last_block_hash, loaded_monitor)) = <(Sha256dHash, channelmonitor::ChannelMonitor)>::read(&mut Cursor::new(&contents), Arc::new(LogPrinter{})) {
-									// TODO: Rescan from last_block_hash
-									res.push((chain::transaction::OutPoint { txid, index }, loaded_monitor));
-									loaded = true;
-								}
-							}
-						}
-					}
-				}
-			}
-			if !loaded {
-				println!("WARNING: Failed to read one of the channel monitor storage files! Check perms!");
-			}
-		}
-		res
-	}
-
-	fn load_from_vec(&self, mut monitors: Vec<(chain::transaction::OutPoint, channelmonitor::ChannelMonitor)>) {
-		for (outpoint, monitor) in monitors.drain(..) {
-			if let Err(_) = self.monitor.add_update_monitor(outpoint, monitor) {
-				panic!("Failed to load monitor that deserialized");
-			}
-		}
-	}
-}
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-#[error("OSX creatively eats your data, using Lightning on OSX is unsafe")]
-struct ERR {}
-
-impl channelmonitor::ManyChannelMonitor for ChannelMonitor {
-	fn add_update_monitor(&self, funding_txo: chain::transaction::OutPoint, monitor: channelmonitor::ChannelMonitor) -> Result<(), channelmonitor::ChannelMonitorUpdateErr> {
-		macro_rules! try_fs {
-			($res: expr) => {
-				match $res {
-					Ok(res) => res,
-					Err(_) => return Err(channelmonitor::ChannelMonitorUpdateErr::PermanentFailure),
-				}
-			}
-		}
-		// Do a crazy dance with lots of fsync()s to be overly cautious here...
-		// We never want to end up in a state where we've lost the old data, or end up using the
-		// old data on power loss after we've returned
-		// Note that this actually *isn't* enough (at least on Linux)! We need to fsync an fd with
-		// the containing dir, but Rust doesn't let us do that directly, sadly. TODO: Fix this with
-		// the libc crate!
-		let filename = format!("{}/{}_{}", self.file_prefix, funding_txo.txid.to_hex(), funding_txo.index);
-		let tmp_filename = filename.clone() + ".tmp";
-
-		{
-			let mut f = try_fs!(fs::File::create(&tmp_filename));
-			try_fs!(monitor.write_for_disk(&mut f));
-			try_fs!(f.sync_all());
-		}
-		// We don't need to create a backup if didn't already have the file, but in any other case
-		// try to create the backup and expect failure on fs::copy() if eg there's a perms issue.
-		let need_bk = match fs::metadata(&filename) {
-			Ok(data) => {
-				if !data.is_file() { return Err(channelmonitor::ChannelMonitorUpdateErr::PermanentFailure); }
-				true
-			},
-			Err(e) => match e.kind() {
-				std::io::ErrorKind::NotFound => false,
-				_ => true,
-			}
-		};
-		let bk_filename = filename.clone() + ".bk";
-		if need_bk {
-			try_fs!(fs::copy(&filename, &bk_filename));
-			{
-				let f = try_fs!(fs::File::open(&bk_filename));
-				try_fs!(f.sync_all());
-			}
-		}
-		try_fs!(fs::rename(&tmp_filename, &filename));
-		{
-			let f = try_fs!(fs::File::open(&filename));
-			try_fs!(f.sync_all());
-		}
-		if need_bk {
-			try_fs!(fs::remove_file(&bk_filename));
-		}
-		self.monitor.add_update_monitor(funding_txo, monitor)
-	}
-
-	fn fetch_pending_htlc_updated(&self) -> Vec<channelmonitor::HTLCUpdate> {
-		self.monitor.fetch_pending_htlc_updated()
-	}
-}
-
-struct LogPrinter {}
-impl Logger for LogPrinter {
-	fn log(&self, record: &Record) {
-		if !record.args.to_string().contains("Received message of type 258") && !record.args.to_string().contains("Received message of type 256") && !record.args.to_string().contains("Received message of type 257") {
-			println!("{:<5} [{} : {}, {}] {}", record.level.to_string(), record.module_path, record.file, record.line, record.args);
-		}
-	}
 }
 
 fn main() {
@@ -662,6 +435,7 @@ fn main() {
 						}
 					},
 					0x70 => { // 'p'
+            let value = line.split_at(2).1;
 						let mut payment_preimage = [0; 32];
 						thread_rng().fill_bytes(&mut payment_preimage);
 						let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
@@ -674,7 +448,8 @@ fn main() {
 								constants::Network::Testnet => lightning_invoice::Currency::BitcoinTestnet,
 								constants::Network::Regtest => lightning_invoice::Currency::BitcoinTestnet, //TODO
 							}).payment_hash(payment_hash).description("rust-lightning-bitcoinrpc invoice".to_string())
-							//.route(chans)
+						//.route(chans)
+              .amount_pico_btc(value.parse::<u64>().unwrap())
 							.current_timestamp()
 							.build_signed(|msg_hash| {
 								secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret())

@@ -1,16 +1,20 @@
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::fs;
 
+use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
 
 use bitcoin::network::constants;
 use bitcoin::blockdata;
 use bitcoin::blockdata::transaction::Transaction;
+use bitcoin::consensus::encode;
 
 use lightning::chain;
 use lightning::chain::transaction::OutPoint;
 use lightning::chain::chaininterface::BroadcasterInterface;
+use lightning::chain::keysinterface::{KeysInterface, KeysManager, SpendableOutputDescriptor};
 use lightning::ln::peer_handler;
 use lightning::ln::peer_handler::{PeerManager};
 use lightning::ln::channelmanager;
@@ -18,12 +22,13 @@ use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage
 use lightning::ln::channelmonitor;
 use lightning::ln::channelmonitor::SimpleManyChannelMonitor;
 use lightning::util::events::{Event, EventsProvider};
+use lightning::util::ser::Writeable;
 
 use lightning_net_tokio::{Connection, SocketDescriptor};
 
 
-use super::utils::*;
-use super::rpc_client::{RPCClient};
+use utils::*;
+use rpc_client::{RPCClient};
 // use super::net_manager::LnSocketDescriptor;
 
 pub struct EventHandler {

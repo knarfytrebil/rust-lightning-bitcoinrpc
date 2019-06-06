@@ -11,14 +11,14 @@ use lightning::util::logger::{Logger, Level};
 pub mod key;
 
 pub mod net_manager;
-use net_manager::LnSocketDescriptor;
+use self::net_manager::LnSocketDescriptor;
 
-pub mod event_handler;
+// pub mod event_handler;
 pub mod utils;
 pub mod channel_monitor;
 pub mod channel_manager;
-
-mod log_printer;
+pub mod log_printer;
+pub mod rpc_client;
 mod fee_estimator;
 mod broadcaster;
 
@@ -26,9 +26,9 @@ pub fn arc_keys_manager(&key: &[u8; 32], network: Network, logger: Arc<Logger>) 
     Arc::new(KeysManager::new(&key, network, logger))
 }
 
-pub fn arc_logger(level: Level) -> Arc<Logger> {
-    Arc::new(log_printer::LogPrinter { level })
-}
+// pub fn arc_logger(level: Level) -> Arc<Logger> {
+//     Arc::new(log_printer::LogPrinter { level })
+// }
 
 pub fn arc_fee_estimator() -> Arc<FeeEstimator> {
     Arc::new(fee_estimator::FeeEstimator::new())

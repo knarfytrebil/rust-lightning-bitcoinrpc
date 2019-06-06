@@ -1,7 +1,7 @@
 use lightning::util::logger::{Logger, Level, Record};
 
 pub struct LogPrinter {
-  pub level: Level,
+  // pub level: Level,
 }
 
 impl Logger for LogPrinter {
