@@ -24,6 +24,8 @@ rand = "0.4"
 tokio = "0.1"
 bytes = "0.4"
 base64 = "0.9"
+num-derive = "0.2"
+num-traits = "0.2"
 
 [build-dependencies]
 cc = "1.0"

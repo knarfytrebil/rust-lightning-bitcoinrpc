@@ -15,9 +15,12 @@ extern crate bytes;
 extern crate base64;
 extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
+extern crate num_traits;
 
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate num_derive;
 
 mod rpc_client;
 use rpc_client::*;

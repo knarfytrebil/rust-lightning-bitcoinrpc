@@ -1,3 +1,6 @@
+
+
+use num_traits::FromPrimitive;
 use std::io::Write;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -26,6 +29,20 @@ use lightning_net_tokio::{Connection, SocketDescriptor};
 use lightning_invoice::MinFinalCltvExpiry;
 
 use utils::*;
+
+#[derive(FromPrimitive)]
+enum Command {
+  Connect = 0x63, // c
+  FundChannel = 0x6e, // n
+  CloseChannel = 0x6b, // k
+  ForceCloseAll = 0x66, // f
+  List = 0x6c, // l
+  // Peer,
+  // Channel,
+  Send = 0x73, // s
+  Invoice = 0x70, // p
+}
+
 
 pub fn run_command_board(
   network: constants::Network,
@@ -56,8 +73,8 @@ pub fn run_command_board(
 				}
 			}
 			if line.len() > 2 && line.as_bytes()[1] == ' ' as u8 {
-				match line.as_bytes()[0] {
-					0x63 => { // 'c'
+				match FromPrimitive::from_u8(line.as_bytes()[0]) {
+					Some(Command::Connect) => { // 'c'
 						match hex_to_compressed_pubkey(line.split_at(2).1) {
 							Some(pk) => {
 								if line.as_bytes()[2 + 33*2] == '@' as u8 {
@@ -79,7 +96,7 @@ pub fn run_command_board(
 							None => println!("Bad PubKey for remote node"),
 						}
 					},
-					0x6e => { // 'n'
+					Some(Command::FundChannel) => { // 'n'
 						match hex_to_compressed_pubkey(line.split_at(2).1) {
 							Some(pk) => {
 								if line.as_bytes()[2 + 33*2] == ' ' as u8 {
@@ -102,7 +119,7 @@ pub fn run_command_board(
 							None => println!("Bad PubKey for remote node"),
 						}
 					},
-					0x6b => { // 'k'
+					Some(Command::CloseChannel) => { // 'k'
 						if line.len() == 64 + 2 {
 							if let Some(chan_id_vec) = hex_to_vec(line.split_at(2).1) {
 								let mut channel_id = [0; 32];
@@ -117,14 +134,14 @@ pub fn run_command_board(
 							} else { println!("Bad channel_id hex"); }
 						} else { println!("Bad channel_id hex"); }
 					},
-					0x66 => { // 'f'
+					Some(Command::ForceCloseAll) => { // 'f'
 						if line.len() == 5 && line.as_bytes()[2] == 'a' as u8 && line.as_bytes()[3] == 'l' as u8 && line.as_bytes()[4] == 'l' as u8 {
 							channel_manager.force_close_all_channels();
 						} else {
 							println!("Single-channel force-close not yet implemented");
 						}
 					},
-					0x6c => { // 'l'
+					Some(Command::List) => { // 'l'
 						if line.as_bytes()[2] == 'p' as u8 {
 							let mut nodes = String::new();
 							for node_id in peer_manager.get_peer_node_ids() {
@@ -144,7 +161,7 @@ pub fn run_command_board(
 							println!("Listing of non-peer/channel objects not yet implemented");
 						}
 					},
-					0x73 => { // 's'
+					Some(Command::Send) => { // 's'
 						let mut args = line.split_at(2).1.split(' ');
 						match lightning_invoice::Invoice::from_str(args.next().unwrap()) {
 							Ok(invoice) => {
@@ -230,7 +247,7 @@ pub fn run_command_board(
 							},
 						}
 					},
-					0x70 => { // 'p'
+					Some(Command::Invoice) => { // 'p'
             let value = line.split_at(2).1;
 						let mut payment_preimage = [0; 32];
 						thread_rng().fill_bytes(&mut payment_preimage);
@@ -264,3 +281,4 @@ pub fn run_command_board(
 			Ok(())
 		}).then(|_| { Ok(()) }));
 }
+
