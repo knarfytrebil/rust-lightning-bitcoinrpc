@@ -75,7 +75,8 @@ pub fn run_command_board(
 			if line.len() > 2 && line.as_bytes()[1] == ' ' as u8 {
 				match FromPrimitive::from_u8(line.as_bytes()[0]) {
 					Some(Command::Connect) => { // 'c'
-            commander::connect(line, peer_manager.clone(), event_notify.clone());
+            // TODO: split 'c'
+            commander::connect(line.split_at(2).1.parse().unwrap(), peer_manager.clone(), event_notify.clone());
 					},
 					Some(Command::FundChannel) => { // 'n'
 						match hex_to_compressed_pubkey(line.split_at(2).1) {

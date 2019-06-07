@@ -12,10 +12,11 @@ use lightning_net_tokio::{Connection, SocketDescriptor};
 use super::utils::*;
 
 pub fn connect(node: String, peer_manager: Arc<PeerManager<SocketDescriptor>>, event_notify: mpsc::Sender<()>) {
-  match hex_to_compressed_pubkey(node.split_at(2).1) {
+  // TODO: hard code split offset
+  match hex_to_compressed_pubkey(node.split_at(0).1) {
 		Some(pk) => {
-			if node.as_bytes()[2 + 33*2] == '@' as u8 {
-				let parse_res: Result<std::net::SocketAddr, _> = node.split_at(2 + 33*2 + 1).1.parse();
+			if node.as_bytes()[33*2] == '@' as u8 {
+				let parse_res: Result<std::net::SocketAddr, _> = node.split_at(33*2 + 1).1.parse();
 				if let Ok(addr) = parse_res {
 					print!("Attempting to connect to {}...", addr);
 					match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
@@ -38,3 +39,5 @@ pub fn connect(node: String, peer_manager: Arc<PeerManager<SocketDescriptor>>, e
 		None => println!("Bad PubKey for remote node"),
 	}
 }
+
+pub fn fund_channel() {}
