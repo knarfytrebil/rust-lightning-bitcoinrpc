@@ -4,7 +4,6 @@ use num_traits::FromPrimitive;
 use std::io::Write;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration};
 use std::collections::HashMap;
 
 use rand::{thread_rng, Rng};
@@ -24,10 +23,11 @@ use lightning::ln::peer_handler::PeerManager;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage, ChannelManager};
 use lightning::ln::router;
 
-use lightning_net_tokio::{Connection, SocketDescriptor};
+use lightning_net_tokio::{SocketDescriptor};
 
 use lightning_invoice::MinFinalCltvExpiry;
 
+use lnbridge::commander;
 use lnbridge::utils::*;
 
 #[derive(FromPrimitive)]
@@ -75,26 +75,7 @@ pub fn run_command_board(
 			if line.len() > 2 && line.as_bytes()[1] == ' ' as u8 {
 				match FromPrimitive::from_u8(line.as_bytes()[0]) {
 					Some(Command::Connect) => { // 'c'
-						match hex_to_compressed_pubkey(line.split_at(2).1) {
-							Some(pk) => {
-								if line.as_bytes()[2 + 33*2] == '@' as u8 {
-									let parse_res: Result<std::net::SocketAddr, _> = line.split_at(2 + 33*2 + 1).1.parse();
-									if let Ok(addr) = parse_res {
-										print!("Attempting to connect to {}...", addr);
-										match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
-											Ok(stream) => {
-												println!("connected, initiating handshake!");
-												Connection::setup_outbound(peer_manager.clone(), event_notify.clone(), pk, tokio::net::TcpStream::from_std(stream, &tokio::reactor::Handle::default()).unwrap());
-											},
-											Err(e) => {
-												println!("connection failed {:?}!", e);
-											}
-										}
-									} else { println!("Couldn't parse host:port into a socket address"); }
-								} else { println!("Invalid line, should be c pubkey@host:port"); }
-							},
-							None => println!("Bad PubKey for remote node"),
-						}
+            commander::connect(line, peer_manager.clone(), event_notify.clone());
 					},
 					Some(Command::FundChannel) => { // 'n'
 						match hex_to_compressed_pubkey(line.split_at(2).1) {
