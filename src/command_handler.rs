@@ -28,7 +28,7 @@ use lightning_net_tokio::{Connection, SocketDescriptor};
 
 use lightning_invoice::MinFinalCltvExpiry;
 
-use utils::*;
+use lnbridge::utils::*;
 
 #[derive(FromPrimitive)]
 enum Command {

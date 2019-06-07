@@ -22,10 +22,9 @@ use lightning::util::ser::Writeable;
 
 use lightning_net_tokio::{SocketDescriptor};
 
-
-use utils::*;
 use rpc_client::{RPCClient};
-// use super::net_manager::LnSocketDescriptor;
+use lnbridge::utils::*;
+
 
 pub struct EventHandler {
 	network: constants::Network,

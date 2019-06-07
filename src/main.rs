@@ -25,8 +25,6 @@ extern crate num_derive;
 mod rpc_client;
 use rpc_client::*;
 
-mod utils;
-
 mod chain_monitor;
 use chain_monitor::*;
 
@@ -63,6 +61,7 @@ use std::fs;
 
 mod lnbridge;
 use lnbridge::log_printer::LogPrinter;
+use lnbridge::utils;
 
 const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
 const ANNOUNCE_CHANNELS: bool = true;
