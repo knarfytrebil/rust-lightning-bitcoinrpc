@@ -16,52 +16,85 @@ use lightning::util::ser::ReadableArgs;
 use lightning::util::config::UserConfig;
 use lightning::util::logger::{Logger};
 
+use super::Restorable;
 
-pub fn get_channel_manager(
+pub struct RestoreArgs {
+  data_path: String,
+  monitors_loaded: Vec<(OutPoint, ChannelMonitor)>,
+  network: Network,
+  fee_estimator: Arc<FeeEstimator>,
+  monitor: Arc<ManyChannelMonitor>,
+  chain_watcher: Arc<ChainWatchInterface>,
+  tx_broadcaster: Arc<BroadcasterInterface>,
+  logger: Arc<Logger>,
+  keys_manager: Arc<KeysInterface>,
+  default_config: UserConfig,
+}
+
+impl RestoreArgs {
+  pub fn new(
     data_path: String,
-    network: Network,
     monitors_loaded: Vec<(OutPoint, ChannelMonitor)>,
-    keys_manager: Arc<KeysInterface>,
+    network: Network,
     fee_estimator: Arc<FeeEstimator>,
     monitor: Arc<ManyChannelMonitor>,
     chain_watcher: Arc<ChainWatchInterface>,
     tx_broadcaster: Arc<BroadcasterInterface>,
     logger: Arc<Logger>,
-    default_config: UserConfig,
-) -> Arc<ChannelManager> {
-    if let Ok(mut f) = fs::File::open(data_path + "/manager_data") {
-        let (last_block_hash, manager) = {
-            let mut monitors_refs = HashMap::new();
-            for (outpoint, monitor) in monitors_loaded.iter() {
-                monitors_refs.insert(*outpoint, monitor);
-            }
-            <(Hash, ChannelManager)>::read(&mut f, ChannelManagerReadArgs {
-                keys_manager,
-                fee_estimator,
-                monitor: monitor.clone(),
-                chain_monitor: chain_watcher.clone(),
-                tx_broadcaster,
-                logger, default_config,
-                channel_monitors: &monitors_refs,
-            }).expect("Failed to deserialize channel manager")
-        };
-
-        // monitor.load_from_vec(monitors_loaded);
-        let mut mut_monitors_loaded = monitors_loaded;
-        for (outpoint, drain_monitor) in mut_monitors_loaded.drain(..) {
-            if let Err(_) = monitor.add_update_monitor(outpoint, drain_monitor) {
-                panic!("Failed to load monitor that deserialized");
-            }
-        }
-        //TODO: Rescan
-        let manager = Arc::new(manager);
-        let manager_as_listener: Arc<ChainListener> = manager.clone();
-        chain_watcher.register_listener(Arc::downgrade(&manager_as_listener));
-        manager
-    } else {
-        if(!monitors_loaded.is_empty()) {
-            panic!("Found some channel monitors but no channel state!");
-        }
-        ChannelManager::new(network, fee_estimator, monitor, chain_watcher, tx_broadcaster, logger, keys_manager, default_config).unwrap()
+    keys_manager: Arc<KeysInterface>,
+    default_config: UserConfig
+  ) -> Self {
+    RestoreArgs {
+      data_path, monitors_loaded, network, fee_estimator,
+      monitor, chain_watcher, tx_broadcaster,
+      logger, keys_manager, default_config,
     }
+  }
+}
+
+impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
+  fn try_restore(args: RestoreArgs) -> Arc<ChannelManager> {
+    if let Ok(mut f) = fs::File::open(args.data_path + "/manager_data") {
+      let (last_block_hash, manager) = {
+        let mut monitors_refs = HashMap::new();
+        for (outpoint, monitor) in args.monitors_loaded.iter() {
+          monitors_refs.insert(*outpoint, monitor);
+        }
+        <(Hash, ChannelManager)>::read(&mut f, ChannelManagerReadArgs {
+          keys_manager: args.keys_manager,
+          fee_estimator: args.fee_estimator,
+          monitor: args.monitor.clone(),
+          chain_monitor: args.chain_watcher.clone(),
+          tx_broadcaster: args.tx_broadcaster,
+          logger: args.logger,
+          default_config: args.default_config,
+          channel_monitors: &monitors_refs,
+        }).expect("Failed to deserialize channel manager")
+      };
+
+      // monitor.load_from_vec(monitors_loaded);
+      let mut mut_monitors_loaded = args.monitors_loaded;
+      for (outpoint, drain_monitor) in mut_monitors_loaded.drain(..) {
+        if let Err(_) = args.monitor.add_update_monitor(outpoint, drain_monitor) {
+          panic!("Failed to load monitor that deserialized");
+        }
+      }
+      //TODO: Rescan
+      let manager = Arc::new(manager);
+      let manager_as_listener: Arc<ChainListener> = manager.clone();
+      args.chain_watcher.register_listener(Arc::downgrade(&manager_as_listener));
+      manager
+    } else {
+      if(!args.monitors_loaded.is_empty()) {
+        panic!("Found some channel monitors but no channel state!");
+      }
+      ChannelManager::new(
+        args.network,
+        args.fee_estimator,
+        args.monitor,
+        args.chain_watcher,
+        args.tx_broadcaster,
+        args.logger, args.keys_manager, args.default_config).unwrap()
+    }
+  }
 }

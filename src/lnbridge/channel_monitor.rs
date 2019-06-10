@@ -45,10 +45,10 @@ pub fn load_from_disk(data_path: String, logger: Arc<Logger>) -> Vec<(OutPoint, 
           filename.split_at(65).1.split('.').next().unwrap().parse(),
           fs::read(&file.path())
         ) {
-              if let Ok((last_block_hash, loaded_monitor)) = <(Hash, ChannelMonitor)>::read(&mut Cursor::new(&contents), logger.clone()) {
-                res.push((OutPoint { txid, index }, loaded_monitor));
-                loaded = true
-              }}}}
+          if let Ok((last_block_hash, loaded_monitor)) = <(Hash, ChannelMonitor)>::read(&mut Cursor::new(&contents), logger.clone()) {
+            res.push((OutPoint { txid, index }, loaded_monitor));
+            loaded = true
+          }}}}
     if !loaded {
       println!("WARNING: Failed to read one of the channel monitor storage files! Check perms");
     }

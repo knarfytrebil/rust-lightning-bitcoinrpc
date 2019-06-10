@@ -5,3 +5,7 @@ pub mod channel_manager;
 pub mod log_printer;
 pub mod commander;
 mod broadcaster;
+
+pub trait Restorable<R, T> {
+  fn try_restore(args: R) -> T;
+}

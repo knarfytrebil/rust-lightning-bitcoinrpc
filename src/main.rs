@@ -46,7 +46,7 @@ use secp256k1::key::PublicKey;
 use secp256k1::Secp256k1;
 
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
-use lightning::ln::{peer_handler, router, channelmonitor};
+use lightning::ln::{peer_handler, router, channelmonitor, channelmanager};
 use lightning::util::config;
 
 use bitcoin::util::bip32;
@@ -60,6 +60,8 @@ use std::time::{Instant, Duration};
 use std::fs;
 
 mod lnbridge;
+use lnbridge::Restorable;
+use lnbridge::channel_manager::{RestoreArgs};
 use lnbridge::log_printer::LogPrinter;
 use lnbridge::utils;
 
@@ -144,11 +146,11 @@ fn main() {
 	let mut rt = tokio::runtime::Runtime::new().unwrap();
 	rt.spawn(future::lazy(move || -> Result<(), ()> {
 		tokio::spawn(rpc_client.make_rpc_call("importprivkey",
-				&[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
-				.then(|_| Ok(())));
+				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
+				         .then(|_| Ok(())));
 		tokio::spawn(rpc_client.make_rpc_call("importprivkey",
-				&[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
-				.then(|_| Ok(())));
+				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
+				         .then(|_| Ok(())));
 
 		let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
 		let monitor = Arc::new(ChannelMonitor {
@@ -160,17 +162,19 @@ fn main() {
 		config.channel_options.fee_proportional_millionths = FEE_PROPORTIONAL_MILLIONTHS;
 		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
 
-		let channel_manager = lnbridge::channel_manager::get_channel_manager(
-      data_path.clone(),
-      network.clone(),
-      monitors_loaded,
-      keys.clone(),
-      fee_estimator.clone(),
-      monitor.clone(),
-      chain_monitor.clone(), // chain watcher
-      chain_monitor.clone(), // chain broadcaster
-      logger.clone(),
-      config.clone(),
+		let channel_manager = channelmanager::ChannelManager::try_restore(
+      RestoreArgs::new(
+        data_path.clone(),
+        monitors_loaded,
+        network.clone(),
+        fee_estimator.clone(),
+        monitor.clone(),
+        chain_monitor.clone(), // chain watcher
+        chain_monitor.clone(), // chain broadcaster
+        logger.clone(),
+        keys.clone(),
+        config.clone(),
+      ),
     );
 		let router = Arc::new(router::Router::new(PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()), chain_monitor.clone(), logger.clone()));
 

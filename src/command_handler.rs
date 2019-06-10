@@ -75,31 +75,10 @@ pub fn run_command_board(
 			if line.len() > 2 && line.as_bytes()[1] == ' ' as u8 {
 				match FromPrimitive::from_u8(line.as_bytes()[0]) {
 					Some(Command::Connect) => { // 'c'
-            // TODO: split 'c'
             commander::connect(line.split_at(2).1.parse().unwrap(), peer_manager.clone(), event_notify.clone());
 					},
 					Some(Command::FundChannel) => { // 'n'
-						match hex_to_compressed_pubkey(line.split_at(2).1) {
-							Some(pk) => {
-								if line.as_bytes()[2 + 33*2] == ' ' as u8 {
-									let mut args = line.split_at(2 + 33*2 + 1).1.split(' ');
-									if let Some(value_str) = args.next() {
-										if let Some(push_str) = args.next() {
-											if let Ok(value) = value_str.parse() {
-												if let Ok(push) = push_str.parse() {
-													match channel_manager.create_channel(pk, value, push, 0) {
-														Ok(_) => println!("Channel created, sending open_channel!"),
-														Err(e) => println!("Failed to open channel: {:?}!", e),
-													}
-													let _ = event_notify.try_send(());
-												} else { println!("Couldn't parse third argument into a push value"); }
-											} else { println!("Couldn't parse second argument into a value"); }
-										} else { println!("Couldn't read third argument"); }
-									} else { println!("Couldn't read second argument"); }
-								} else { println!("Invalid line, should be n pubkey value"); }
-							},
-							None => println!("Bad PubKey for remote node"),
-						}
+						commander::fund_channel(line.split_at(2).1.parse().unwrap(), channel_manager.clone(), event_notify.clone());
 					},
 					Some(Command::CloseChannel) => { // 'k'
 						if line.len() == 64 + 2 {
