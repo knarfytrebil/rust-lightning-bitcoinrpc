@@ -2,12 +2,10 @@ use std::sync::Arc;
 use std::fs;
 use std::collections::HashMap;
 
-use secp256k1;
-
 use bitcoin::network::constants::Network;
 use bitcoin_hashes::sha256d::Hash;
 
-use lightning::chain::keysinterface::{KeysInterface, KeysManager};
+use lightning::chain::keysinterface::{KeysInterface};
 use lightning::chain::chaininterface::{FeeEstimator, ChainWatchInterface, BroadcasterInterface, ChainListener};
 use lightning::chain::transaction::OutPoint;
 use lightning::ln::channelmanager::{ChannelManager, ChannelManagerReadArgs};

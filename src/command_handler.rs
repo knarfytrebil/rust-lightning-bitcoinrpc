@@ -1,5 +1,3 @@
-
-
 use num_traits::FromPrimitive;
 use std::io::Write;
 use std::str::FromStr;
@@ -28,10 +26,12 @@ use lightning_net_tokio::{SocketDescriptor};
 use lightning_invoice::MinFinalCltvExpiry;
 
 use lnbridge::commander;
+use lnbridge::settings::Settings;
 use lnbridge::utils::*;
 
 #[derive(FromPrimitive)]
 enum Command {
+  GetInfo = 0x67, // g
   Connect = 0x63, // c
   FundChannel = 0x6e, // n
   CloseChannel = 0x6b, // k
@@ -52,10 +52,13 @@ pub fn run_command_board(
   peer_manager: Arc<PeerManager<SocketDescriptor>>,
   payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
   secp_ctx: Secp256k1<All>,
-  keys: Arc<KeysManager>
+  keys: Arc<KeysManager>,
+  settings: Settings
 ) {
-  println!("Bound on port 9735! Our node_id: {}", hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
+  println!("Bound on port {}!", settings.port);
+  println!("Our node_id: {}", hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
 	println!("Started interactive shell! Commands:");
+  println!("'g 1' get node_id");
 	println!("'c pubkey@host:port' Connect to given host+port, with given pubkey for auth");
 	println!("'n pubkey value push_value' Create a channel with the given connected node (by pubkey), value in satoshis, and push the given msat value");
 	println!("'k channel_id' Close a channel with the given id");
@@ -74,6 +77,9 @@ pub fn run_command_board(
 			}
 			if line.len() > 2 && line.as_bytes()[1] == ' ' as u8 {
 				match FromPrimitive::from_u8(line.as_bytes()[0]) {
+          Some(Command::GetInfo) => { // 'g'
+            println!("Our node_id: {}", hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
+          },
 					Some(Command::Connect) => { // 'c'
             commander::connect(line.split_at(2).1.parse().unwrap(), peer_manager.clone(), event_notify.clone());
 					},

@@ -16,6 +16,7 @@ extern crate base64;
 extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate num_traits;
+extern crate config as settings;
 
 #[macro_use]
 extern crate serde_derive;
@@ -52,7 +53,7 @@ use lightning::util::config;
 use bitcoin::util::bip32;
 use bitcoin::network::constants;
 
-use std::{env, mem};
+use std::mem;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::vec::Vec;
@@ -60,10 +61,10 @@ use std::time::{Instant, Duration};
 use std::fs;
 
 mod lnbridge;
-use lnbridge::Restorable;
-use lnbridge::channel_manager::{RestoreArgs};
+use lnbridge::settings::Settings;
+use lnbridge::{Restorable};
+use lnbridge::channel_manager::{RestoreArgs as RestoreManagerArgs };
 use lnbridge::log_printer::LogPrinter;
-use lnbridge::utils;
 
 const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
 const ANNOUNCE_CHANNELS: bool = true;
@@ -76,10 +77,10 @@ fn _check_usize_is_64() {
 
 fn main() {
 	println!("USAGE: rust-lightning-jsonrpc user:pass@rpc_host:port storage_directory_path [port]");
-	if env::args().len() < 3 { return; }
+  let settings = Settings::new().unwrap();
 
 	let rpc_client = {
-		let path = env::args().skip(1).next().unwrap();
+		let path = settings.rpc_url.clone();
 		let path_parts: Vec<&str> = path.split('@').collect();
 		if path_parts.len() != 2 {
 			println!("Bad RPC URL provided");
@@ -114,21 +115,12 @@ fn main() {
 		panic!("LOL, you're insane");
 	}
 
-	let data_path = env::args().skip(2).next().unwrap();
+	let data_path = settings.lndata.clone();
 	if !fs::metadata(&data_path).unwrap().is_dir() {
 		println!("Need storage_directory_path to exist and be a directory (or symlink to one)");
 		return;
 	}
 	let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
-
-	let port: u16 = match env::args().skip(3).next().map(|p| p.parse()) {
-		Some(Ok(p)) => p,
-		Some(Err(e)) => {
-			println!("Error parsing port.");
-			return;
-		},
-		None => 9735,
-	};
 
 	let logger = Arc::new(LogPrinter {});
 
@@ -163,7 +155,7 @@ fn main() {
 		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
 
 		let channel_manager = channelmanager::ChannelManager::try_restore(
-      RestoreArgs::new(
+      RestoreManagerArgs::new(
         data_path.clone(),
         monitors_loaded,
         network.clone(),
@@ -184,9 +176,9 @@ fn main() {
 		}, keys.get_node_secret(), logger.clone()));
 
 		let payment_preimages = Arc::new(Mutex::new(HashMap::new()));
-		let mut event_notify = EventHandler::setup(network, data_path, rpc_client.clone(), peer_manager.clone(), monitor.monitor.clone(), channel_manager.clone(), chain_monitor.clone(), payment_preimages.clone());
+		let event_notify = EventHandler::setup(network, data_path, rpc_client.clone(), peer_manager.clone(), monitor.monitor.clone(), channel_manager.clone(), chain_monitor.clone(), payment_preimages.clone());
 
-		let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", port).parse().unwrap()).unwrap();
+		let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.port).parse().unwrap()).unwrap();
 
 		let peer_manager_listener = peer_manager.clone();
 		let event_listener = event_notify.clone();
@@ -211,7 +203,8 @@ fn main() {
       peer_manager,
       payment_preimages,
       secp_ctx,
-      keys
+      keys,
+      settings
     );
 
 		Ok(())

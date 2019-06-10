@@ -11,7 +11,6 @@ use bitcoin::blockdata;
 use bitcoin::consensus::encode;
 
 use lightning::chain;
-use lightning::chain::chaininterface::BroadcasterInterface;
 use lightning::chain::keysinterface::{SpendableOutputDescriptor};
 use lightning::ln::peer_handler;
 use lightning::ln::channelmanager;
