@@ -17,6 +17,7 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate num_traits;
 extern crate config as settings;
+extern crate log;
 
 #[macro_use]
 extern crate serde_derive;
@@ -24,7 +25,7 @@ extern crate serde_derive;
 extern crate num_derive;
 
 mod rpc_client;
-use rpc_client::*;
+use rpc_client::RPCClient;
 
 mod chain_monitor;
 use chain_monitor::*;
@@ -65,6 +66,7 @@ use lnbridge::settings::Settings;
 use lnbridge::{Restorable};
 use lnbridge::channel_manager::{RestoreArgs as RestoreManagerArgs };
 use lnbridge::log_printer::LogPrinter;
+use log::{info, error};
 
 const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
 const ANNOUNCE_CHANNELS: bool = true;
@@ -75,54 +77,49 @@ fn _check_usize_is_64() {
 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 }
 
-fn main() {
-	println!("USAGE: rust-lightning-jsonrpc user:pass@rpc_host:port storage_directory_path [port]");
-  let settings = Settings::new().unwrap();
+pub struct LnManager {
+  // rpc_client: Arc<RPCClient>,
+}
 
-	let rpc_client = {
-		let path = settings.rpc_url.clone();
-		let path_parts: Vec<&str> = path.split('@').collect();
-		if path_parts.len() != 2 {
-			println!("Bad RPC URL provided");
-			return;
-		}
-		Arc::new(RPCClient::new(path_parts[0], path_parts[1]))
-	};
-
-	let mut network = constants::Network::Bitcoin;
-	let secp_ctx = Secp256k1::new();
-
-	let fee_estimator = Arc::new(FeeEstimator::new());
-
-	{
-		println!("Checking validity of RPC URL to bitcoind...");
+impl LnManager {
+  pub fn new(settings: Settings) -> u8 {
+    1
+  }
+  pub fn get_network(rpc_client: Arc<RPCClient>) -> constants::Network {
 		let mut thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 		thread_rt.block_on(rpc_client.make_rpc_call("getblockchaininfo", &[], false).and_then(|v| {
 			assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
 			assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
 			match v["chain"].as_str().unwrap() {
-				"main" => network = constants::Network::Bitcoin,
-				"test" => network = constants::Network::Testnet,
-				"regtest" => network = constants::Network::Regtest,
+				"main" => Ok(constants::Network::Bitcoin),
+				"test" => Ok(constants::Network::Testnet),
+				"regtest" => Ok(constants::Network::Regtest),
 				_ => panic!("Unknown network type"),
 			}
-			Ok(())
-		})).unwrap();
-		println!("Success! Starting up...");
-	}
+		})).unwrap()
+  }
+}
 
-	if network == constants::Network::Bitcoin {
+fn main() {
+  let settings = Settings::new().unwrap();
+  let logger = Arc::new(LogPrinter {});
+	let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
+	let secp_ctx = Secp256k1::new();
+	let fee_estimator = Arc::new(FeeEstimator::new());
+
+  info!("Checking validity of RPC URL to bitcoind...");
+  let network = LnManager::get_network(rpc_client);
+  info!("Success! Starting up...");
+  if network == constants::Network::Bitcoin {
 		panic!("LOL, you're insane");
 	}
 
 	let data_path = settings.lndata.clone();
 	if !fs::metadata(&data_path).unwrap().is_dir() {
-		println!("Need storage_directory_path to exist and be a directory (or symlink to one)");
+		error!("Need storage_directory_path to exist and be a directory (or symlink to one)");
 		return;
 	}
 	let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
-
-	let logger = Arc::new(LogPrinter {});
 
   let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
 
@@ -183,7 +180,7 @@ fn main() {
 		let peer_manager_listener = peer_manager.clone();
 		let event_listener = event_notify.clone();
 		tokio::spawn(listener.incoming().for_each(move |sock| {
-			println!("Got new inbound connection, waiting on them to start handshake...");
+			info!("Got new inbound connection, waiting on them to start handshake...");
 			Connection::setup_inbound(peer_manager_listener.clone(), event_listener.clone(), sock);
 			Ok(())
 		}).then(|_| { Ok(()) }));

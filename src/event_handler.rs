@@ -56,11 +56,24 @@ impl EventHandler {
 						).expect("LN funding tx should always be to a SegWit output").to_address();
 						let us = us.clone();
 						let mut self_sender = self_sender.clone();
-						return future::Either::A(us.rpc_client.make_rpc_call("createrawtransaction", &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)], false).and_then(move |tx_hex| {
-							us.rpc_client.make_rpc_call("fundrawtransaction", &[&format!("\"{}\"", tx_hex.as_str().unwrap())], false).and_then(move |funded_tx| {
+						return future::Either::A(
+              us.rpc_client.make_rpc_call(
+                "createrawtransaction",
+                &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)],
+                false
+              ).and_then(move |tx_hex| {
+							  us.rpc_client.make_rpc_call(
+                  "fundrawtransaction",
+                  &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
+                  false
+                ).and_then(move |funded_tx| {
 								let changepos = funded_tx["changepos"].as_i64().unwrap();
 								assert!(changepos == 0 || changepos == 1);
-								us.rpc_client.make_rpc_call("signrawtransactionwithwallet", &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())], false).and_then(move |signed_tx| {
+								  us.rpc_client.make_rpc_call(
+                    "signrawtransactionwithwallet",
+                    &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
+                    false
+                  ).and_then(move |signed_tx| {
 									assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
 									let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
 									let outpoint = chain::transaction::OutPoint {

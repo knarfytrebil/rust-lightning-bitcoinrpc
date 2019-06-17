@@ -45,7 +45,13 @@ pub struct RPCClient {
 }
 
 impl RPCClient {
-	pub fn new(user_auth: &str, host_port: &str) -> Self {
+	pub fn new(rpc_url: String) -> Self {
+    let path_parts: Vec<&str> = rpc_url.split('@').collect();
+		if path_parts.len() != 2 {
+			panic!("Bad RPC URL provided");
+		}
+    let user_auth = path_parts[0];
+    let host_port = path_parts[1];
 		Self {
 			basic_auth: "Basic ".to_string() + &base64::encode(user_auth),
 			uri: "http://".to_string() + host_port,

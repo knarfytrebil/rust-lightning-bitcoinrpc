@@ -9,3 +9,7 @@ Simple Sample rust-lightning-based Lightning Node
 * Can open outbound channels and receive inbound channels.
 * Can send payments over multiple hops using in-built router and BOLT11 parsing from rust-lightning-invoice (which is not yet complete, so you have to repeat the final node's node_id on the command line).
 * Can receive payments but cannot yet generate BOLT11 invoices.
+
+
+### TODO
+println => logger
