@@ -39,6 +39,7 @@ use channel_monitor::*;
 mod command_handler;
 
 use lightning_net_tokio::{Connection};
+use tokio::runtime::TaskExecutor;
 
 use futures::future;
 use futures::future::Future;
@@ -82,58 +83,58 @@ impl LnManager {
   pub fn new(settings: Settings) -> u8 {
     1
   }
-  pub fn get_network(rpc_client: Arc<RPCClient>) -> constants::Network {
-		let mut thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-		thread_rt.block_on(rpc_client.make_rpc_call("getblockchaininfo", &[], false).and_then(|v| {
-			assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
-			assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
-			match v["chain"].as_str().unwrap() {
-				"main" => Ok(constants::Network::Bitcoin),
-				"test" => Ok(constants::Network::Testnet),
-				"regtest" => Ok(constants::Network::Regtest),
-				_ => panic!("Unknown network type"),
-			}
-		})).unwrap()
+  pub fn get_network(rpc_client: Arc<RPCClient>, executor: TaskExecutor) -> constants::Network {
+		// let mut thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+		// thread_rt.block_on(rpc_client.make_rpc_call("getblockchaininfo", &[], false).and_then(|v| {
+		// 	assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
+		// 	assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
+		// 	match v["chain"].as_str().unwrap() {
+		// 		"main" => Ok(constants::Network::Bitcoin),
+		// 		"test" => Ok(constants::Network::Testnet),
+		// 		"regtest" => Ok(constants::Network::Regtest),
+		// 		_ => panic!("Unknown network type"),
+		// 	}
+		// })).unwrap()
+    constants::Network::Testnet
   }
 }
 
 fn main() {
   let mut rt = tokio::runtime::Runtime::new().unwrap();
+  let executor = rt.executor();
+  executor.clone().spawn(future::lazy(move || -> Result<(), ()> {
+    let settings = Settings::new().unwrap();
+    let logger = Arc::new(LogPrinter {});
+	  let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
+	  let secp_ctx = Secp256k1::new();
+	  let fee_estimator = Arc::new(FeeEstimator::new());
 
-  let settings = Settings::new().unwrap();
-  let logger = Arc::new(LogPrinter {});
-	let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
-	let secp_ctx = Secp256k1::new();
-	let fee_estimator = Arc::new(FeeEstimator::new());
+    info!("Checking validity of RPC URL to bitcoind...");
+    let network = LnManager::get_network(rpc_client.clone(), executor.clone());
+    info!("Success! Starting up...");
+    if network == constants::Network::Bitcoin {
+		  panic!("LOL, you're insane");
+	  }
 
-  info!("Checking validity of RPC URL to bitcoind...");
-  let network = LnManager::get_network(rpc_client.clone());
-  info!("Success! Starting up...");
-  if network == constants::Network::Bitcoin {
-		panic!("LOL, you're insane");
-	}
+	  let data_path = settings.lndata.clone();
+	  if !fs::metadata(&data_path).unwrap().is_dir() {
+		  panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
+	  }
+	  let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
-	let data_path = settings.lndata.clone();
-	if !fs::metadata(&data_path).unwrap().is_dir() {
-		panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
-	}
-	let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
+    let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
+	  let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
+    let (import_key_1, import_key_2) = bip32::ExtendedPrivKey::new_master(network, &our_node_seed).map(|extpriv| {
+		  (extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap()).unwrap().private_key.key,
+		   extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap()).unwrap().private_key.key)
+	  }).unwrap();
 
-  let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
-
-	let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
-  let (import_key_1, import_key_2) = bip32::ExtendedPrivKey::new_master(network, &our_node_seed).map(|extpriv| {
-		(extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap()).unwrap().private_key.key,
-		 extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap()).unwrap().private_key.key)
-	}).unwrap();
-
-  // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
-	let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone()));
-  rt.spawn(future::lazy(move || -> Result<(), ()> {
-		tokio::spawn(rpc_client.make_rpc_call("importprivkey",
+    // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
+	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone()));
+		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
 				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
 				         .then(|_| Ok(())));
-		tokio::spawn(rpc_client.make_rpc_call("importprivkey",
+		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
 				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
 				         .then(|_| Ok(())));
 
@@ -164,7 +165,17 @@ fn main() {
 		}, keys.get_node_secret(), logger.clone()));
 
 		let payment_preimages = Arc::new(Mutex::new(HashMap::new()));
-		let event_notify = EventHandler::setup(network, data_path, rpc_client.clone(), peer_manager.clone(), monitor.monitor.clone(), channel_manager.clone(), chain_monitor.clone(), payment_preimages.clone());
+		let event_notify = EventHandler::setup(
+      network,
+      data_path,
+      rpc_client.clone(),
+      peer_manager.clone(),
+      monitor.monitor.clone(),
+      channel_manager.clone(),
+      chain_monitor.clone(),
+      payment_preimages.clone(),
+      executor.clone()
+    );
 
 		let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.port).parse().unwrap()).unwrap();
 
@@ -176,9 +187,9 @@ fn main() {
 			Ok(())
 		}).then(|_| { Ok(()) }));
 
-		spawn_chain_monitor(fee_estimator, rpc_client, chain_monitor, event_notify.clone());
+		spawn_chain_monitor(fee_estimator, rpc_client, chain_monitor, event_notify.clone(), executor.clone());
 
-		tokio::spawn(tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0)).for_each(move |_| {
+		executor.clone().spawn(tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0)).for_each(move |_| {
 			//TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
 			Ok(())
 		}).then(|_| { Ok(()) }));

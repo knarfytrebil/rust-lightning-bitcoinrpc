@@ -6,6 +6,7 @@ use bitcoin;
 use lightning;
 use serde_json;
 use tokio;
+use tokio::runtime::TaskExecutor;
 
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin_hashes::hex::ToHex;
@@ -233,10 +234,10 @@ fn find_fork(mut steps_tx: mpsc::Sender<ForkStep>, current_hash: String, target_
 	}));
 }
 
-pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPCClient>, chain_monitor: Arc<ChainInterface>, event_notify: mpsc::Sender<()>) {
-	tokio::spawn(FeeEstimator::update_values(fee_estimator.clone(), &rpc_client));
+pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPCClient>, chain_monitor: Arc<ChainInterface>, event_notify: mpsc::Sender<()>, executor: TaskExecutor) {
+	executor.clone().spawn(FeeEstimator::update_values(fee_estimator.clone(), &rpc_client));
 	let cur_block = Arc::new(Mutex::new(String::from("")));
-	tokio::spawn(tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1)).for_each(move |_| {
+	executor.clone().spawn(tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1)).for_each(move |_| {
 		let cur_block = cur_block.clone();
 		let fee_estimator = fee_estimator.clone();
 		let rpc_client = rpc_client.clone();
