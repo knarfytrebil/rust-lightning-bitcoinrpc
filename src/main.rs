@@ -117,7 +117,7 @@ fn main() {
 	if !fs::metadata(&data_path).unwrap().is_dir() {
 		panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
 	}
-	fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
+	let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
   let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
 
