@@ -139,6 +139,7 @@ impl LnManager {
 		}).then(|_| { Ok(()) }));
     Self {
       rpc_client,
+      //
       network,
       router,
       event_notify,
