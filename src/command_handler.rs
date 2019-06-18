@@ -28,6 +28,7 @@ use lightning_invoice::MinFinalCltvExpiry;
 use lnbridge::commander;
 use lnbridge::settings::Settings;
 use lnbridge::utils::*;
+use ln_manager::LnManager;
 
 #[derive(FromPrimitive)]
 enum Command {
@@ -44,17 +45,17 @@ enum Command {
 }
 
 
-pub fn run_command_board(
-  network: constants::Network,
-  router: Arc<router::Router>,
-  mut event_notify: mpsc::Sender<()>,
-  channel_manager: Arc<ChannelManager>,
-  peer_manager: Arc<PeerManager<SocketDescriptor>>,
-  payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-  secp_ctx: Secp256k1<All>,
-  keys: Arc<KeysManager>,
-  settings: Settings
-) {
+pub fn run_command_board(lnManager: LnManager) {
+  let network: constants::Network = lnManager.network;
+  let router: Arc<router::Router> = lnManager.router;
+  let mut event_notify: mpsc::Sender<()> = lnManager.event_notify;
+  let channel_manager: Arc<ChannelManager> = lnManager.channel_manager;
+  let peer_manager: Arc<PeerManager<SocketDescriptor>> = lnManager.peer_manager;
+  let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> = lnManager.payment_preimages;
+  let secp_ctx: Secp256k1<All> = lnManager.secp_ctx;
+  let keys: Arc<KeysManager> = lnManager.keys;
+  let settings: Settings = lnManager.settings;
+
   println!("Bound on port {}!", settings.port);
   println!("Our node_id: {}", hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
 	println!("Started interactive shell! Commands:");
