@@ -16,7 +16,7 @@ extern crate base64;
 extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate num_traits;
-extern crate config as settings;
+extern crate config;
 extern crate log;
 
 #[macro_use]
@@ -49,7 +49,6 @@ use secp256k1::Secp256k1;
 
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::{peer_handler, router, channelmonitor, channelmanager};
-use lightning::util::config;
 
 use bitcoin::util::bip32;
 use bitcoin::network::constants;
@@ -68,8 +67,6 @@ use lnbridge::channel_manager::{RestoreArgs as RestoreManagerArgs };
 use lnbridge::log_printer::LogPrinter;
 use log::{info, error};
 
-const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
-const ANNOUNCE_CHANNELS: bool = true;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
@@ -101,6 +98,8 @@ impl LnManager {
 }
 
 fn main() {
+  let mut rt = tokio::runtime::Runtime::new().unwrap();
+
   let settings = Settings::new().unwrap();
   let logger = Arc::new(LogPrinter {});
 	let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
@@ -108,7 +107,7 @@ fn main() {
 	let fee_estimator = Arc::new(FeeEstimator::new());
 
   info!("Checking validity of RPC URL to bitcoind...");
-  let network = LnManager::get_network(rpc_client);
+  let network = LnManager::get_network(rpc_client.clone());
   info!("Success! Starting up...");
   if network == constants::Network::Bitcoin {
 		panic!("LOL, you're insane");
@@ -116,10 +115,9 @@ fn main() {
 
 	let data_path = settings.lndata.clone();
 	if !fs::metadata(&data_path).unwrap().is_dir() {
-		error!("Need storage_directory_path to exist and be a directory (or symlink to one)");
-		return;
+		panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
 	}
-	let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
+	fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
   let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
 
@@ -131,9 +129,7 @@ fn main() {
 
   // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
 	let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone()));
-
-	let mut rt = tokio::runtime::Runtime::new().unwrap();
-	rt.spawn(future::lazy(move || -> Result<(), ()> {
+  rt.spawn(future::lazy(move || -> Result<(), ()> {
 		tokio::spawn(rpc_client.make_rpc_call("importprivkey",
 				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
 				         .then(|_| Ok(())));
@@ -147,10 +143,6 @@ fn main() {
 			file_prefix: data_path.clone() + "/monitors",
 		});
 
-		let mut config = config::UserConfig::new();
-		config.channel_options.fee_proportional_millionths = FEE_PROPORTIONAL_MILLIONTHS;
-		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
-
 		let channel_manager = channelmanager::ChannelManager::try_restore(
       RestoreManagerArgs::new(
         data_path.clone(),
@@ -162,7 +154,6 @@ fn main() {
         chain_monitor.clone(), // chain broadcaster
         logger.clone(),
         keys.clone(),
-        config.clone(),
       ),
     );
 		let router = Arc::new(router::Router::new(PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()), chain_monitor.clone(), logger.clone()));

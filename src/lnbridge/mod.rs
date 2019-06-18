@@ -1,6 +1,7 @@
 pub mod key;
 pub mod utils;
 pub mod channel_manager;
+pub mod btc_bridge;
 pub mod log_printer;
 pub mod commander;
 pub mod settings;

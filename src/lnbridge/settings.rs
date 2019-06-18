@@ -1,4 +1,4 @@
-use settings::{ConfigError, Config, File}; // clap-rs
+use config::{ConfigError, Config, File}; // clap-rs
 
 #[derive(Deserialize)]
 pub struct Settings {

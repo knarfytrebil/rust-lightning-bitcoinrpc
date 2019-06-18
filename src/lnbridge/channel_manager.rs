@@ -16,6 +16,9 @@ use lightning::util::logger::{Logger};
 
 use super::Restorable;
 
+const FEE_PROPORTIONAL_MILLIONTHS: u32 = 10;
+const ANNOUNCE_CHANNELS: bool = true;
+
 pub struct RestoreArgs {
   data_path: String,
   monitors_loaded: Vec<(OutPoint, ChannelMonitor)>,
@@ -26,7 +29,6 @@ pub struct RestoreArgs {
   tx_broadcaster: Arc<BroadcasterInterface>,
   logger: Arc<Logger>,
   keys_manager: Arc<KeysInterface>,
-  default_config: UserConfig,
 }
 
 impl RestoreArgs {
@@ -40,18 +42,21 @@ impl RestoreArgs {
     tx_broadcaster: Arc<BroadcasterInterface>,
     logger: Arc<Logger>,
     keys_manager: Arc<KeysInterface>,
-    default_config: UserConfig
   ) -> Self {
     RestoreArgs {
       data_path, monitors_loaded, network, fee_estimator,
       monitor, chain_watcher, tx_broadcaster,
-      logger, keys_manager, default_config,
+      logger, keys_manager,
     }
   }
 }
 
 impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
   fn try_restore(args: RestoreArgs) -> Arc<ChannelManager> {
+    let mut config = UserConfig::new();
+		config.channel_options.fee_proportional_millionths = FEE_PROPORTIONAL_MILLIONTHS;
+		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
+
     if let Ok(mut f) = fs::File::open(args.data_path + "/manager_data") {
       let (last_block_hash, manager) = {
         let mut monitors_refs = HashMap::new();
@@ -65,7 +70,7 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
           chain_monitor: args.chain_watcher.clone(),
           tx_broadcaster: args.tx_broadcaster,
           logger: args.logger,
-          default_config: args.default_config,
+          default_config: config,
           channel_monitors: &monitors_refs,
         }).expect("Failed to deserialize channel manager")
       };
@@ -92,7 +97,7 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
         args.monitor,
         args.chain_watcher,
         args.tx_broadcaster,
-        args.logger, args.keys_manager, args.default_config).unwrap()
+        args.logger, args.keys_manager, config).unwrap()
     }
   }
 }
