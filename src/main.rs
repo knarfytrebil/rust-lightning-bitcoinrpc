@@ -50,12 +50,10 @@ fn _check_usize_is_64() {
 fn main() {
   let rt = tokio::runtime::Runtime::new().unwrap();
   let executor = rt.executor();
-  executor.clone().spawn(future::lazy(move || -> Result<(), ()> {
-    let settings = Settings::new().unwrap();
-    let lnManager = LnManager::new(settings, executor);
+  let settings = Settings::new().unwrap();
+  let lnManager = LnManager::new(settings, executor.clone());
 
-    command_handler::run_command_board(lnManager);
-		Ok(())
-	}));
+  command_handler::run_command_board(lnManager, executor);
+
 	rt.shutdown_on_idle().wait().unwrap();
 }

@@ -21,7 +21,7 @@ use lightning::ln::peer_handler::PeerManager;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage, ChannelManager};
 use lightning_net_tokio::{Connection, SocketDescriptor};
 
-use rpc_client::{RPCClient, };
+use rpc_client::{RPCClient};
 use chain_monitor::{spawn_chain_monitor, FeeEstimator, ChainInterface};
 use channel_monitor::ChannelMonitor;
 use event_handler::EventHandler;
@@ -74,7 +74,7 @@ impl LnManager {
 	  }).unwrap();
 
     // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
-	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone()));
+	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone(), executor.clone()));
 		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
 				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
 				         .then(|_| Ok(())));
@@ -125,7 +125,7 @@ impl LnManager {
 
 		let peer_manager_listener = peer_manager.clone();
 		let event_listener = event_notify.clone();
-		tokio::spawn(listener.incoming().for_each(move |sock| {
+		executor.spawn(listener.incoming().for_each(move |sock| {
 			info!("Got new inbound connection, waiting on them to start handshake...");
 			Connection::setup_inbound(peer_manager_listener.clone(), event_listener.clone(), sock);
 			Ok(())

@@ -9,6 +9,7 @@ use rand::{thread_rng, Rng};
 use futures::future::Future;
 use futures::Stream;
 use futures::sync::mpsc;
+use tokio::runtime::TaskExecutor;
 
 use secp256k1::{Secp256k1, All};
 use secp256k1::key::PublicKey;
@@ -45,7 +46,7 @@ enum Command {
 }
 
 
-pub fn run_command_board(lnManager: LnManager) {
+pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
   let network: constants::Network = lnManager.network;
   let router: Arc<router::Router> = lnManager.router;
   let mut event_notify: mpsc::Sender<()> = lnManager.event_notify;
@@ -55,6 +56,7 @@ pub fn run_command_board(lnManager: LnManager) {
   let secp_ctx: Secp256k1<All> = lnManager.secp_ctx;
   let keys: Arc<KeysManager> = lnManager.keys;
   let settings: Settings = lnManager.settings;
+  let executor = executor_command.clone();
 
   println!("Bound on port {}!", settings.port);
   println!("Our node_id: {}", hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
@@ -69,7 +71,7 @@ pub fn run_command_board(lnManager: LnManager) {
 	println!("'s invoice [amt]' Send payment to an invoice, optionally with amount as whole msat if its not in the invoice");
 	println!("'p' Gets a new invoice for receiving funds");
 	print!("> "); std::io::stdout().flush().unwrap();
-  tokio::spawn(tokio_codec::FramedRead::new(tokio_fs::stdin(), tokio_codec::LinesCodec::new()).for_each(move |line| {
+  executor.clone().spawn(tokio_codec::FramedRead::new(tokio_fs::stdin(), tokio_codec::LinesCodec::new()).for_each(move |line| {
 			macro_rules! fail_return {
 				() => {
 					print!("> "); std::io::stdout().flush().unwrap();
