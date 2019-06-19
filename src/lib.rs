@@ -37,6 +37,7 @@ use std::mem;
 use futures::future;
 use futures::future::Future;
 use tokio::runtime::TaskExecutor;
+use exit_future::Exit;
 
 mod lnbridge;
 use lnbridge::settings::Settings;
@@ -47,13 +48,16 @@ fn _check_usize_is_64() {
 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 }
 
-fn main() {
-  let rt = tokio::runtime::Runtime::new().unwrap();
+struct Task {
+}
+
+pub fn run_peer(executor: TaskExecutor, exit: Exit) {
+  // let rt = tokio::runtime::Runtime::new().unwrap();
   let executor = rt.executor();
   let settings = Settings::new().unwrap();
   let lnManager = LnManager::new(settings, executor.clone());
-
-  command_handler::run_command_board(lnManager, executor);
+  // }).map_err(|_| ()).select(exit.clone()).then(|_| Ok(())));
+  // command_handler::run_command_board(lnManager, executor);
 
 	rt.shutdown_on_idle().wait().unwrap();
 }

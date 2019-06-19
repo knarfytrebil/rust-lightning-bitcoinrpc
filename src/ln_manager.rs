@@ -6,6 +6,7 @@ use std::time::{Instant, Duration};
 use std::fs;
 
 use tokio::runtime::TaskExecutor;
+use exit_future::Exit;
 use futures::future;
 use futures::future::Future;
 use futures::Stream;
@@ -47,14 +48,14 @@ pub struct LnManager {
 }
 
 impl LnManager {
-  pub fn new(settings: Settings, executor: TaskExecutor) -> Self {
+  pub fn new(settings: Settings, executor: TaskExecutor, exit: Exit) -> Self {
     let logger = Arc::new(LogPrinter {});
 	  let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
 	  let secp_ctx = Secp256k1::new();
 	  let fee_estimator = Arc::new(FeeEstimator::new());
 
     info!("Checking validity of RPC URL to bitcoind...");
-    let network = LnManager::get_network(rpc_client.clone(), executor.clone());
+    let network = LnManager::get_network(rpc_client.clone(), executor.clone(), exit.clone());
     info!("Success! Starting up...");
     if network == constants::Network::Bitcoin {
 		  panic!("LOL, you're insane");
@@ -74,13 +75,13 @@ impl LnManager {
 	  }).unwrap();
 
     // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
-	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone(), executor.clone()));
+	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone(), executor.clone(), exit.clone()));
 		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
-				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
-				         .then(|_| Ok(())));
+				                                            &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
+				                   .then(|_| Ok(()))).select(exit.clone()).then(|_| Ok(()));
 		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
-				                                  &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
-				         .then(|_| Ok(())));
+				                                            &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
+				                   .then(|_| Ok(()))).select(exit.clone()).then(|_| Ok(()));
 
 		let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
 		let monitor = Arc::new(ChannelMonitor {
@@ -118,7 +119,8 @@ impl LnManager {
       channel_manager.clone(),
       chain_monitor.clone(),
       payment_preimages.clone(),
-      executor.clone()
+      executor.clone(),
+      exit.clone()
     );
 
 		let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.port).parse().unwrap()).unwrap();
@@ -129,14 +131,14 @@ impl LnManager {
 			info!("Got new inbound connection, waiting on them to start handshake...");
 			Connection::setup_inbound(peer_manager_listener.clone(), event_listener.clone(), sock);
 			Ok(())
-		}).then(|_| { Ok(()) }));
+		}).select(exit.clone()).then(|_| { Ok(()) }));
 
-		spawn_chain_monitor(fee_estimator, rpc_client.clone(), chain_monitor, event_notify.clone(), executor.clone());
+		spawn_chain_monitor(fee_estimator, rpc_client.clone(), chain_monitor, event_notify.clone(), executor.clone(), exit.clone());
 
 		executor.clone().spawn(tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0)).for_each(move |_| {
 			//TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
 			Ok(())
-		}).then(|_| { Ok(()) }));
+		}).select(exit.clone()).then(|_| { Ok(()) }));
     Self {
       rpc_client,
       //
@@ -151,7 +153,7 @@ impl LnManager {
       settings
     }
   }
-  pub fn get_network(rpc_client: Arc<RPCClient>, executor: TaskExecutor) -> constants::Network {
+  pub fn get_network(rpc_client: Arc<RPCClient>, executor: TaskExecutor, exit: Exit) -> constants::Network {
 		// let mut thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
 		// thread_rt.block_on(rpc_client.make_rpc_call("getblockchaininfo", &[], false).and_then(|v| {
 		// 	assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 
 use tokio::runtime::TaskExecutor;
+use exit_future::Exit;
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
@@ -47,7 +48,8 @@ impl EventHandler {
     channel_manager: Arc<channelmanager::ChannelManager>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    executor: TaskExecutor
+    executor: TaskExecutor,
+    exit: Exit
   ) -> mpsc::Sender<()> {
 		let us = Arc::new(Self { network, file_prefix, rpc_client, peer_manager, channel_manager, monitor, broadcaster, txn_to_broadcast: Mutex::new(HashMap::new()), payment_preimages });
 		let (sender, receiver) = mpsc::channel(2);
@@ -133,7 +135,7 @@ impl EventHandler {
 							us.channel_manager.process_pending_htlc_forwards();
 							let _ = self_sender.try_send(());
 							Ok(())
-						}));
+						})).select(exit.clone()).then(|_| { Ok(()) });
 					},
 					Event::SpendableOutputs { mut outputs } => {
 						for output in outputs.drain(..) {
@@ -165,7 +167,7 @@ impl EventHandler {
 			fs::rename(&tmp_filename, &filename).unwrap();
 
 			future::Either::B(future::result(Ok(())))
-		}).then(|_| { Ok(()) }));
+		}).select(exit.clone()).then(|_| { Ok(()) }));
 		sender
 	}
 }
