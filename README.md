@@ -12,4 +12,4 @@ Simple Sample rust-lightning-based Lightning Node
 
 
 ### TODO
-println => logger
+
