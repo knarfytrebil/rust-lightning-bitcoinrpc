@@ -24,7 +24,7 @@ use lightning_net_tokio::{SocketDescriptor};
 
 use rpc_client::{RPCClient};
 use lnbridge::utils::*;
-
+use log::{info, error};
 
 pub struct EventHandler {
 	network: constants::Network,
@@ -94,7 +94,7 @@ impl EventHandler {
 									us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
 									us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
 									let _ = self_sender.try_send(());
-									println!("Generated funding tx!");
+									info!("Generated funding tx!");
 									Ok(())
 								})
 							})
@@ -104,27 +104,27 @@ impl EventHandler {
 						let mut txn = us.txn_to_broadcast.lock().unwrap();
 						let tx = txn.remove(&funding_txo).unwrap();
 						us.broadcaster.broadcast_transaction(&tx);
-						println!("Broadcast funding tx {}!", tx.txid());
+						info!("Broadcast funding tx {}!", tx.txid());
 					},
 					Event::PaymentReceived { payment_hash, amt } => {
 						let images = us.payment_preimages.lock().unwrap();
 						if let Some(payment_preimage) = images.get(&payment_hash) {
 							if us.channel_manager.claim_funds(payment_preimage.clone()) {
-								println!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
+								info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
 							} else {
-								println!("Failed to claim money we were told we had?");
+								info!("Failed to claim money we were told we had?");
 							}
 						} else {
 							us.channel_manager.fail_htlc_backwards(&payment_hash);
-							println!("Received payment but we didn't know the preimage :(");
+							info!("Received payment but we didn't know the preimage :(");
 						}
 						let _ = self_sender.try_send(());
 					},
 					Event::PaymentSent { payment_preimage } => {
-						println!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
+						info!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
 					},
 					Event::PaymentFailed { payment_hash, rejected_by_dest } => {
-						println!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
+						info!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
 					},
 					Event::PendingHTLCsForwardable { time_forwardable } => {
 						let us = us.clone();
@@ -139,14 +139,14 @@ impl EventHandler {
 						for output in outputs.drain(..) {
 							match output {
 								SpendableOutputDescriptor:: StaticOutput { outpoint, .. } => {
-									println!("Got on-chain output Bitcoin Core should know how to claim at {}:{}", hex_str(&outpoint.txid[..]), outpoint.vout);
+									info!("Got on-chain output Bitcoin Core should know how to claim at {}:{}", hex_str(&outpoint.txid[..]), outpoint.vout);
 								},
 								SpendableOutputDescriptor::DynamicOutputP2WSH { .. } => {
-									println!("Got on-chain output we should claim...");
+									info!("Got on-chain output we should claim...");
 									//TODO: Send back to Bitcoin Core!
 								},
 								SpendableOutputDescriptor::DynamicOutputP2WPKH { .. } => {
-									println!("Got on-chain output we should claim...");
+									info!("Got on-chain output we should claim...");
 									//TODO: Send back to Bitcoin Core!
 								},
 							}

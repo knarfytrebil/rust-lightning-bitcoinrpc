@@ -10,6 +10,7 @@ use bitcoin::blockdata::block::BlockHeader;
 use futures::{future, Future, Stream};
 
 use std::sync::atomic::{AtomicUsize, Ordering};
+use log::{info, error};
 
 #[derive(Deserialize)]
 pub struct GetHeaderResponse {
@@ -74,39 +75,39 @@ impl RPCClient {
 			}
 		}
 		self.client.request(request.body(hyper::Body::from("{\"method\":\"".to_string() + method + "\",\"params\":[" + &param_str + "],\"id\":" + &self.id.fetch_add(1, Ordering::AcqRel).to_string() + "}")).unwrap()).map_err(|_| {
-			println!("Failed to connect to RPC server!");
+			info!("Failed to connect to RPC server!");
 			()
 		}).and_then(move |res| {
 			if res.status() != hyper::StatusCode::OK {
 				if !may_fail {
-					println!("Failed to get RPC server response (probably bad auth)!");
+					info!("Failed to get RPC server response (probably bad auth)!");
 				}
 				future::Either::A(future::err(()))
 			} else {
 				future::Either::B(res.into_body().concat2().map_err(|_| {
-					println!("Failed to load RPC server response!");
+					info!("Failed to load RPC server response!");
 					()
 				}).and_then(|body| {
 					let v: serde_json::Value = match serde_json::from_slice(&body) {
 						Ok(v) => v,
 						Err(_) => {
-							println!("Failed to parse RPC server response!");
+							info!("Failed to parse RPC server response!");
 							return future::err(())
 						},
 					};
 					if !v.is_object() {
-						println!("Failed to parse RPC server response!");
+						info!("Failed to parse RPC server response!");
 						return future::err(());
 					}
 					let v_obj = v.as_object().unwrap();
 					if v_obj.get("error") != Some(&serde_json::Value::Null) {
-						println!("Failed to parse RPC server response!");
+						info!("Failed to parse RPC server response!");
 						return future::err(());
 					}
 					if let Some(res) = v_obj.get("result") {
 						future::result(Ok((*res).clone()))
 					} else {
-						println!("Failed to parse RPC server response!");
+						info!("Failed to parse RPC server response!");
 						return future::err(());
 					}
 				}))
@@ -127,7 +128,7 @@ impl RPCClient {
 			match deser_res {
 				Ok(resp) => Ok(resp),
 				Err(_) => {
-					println!("Got invalid header message from RPC server!");
+					info!("Got invalid header message from RPC server!");
 					Err(())
 				},
 			}

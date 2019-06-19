@@ -32,6 +32,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 use std::time::{Instant, Duration};
 use std;
+use log::{info, error};
 
 pub struct FeeEstimator {
 	background_est: AtomicUsize,
@@ -256,12 +257,12 @@ pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPC
 
 			let (events_tx, events_rx) = mpsc::channel(1);
 			find_fork(events_tx, new_block, old_block, rpc_client.clone(), executor.clone());
-			println!("NEW BEST BLOCK!");
+			info!("NEW BEST BLOCK!");
 			future::Either::B(events_rx.collect().then(move |events_res| {
 				let events = events_res.unwrap();
 				for event in events.iter().rev() {
 					if let &ForkStep::DisconnectBlock(ref header) = &event {
-						println!("Disconnecting block {}", header.bitcoin_hash().to_hex());
+						info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
 						chain_monitor.util.block_disconnected(header);
 					}
 				}
@@ -272,7 +273,7 @@ pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPC
 						let chain_monitor = chain_monitor.clone();
 						connect_futures.push(rpc_client.make_rpc_call("getblock", &[&("\"".to_string() + hash + "\""), "0"], false).then(move |blockhex| {
 							let block: Block = encode::deserialize(&hex_to_vec(blockhex.unwrap().as_str().unwrap()).unwrap()).unwrap();
-							println!("Connecting block {}", block.bitcoin_hash().to_hex());
+							info!("Connecting block {}", block.bitcoin_hash().to_hex());
 							chain_monitor.util.block_connected_with_filtering(&block, block_height);
 							Ok(())
 						}));

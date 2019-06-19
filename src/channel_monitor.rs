@@ -11,6 +11,7 @@ use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::util::ser::ReadableArgs;
 
 use lnbridge::log_printer::LogPrinter;
+use log::{info, error};
 
 pub struct ChannelMonitor {
 	pub monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
@@ -38,7 +39,7 @@ impl ChannelMonitor {
 				}
 			}
 			if !loaded {
-				println!("WARNING: Failed to read one of the channel monitor storage files! Check perms!");
+				info!("WARNING: Failed to read one of the channel monitor storage files! Check perms!");
 			}
 		}
 		res
