@@ -78,10 +78,10 @@ impl LnManager {
 	  let chain_monitor = Arc::new(ChainInterface::new(rpc_client.clone(), network, logger.clone(), executor.clone(), exit.clone()));
 		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
 				                                            &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_1, compressed: true, network}.to_wif() + "\""), "\"rust-lightning ChannelMonitor claim\"", "false"], false)
-				                   .then(|_| Ok(()))).select(exit.clone()).then(|_| Ok(()));
+				                   .then(|_| Ok(())).select(exit.clone()).then(|_| Ok(())));
 		executor.clone().spawn(rpc_client.make_rpc_call("importprivkey",
 				                                            &[&("\"".to_string() + &bitcoin::util::key::PrivateKey{ key: import_key_2, compressed: true, network}.to_wif() + "\""), "\"rust-lightning cooperative close\"", "false"], false)
-				                   .then(|_| Ok(()))).select(exit.clone()).then(|_| Ok(()));
+				                   .then(|_| Ok(())).select(exit.clone()).then(|_| Ok(())));
 
 		let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
 		let monitor = Arc::new(ChannelMonitor {
@@ -131,14 +131,14 @@ impl LnManager {
 			info!("Got new inbound connection, waiting on them to start handshake...");
 			Connection::setup_inbound(peer_manager_listener.clone(), event_listener.clone(), sock);
 			Ok(())
-		}).select(exit.clone()).then(|_| { Ok(()) }));
+		}).map_err(|_| ()).select(exit.clone()).then(|_| { Ok(()) }));
 
 		spawn_chain_monitor(fee_estimator, rpc_client.clone(), chain_monitor, event_notify.clone(), executor.clone(), exit.clone());
 
 		executor.clone().spawn(tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0)).for_each(move |_| {
 			//TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
 			Ok(())
-		}).select(exit.clone()).then(|_| { Ok(()) }));
+		}).map_err(|_| ()).select(exit.clone()).then(|_| { Ok(()) }));
     Self {
       rpc_client,
       //

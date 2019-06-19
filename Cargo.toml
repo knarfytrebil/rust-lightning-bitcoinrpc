@@ -1,5 +1,5 @@
 [package]
-name = "rust-lightning-bitcoinrpc"
+name = "lnpeer"
 version = "0.0.1"
 authors = ["Matt Corallo <git@bluematt.me>"]
 build = "build.rs"

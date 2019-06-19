@@ -17,6 +17,7 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate num_traits;
 extern crate config;
+extern crate exit_future;
 extern crate log;
 
 #[macro_use]
@@ -48,16 +49,14 @@ fn _check_usize_is_64() {
 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 }
 
-struct Task {
-}
-
-pub fn run_peer(executor: TaskExecutor, exit: Exit) {
+pub fn run_peer(executor: TaskExecutor, exit: Exit) -> LnManager {
   // let rt = tokio::runtime::Runtime::new().unwrap();
-  let executor = rt.executor();
+  // let executor = rt.executor();
   let settings = Settings::new().unwrap();
-  let lnManager = LnManager::new(settings, executor.clone());
+  let lnManager = LnManager::new(settings, executor.clone(), exit.clone());
+  lnManager
   // }).map_err(|_| ()).select(exit.clone()).then(|_| Ok(())));
   // command_handler::run_command_board(lnManager, executor);
 
-	rt.shutdown_on_idle().wait().unwrap();
+	// rt.shutdown_on_idle().wait().unwrap();
 }
