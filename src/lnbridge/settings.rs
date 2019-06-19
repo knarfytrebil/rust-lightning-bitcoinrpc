@@ -10,7 +10,7 @@ pub struct Settings {
 impl Settings {
   pub fn new() -> Result<Self, ConfigError> {
     let mut settings = Config::new();
-    settings.merge(File::with_name("core/lnpeer/Settings")).unwrap();
+    settings.merge(File::with_name("Settings")).unwrap();
     settings.try_into()
   }
 }
