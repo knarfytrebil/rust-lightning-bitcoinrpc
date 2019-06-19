@@ -30,10 +30,11 @@ mod chain_monitor;
 mod event_handler;
 mod channel_monitor;
 mod command_handler;
-mod ln_manager;
-use ln_manager::LnManager;
+pub mod ln_manager;
+pub use ln_manager::LnManager;
 
 use std::mem;
+use std::sync::Arc;
 
 use futures::future;
 use futures::future::Future;
@@ -49,14 +50,8 @@ fn _check_usize_is_64() {
 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 }
 
-pub fn run_peer(executor: TaskExecutor, exit: Exit) -> LnManager {
-  // let rt = tokio::runtime::Runtime::new().unwrap();
-  // let executor = rt.executor();
+pub fn run_peer(executor: TaskExecutor, exit: Exit) -> Arc<LnManager> {
   let settings = Settings::new().unwrap();
-  let lnManager = LnManager::new(settings, executor.clone(), exit.clone());
-  lnManager
-  // }).map_err(|_| ()).select(exit.clone()).then(|_| Ok(())));
-  // command_handler::run_command_board(lnManager, executor);
-
-	// rt.shutdown_on_idle().wait().unwrap();
+  let ln_manager = LnManager::new(settings, executor.clone(), exit.clone());
+  Arc::new(ln_manager)
 }
