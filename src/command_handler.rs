@@ -4,11 +4,10 @@ use std::io::Write;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use rand::{thread_rng, Rng};
-
 use futures::future::Future;
 use futures::sync::mpsc;
 use futures::Stream;
+use rand::{thread_rng, Rng};
 use tokio::runtime::TaskExecutor;
 
 use secp256k1::key::PublicKey;
@@ -51,8 +50,7 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
     let mut event_notify: mpsc::Sender<()> = lnManager.event_notify;
     let channel_manager: Arc<ChannelManager> = lnManager.channel_manager;
     let peer_manager: Arc<PeerManager<SocketDescriptor>> = lnManager.peer_manager;
-    let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> =
-        lnManager.payment_preimages;
+    let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> = lnManager.payment_preimages;
     let secp_ctx: Secp256k1<All> = lnManager.secp_ctx;
     let keys: Arc<KeysManager> = lnManager.keys;
     let settings: Settings = lnManager.settings;
