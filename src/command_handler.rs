@@ -40,8 +40,8 @@ enum Command {
     List = 0x6c,          // l
     // Peer,
     // Channel,
-    Send = 0x73,    // s
-    Invoice = 0x70, // p
+    Send = 0x73,          // s
+    Invoice = 0x70,       // p
 }
 
 pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
