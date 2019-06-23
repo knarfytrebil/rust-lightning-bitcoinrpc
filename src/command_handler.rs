@@ -40,8 +40,8 @@ enum Command {
     List = 0x6c,          // l
     // Peer,
     // Channel,
-    Send = 0x73,          // s
-    Invoice = 0x70,       // p
+    Send = 0x73,    // s
+    Invoice = 0x70, // p
 }
 
 pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
@@ -50,7 +50,8 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
     let mut event_notify: mpsc::Sender<()> = lnManager.event_notify;
     let channel_manager: Arc<ChannelManager> = lnManager.channel_manager;
     let peer_manager: Arc<PeerManager<SocketDescriptor>> = lnManager.peer_manager;
-    let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> = lnManager.payment_preimages;
+    let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> =
+        lnManager.payment_preimages;
     let secp_ctx: Secp256k1<All> = lnManager.secp_ctx;
     let keys: Arc<KeysManager> = lnManager.keys;
     let settings: Settings = lnManager.settings;

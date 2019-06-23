@@ -33,6 +33,7 @@ mod rpc_client;
 use ln_manager::LnManager;
 
 use std::mem;
+use std::env;
 
 use futures::future;
 use futures::future::Future;
@@ -50,9 +51,13 @@ fn _check_usize_is_64() {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    // FIXME: Hard code setting argument
+    let setting_arg = &args[1];
+    println!("USE SETTING FILE - {:?}", setting_arg);
     let rt = tokio::runtime::Runtime::new().unwrap();
     let executor = rt.executor();
-    let settings = Settings::new().unwrap();
+    let settings = Settings::new(setting_arg).unwrap();
     let lnManager = LnManager::new(settings, executor.clone());
 
     command_handler::run_command_board(lnManager, executor);

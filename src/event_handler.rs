@@ -1,58 +1,69 @@
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::fs;
+use std::sync::{Arc, Mutex};
 
-use tokio::runtime::TaskExecutor;
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
+use tokio::runtime::TaskExecutor;
 
-use bitcoin::network::constants;
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
+use bitcoin::network::constants;
 
 use lightning::chain;
-use lightning::chain::keysinterface::{SpendableOutputDescriptor};
-use lightning::ln::peer_handler;
+use lightning::chain::keysinterface::SpendableOutputDescriptor;
 use lightning::ln::channelmanager;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage};
 use lightning::ln::channelmonitor;
+use lightning::ln::peer_handler;
 use lightning::util::events::{Event, EventsProvider};
 use lightning::util::ser::Writeable;
 
-use lightning_net_tokio::{SocketDescriptor};
+use lightning_net_tokio::SocketDescriptor;
 
-use rpc_client::{RPCClient};
 use lnbridge::utils::*;
-use log::{info, error};
+use log::{error, info};
+use rpc_client::RPCClient;
 
 pub struct EventHandler {
-	network: constants::Network,
-	file_prefix: String,
-	rpc_client: Arc<RPCClient>,
-	peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
-	channel_manager: Arc<channelmanager::ChannelManager>,
-	monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
-	broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
-	txn_to_broadcast: Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
-	payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-}
-impl EventHandler {
-	pub fn setup(
     network: constants::Network,
     file_prefix: String,
     rpc_client: Arc<RPCClient>,
     peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
-    monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     channel_manager: Arc<channelmanager::ChannelManager>,
+    monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+    txn_to_broadcast:
+        Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    executor: TaskExecutor
-  ) -> mpsc::Sender<()> {
-		let us = Arc::new(Self { network, file_prefix, rpc_client, peer_manager, channel_manager, monitor, broadcaster, txn_to_broadcast: Mutex::new(HashMap::new()), payment_preimages });
-		let (sender, receiver) = mpsc::channel(2);
-		let mut self_sender = sender.clone();
-		executor.clone().spawn(receiver.for_each(move |_| {
+}
+impl EventHandler {
+    pub fn setup(
+        network: constants::Network,
+        file_prefix: String,
+        rpc_client: Arc<RPCClient>,
+        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+        monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
+        channel_manager: Arc<channelmanager::ChannelManager>,
+        broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+        payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
+        executor: TaskExecutor,
+    ) -> mpsc::Sender<()> {
+        let us = Arc::new(Self {
+            network,
+            file_prefix,
+            rpc_client,
+            peer_manager,
+            channel_manager,
+            monitor,
+            broadcaster,
+            txn_to_broadcast: Mutex::new(HashMap::new()),
+            payment_preimages,
+        });
+        let (sender, receiver) = mpsc::channel(2);
+        let mut self_sender = sender.clone();
+        executor.clone().spawn(receiver.for_each(move |_| {
 			us.peer_manager.process_events();
 			let mut events = us.channel_manager.get_and_clear_pending_events();
 			events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -166,6 +177,6 @@ impl EventHandler {
 
 			future::Either::B(future::result(Ok(())))
 		}).then(|_| { Ok(()) }));
-		sender
-	}
+        sender
+    }
 }

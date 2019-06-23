@@ -1,6 +1,6 @@
 use std::fs;
 
-use secp256k1::{Secp256k1, All};
+use secp256k1::{All, Secp256k1};
 
 use bitcoin::network::constants::Network;
 use bitcoin::util::bip32;
@@ -43,25 +43,25 @@ use rand::{thread_rng, Rng};
 // }
 
 fn gen_key() -> [u8; 32] {
-  let mut key = [0; 32];
-  thread_rng().fill_bytes(&mut key);
-  key
+    let mut key = [0; 32];
+    thread_rng().fill_bytes(&mut key);
+    key
 }
 
 pub fn get_key_seed(data_path: String) -> [u8; 32] {
-  let key_path = data_path + "/key_seed";
-  if let Ok(seed) = fs::read(&key_path) {
-    assert_eq!(seed.len(), 32);
-    let mut key = [0; 32];
-    key.copy_from_slice(&seed);
-    key
-  } else {
-    let key = gen_key();
-    let mut f = fs::File::create(&key_path).unwrap();
-    f.write_all(&key).expect("Failed to write seed to disk");
-    f.sync_all().expect("Failed to sync seed to disk");
-    key
-  }
+    let key_path = data_path + "/key_seed";
+    if let Ok(seed) = fs::read(&key_path) {
+        assert_eq!(seed.len(), 32);
+        let mut key = [0; 32];
+        key.copy_from_slice(&seed);
+        key
+    } else {
+        let key = gen_key();
+        let mut f = fs::File::create(&key_path).unwrap();
+        f.write_all(&key).expect("Failed to write seed to disk");
+        f.sync_all().expect("Failed to sync seed to disk");
+        key
+    }
 }
 
 // bitcoin version
@@ -71,4 +71,3 @@ pub fn get_key_seed(data_path: String) -> [u8; 32] {
 // 		 extpriv.ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap()).unwrap().private_key.key)
 //   }).unwrap();
 // }
-

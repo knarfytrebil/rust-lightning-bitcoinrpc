@@ -1,3 +1,0 @@
-port = 9735
-rpc_url = "user:pwd@127.0.0.1:18332"
-lndata = "/ln/data"

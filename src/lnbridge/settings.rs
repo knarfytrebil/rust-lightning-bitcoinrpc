@@ -8,9 +8,9 @@ pub struct Settings {
 }
 
 impl Settings {
-  pub fn new() -> Result<Self, ConfigError> {
+  pub fn new(arg: &String) -> Result<Self, ConfigError> {
     let mut settings = Config::new();
-    settings.merge(File::with_name("Settings")).unwrap();
+    settings.merge(File::with_name(arg)).unwrap();
     settings.try_into()
   }
 }

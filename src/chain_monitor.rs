@@ -420,6 +420,7 @@ pub fn spawn_chain_monitor(
     event_notify: mpsc::Sender<()>,
     executor_chain: TaskExecutor,
 ) {
+    println!("SPANNNNNNNN");
     executor_chain.clone().spawn(FeeEstimator::update_values(
         fee_estimator.clone(),
         &rpc_client,
