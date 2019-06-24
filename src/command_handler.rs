@@ -141,6 +141,7 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                             if match invoice.currency() {
                                 lightning_invoice::Currency::Bitcoin => constants::Network::Bitcoin,
                                 lightning_invoice::Currency::BitcoinTestnet => constants::Network::Testnet,
+                                lightning_invoice::Currency::Regtest => constants::Network::Regtest,
                             } != network {
                                 println!("Wrong network on invoice");
                             } else {
@@ -191,34 +192,34 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                                         );
                                     }
                                 }
-
-                                let final_cltv = invoice.min_final_cltv_expiry().unwrap_or(&MinFinalCltvExpiry(9));
-                                if final_cltv.0 > std::u32::MAX as u64 {
-                                    println!("Invoice had garbage final cltv");
-                                    fail_return!();
-                                }
-                                match router.get_route(&*invoice.recover_payee_pub_key(), Some(&channel_manager.list_usable_channels()), &route_hint, amt, final_cltv.0 as u32) {
-                                    Ok(route) => {
-                                        let mut payment_hash = PaymentHash([0; 32]);
-                                        payment_hash.0.copy_from_slice(&invoice.payment_hash().0[..]);
-                                        match channel_manager.send_payment(route, payment_hash) {
-                                            Ok(()) => {
-                                                println!("Sending {} msat", amt);
-                                                let _ = event_notify.try_send(());
-                                            },
-                                            Err(e) => {
-                                                println!("Failed to send HTLC: {:?}", e);
-                                            }
-                                        }
-                                    },
-                                    Err(e) => {
-                                        println!("Failed to find route: {}", e.err);
-                                    }
-                                }
+                                println!("{:?}", invoice.min_final_cltv_expiry());
+                                // let final_cltv = invoice.min_final_cltv_expiry().unwrap_or(&MinFinalCltvExpiry(9));
+                                // if final_cltv.0 > std::u32::MAX as u64 {
+                                //     println!("Invoice had garbage final cltv");
+                                //     fail_return!();
+                                // }
+                                // match router.get_route(&*invoice.recover_payee_pub_key(), Some(&channel_manager.list_usable_channels()), &route_hint, amt, final_cltv.0 as u32) {
+                                //     Ok(route) => {
+                                //         let mut payment_hash = PaymentHash([0; 32]);
+                                //         payment_hash.0.copy_from_slice(&invoice.payment_hash().0[..]);
+                                //         match channel_manager.send_payment(route, payment_hash) {
+                                //             Ok(()) => {
+                                //                 println!("Sending {} msat", amt);
+                                //                 let _ = event_notify.try_send(());
+                                //             },
+                                //             Err(e) => {
+                                //                 println!("Failed to send HTLC: {:?}", e);
+                                //             }
+                                //         }
+                                //     },
+                                //     Err(e) => {
+                                //         println!("Failed to find route: {}", e.err);
+                                //     }
+                                // }
                             }
                         },
-                        Err(_) => {
-                            println!("Bad invoice");
+                        Err(err) => {
+                            println!("Bad invoice {:?}", err);
                         },
                     }
                 },
@@ -234,7 +235,7 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
                         constants::Network::Bitcoin => lightning_invoice::Currency::Bitcoin,
                         constants::Network::Testnet => lightning_invoice::Currency::BitcoinTestnet,
-                        constants::Network::Regtest => lightning_invoice::Currency::BitcoinTestnet, //TODO
+                        constants::Network::Regtest => lightning_invoice::Currency::Regtest, //TODO
                     }).payment_hash(payment_hash).description("rust-lightning-bitcoinrpc invoice".to_string())
                     //.route(chans)
                     .amount_pico_btc(value.parse::<u64>().unwrap())

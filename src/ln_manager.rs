@@ -13,6 +13,7 @@ use tokio::runtime::TaskExecutor;
 
 use bitcoin::network::constants;
 use bitcoin::util::bip32;
+use bitcoin::util::address::Address;
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::peer_handler::PeerManager;
@@ -70,21 +71,43 @@ impl LnManager {
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
         let (import_key_1, import_key_2) =
             bip32::ExtendedPrivKey::new_master(network, &our_node_seed)
-                .map(|extpriv| {
-                    (
-                        extpriv
-                            .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap())
-                            .unwrap()
-                            .private_key
-                            .key,
-                        extpriv
-                            .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap())
-                            .unwrap()
-                            .private_key
-                            .key,
-                    )
-                })
-                .unwrap();
+            .map(|extpriv| {
+                (
+                    extpriv
+                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap())
+                        .unwrap()
+                        .private_key
+                        .key,
+                    extpriv
+                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap())
+                        .unwrap()
+                        .private_key
+                        .key,
+                )
+            })
+            .unwrap();
+
+
+        /*
+         * For debug
+         */
+        let pub_key_1 = bitcoin::util::key::PrivateKey { 
+            key: import_key_1,
+            compressed: true,
+            network,
+        }.public_key(&secp_ctx);
+        let pub_key_2 = bitcoin::util::key::PrivateKey { 
+            key: import_key_2,
+            compressed: true,
+            network,
+        }.public_key(&secp_ctx);
+
+        println!("Address - ChannelMonitor Claim: {:?}", &Address::p2pkh(&pub_key_1, constants::Network::Regtest));
+        println!("Address - Cooperative Close: {:?}", &Address::p2pkh(&pub_key_2, constants::Network::Regtest));
+        /*
+         * For debug
+         */
+
 
         // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
         let chain_monitor = Arc::new(ChainInterface::new(
