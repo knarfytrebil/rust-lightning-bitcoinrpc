@@ -136,92 +136,9 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                 },
                 Some(Command::Send) => { // 's'
                     let mut args = line.split_at(2).1.split(' ');
-                    match lightning_invoice::Invoice::from_str(args.next().unwrap()) {
-                        Ok(invoice) => {
-                            if match invoice.currency() {
-                                lightning_invoice::Currency::Bitcoin => constants::Network::Bitcoin,
-                                lightning_invoice::Currency::BitcoinTestnet => constants::Network::Testnet,
-                                lightning_invoice::Currency::Regtest => constants::Network::Regtest,
-                            } != network {
-                                println!("Wrong network on invoice");
-                            } else {
-                                let arg2 = args.next();
-                                let amt = if let Some(amt) = invoice.amount_pico_btc().and_then(|amt| {
-                                    if amt % 10 != 0 { None } else { Some(amt / 10) }
-                                }) {
-                                    if arg2.is_some() {
-                                        println!("Invoice had amount, you shouldn't specify one");
-                                        fail_return!();
-                                    }
-                                    amt
-                                } else {
-                                    if arg2.is_none() {
-                                        println!("Invoice didn't have an amount, you should specify one");
-                                        fail_return!();
-                                    }
-                                    match arg2.unwrap().parse() {
-                                        Ok(amt) => amt,
-                                        Err(_) => {
-                                            println!("Provided amount was garbage");
-                                            fail_return!();
-                                        }
-                                    }
-                                };
-
-                                if let Some(pubkey) = invoice.payee_pub_key() {
-                                    if *pubkey != invoice.recover_payee_pub_key() {
-                                        println!("Invoice had non-equal duplicative target node_id (ie was malformed)");
-                                        fail_return!();
-                                    }
-                                }
-
-                                let mut route_hint = Vec::with_capacity(invoice.routes().len());
-                                for route in invoice.routes() {
-                                    if route.len() != 1 {
-                                        println!("Invoice contained multi-hop non-public route, ignoring as yet unsupported");
-                                    } else {
-                                        route_hint.push(
-                                            router::RouteHint {
-                                                src_node_id: route[0].pubkey,
-                                                short_channel_id: slice_to_be64(&route[0].short_channel_id),
-                                                fee_base_msat: route[0].fee_base_msat,
-                                                fee_proportional_millionths: route[0].fee_proportional_millionths,
-                                                cltv_expiry_delta: route[0].cltv_expiry_delta,
-                                                htlc_minimum_msat: 0,
-                                            }
-                                        );
-                                    }
-                                }
-                                println!("{:?}", invoice.min_final_cltv_expiry());
-                                // let final_cltv = invoice.min_final_cltv_expiry().unwrap_or(&MinFinalCltvExpiry(9));
-                                // if final_cltv.0 > std::u32::MAX as u64 {
-                                //     println!("Invoice had garbage final cltv");
-                                //     fail_return!();
-                                // }
-                                // match router.get_route(&*invoice.recover_payee_pub_key(), Some(&channel_manager.list_usable_channels()), &route_hint, amt, final_cltv.0 as u32) {
-                                //     Ok(route) => {
-                                //         let mut payment_hash = PaymentHash([0; 32]);
-                                //         payment_hash.0.copy_from_slice(&invoice.payment_hash().0[..]);
-                                //         match channel_manager.send_payment(route, payment_hash) {
-                                //             Ok(()) => {
-                                //                 println!("Sending {} msat", amt);
-                                //                 let _ = event_notify.try_send(());
-                                //             },
-                                //             Err(e) => {
-                                //                 println!("Failed to send HTLC: {:?}", e);
-                                //             }
-                                //         }
-                                //     },
-                                //     Err(e) => {
-                                //         println!("Failed to find route: {}", e.err);
-                                //     }
-                                // }
-                            }
-                        },
-                        Err(err) => {
-                            println!("Bad invoice {:?}", err);
-                        },
-                    }
+                    let invoice_str = args.next().unwrap();
+                    let invoice = lightning_invoice::Invoice::from_str(invoice_str).unwrap();
+                    println!("{:#?}", invoice);
                 },
                 Some(Command::Invoice) => { // 'p'
                     let value = line.split_at(2).1;
