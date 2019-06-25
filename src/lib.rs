@@ -19,6 +19,7 @@ extern crate num_traits;
 extern crate config;
 extern crate exit_future;
 extern crate log;
+extern crate ln_primitives;
 
 #[macro_use]
 extern crate serde_derive;
@@ -44,14 +45,56 @@ use exit_future::Exit;
 mod lnbridge;
 use lnbridge::settings::Settings;
 
-#[allow(dead_code, unreachable_code)]
-fn _check_usize_is_64() {
-	// We assume 64-bit usizes here. If your platform has 32-bit usizes, wtf are you doing?
-	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
+pub use ln_primitives::LnApi;
+
+// #[allow(dead_code, unreachable_code)]
+// fn _check_usize_is_64() {
+// 	// We assume 64-bit usizes here. If your platform has 32-bit usizes, wtf are you doing?
+// 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
+// }
+
+// pub fn run_peer(executor: TaskExecutor, exit: Exit) -> Arc<LnManager> {
+//   let settings = Settings::new().unwrap();
+//   let ln_manager = LnManager::new(settings, executor.clone(), exit.clone());
+//   Arc::new(ln_manager)
+// }
+
+// pub struct LnBridge<B, E, BlockT, RA> {
+//   client: Arc<Client<B, E, BlockT, RA>>,
+//   // ln_manager: Arc<LnManager>,
+//   // api: ApiRef<'a, A::Api>,
+//   _block: PhantomData<BlockT>,
+// }
+
+pub struct LnBridge<C, Block> {
+  client: Arc<C>,
+  executor: TaskExecutor,
+  exit: Exit,
+  ln_manager: Arc<LnManager>,
+  _block: PhantomData<Block>,
 }
 
-pub fn run_peer(executor: TaskExecutor, exit: Exit) -> Arc<LnManager> {
-  let settings = Settings::new().unwrap();
-  let ln_manager = LnManager::new(settings, executor.clone(), exit.clone());
-  Arc::new(ln_manager)
+impl<C, Block> LnBridge<C, Block> {
+  pub fn new(client: Arc<C>, executor: TaskExecutor, exit: Exit) -> Self {
+    let settings = Settings::new().unwrap();
+    let ln_manager = Arc::new(LnManager::new(settings, executor.clone(), exit.clone()));
+    Self {
+      client,
+      executor,
+      exit,
+      ln_manager,
+      _block: PhantomData
+    }
+  }
+}
+
+impl<C, Block> LnBridge<C, Block> where
+  Block: traits::Block,
+  C: ProvideRuntimeApi,
+  C::Api: LnApi<Block>,
+{
+  pub fn on_linked(&self) {
+    // let n = self.client.info().best_number;
+    let runtime_api = self.client.runtime_api();
+  }
 }
