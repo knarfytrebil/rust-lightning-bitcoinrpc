@@ -193,7 +193,7 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                                     }
                                 }
                                 println!("{:?}", invoice.min_final_cltv_expiry());
-                                // let final_cltv = invoice.min_final_cltv_expiry().unwrap_or(&MinFinalCltvExpiry(9));
+                                let final_cltv = invoice.min_final_cltv_expiry().unwrap_or(&MinFinalCltvExpiry(9));
                                 // if final_cltv.0 > std::u32::MAX as u64 {
                                 //     println!("Invoice had garbage final cltv");
                                 //     fail_return!();

@@ -346,7 +346,6 @@ dependencies = [
 [[package]]
 name = "lightning-invoice"
 version = "0.2.0"
-source = "git+https://github.com/knarfytrebil/rust-lightning-invoice.git#a0d7ba7af7e97ae976fd789920ff25bd4ad078f5"
 dependencies = [
  "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -720,7 +719,7 @@ dependencies = [
  "futures 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "lightning 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "lightning-invoice 0.2.0 (git+https://github.com/knarfytrebil/rust-lightning-invoice.git)",
+ "lightning-invoice 0.2.0",
  "lightning-net-tokio 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-derive 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1202,7 +1201,6 @@ dependencies = [
 "checksum lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc5729f27f159ddd61f4df6228e827e86643d4d3e7c32183cb30a1c08f604a14"
 "checksum libc 0.2.58 (registry+https://github.com/rust-lang/crates.io-index)" = "6281b86796ba5e4366000be6e9e18bf35580adf9e63fbe2294aadb587613a319"
 "checksum lightning 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "b5da1be02360e590f2713df7faf88a92fa255293ae79161a9ab19bc92a2f2069"
-"checksum lightning-invoice 0.2.0 (git+https://github.com/knarfytrebil/rust-lightning-invoice.git)" = "<none>"
 "checksum lightning-net-tokio 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7297e2cda8356c384eb66b731f9356f50d192cc56c91bea4c354007f46d428a1"
 "checksum linked-hash-map 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6d262045c5b87c0861b3f004610afd0e2c851e2908d08b6c870cbb9d5f494ecd"
 "checksum linked-hash-map 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ae91b68aebc4ddb91978b11a1b02ddd8602a05ec19002801c5666000e05e0f83"
