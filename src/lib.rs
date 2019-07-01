@@ -36,6 +36,7 @@ pub use ln_manager::LnManager;
 
 use std::mem;
 use std::sync::Arc;
+use std::marker::PhantomData;
 
 use futures::future;
 use futures::future::Future;
@@ -53,48 +54,37 @@ pub use ln_primitives::LnApi;
 // 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 // }
 
-// pub fn run_peer(executor: TaskExecutor, exit: Exit) -> Arc<LnManager> {
-//   let settings = Settings::new().unwrap();
-//   let ln_manager = LnManager::new(settings, executor.clone(), exit.clone());
-//   Arc::new(ln_manager)
-// }
-
-// pub struct LnBridge<B, E, BlockT, RA> {
-//   client: Arc<Client<B, E, BlockT, RA>>,
-//   // ln_manager: Arc<LnManager>,
-//   // api: ApiRef<'a, A::Api>,
-//   _block: PhantomData<BlockT>,
-// }
+// pub struct LnBridge {}
 
 pub struct LnBridge<C, Block> {
   client: Arc<C>,
-  executor: TaskExecutor,
-  exit: Exit,
-  ln_manager: Arc<LnManager>,
+  // executor: TaskExecutor,
+  // exit: Exit,
+  // ln_manager: Arc<LnManager>,
   _block: PhantomData<Block>,
 }
 
 impl<C, Block> LnBridge<C, Block> {
-  pub fn new(client: Arc<C>, executor: TaskExecutor, exit: Exit) -> Self {
+  pub fn new(client: Arc<C>) -> Self {
     let settings = Settings::new().unwrap();
-    let ln_manager = Arc::new(LnManager::new(settings, executor.clone(), exit.clone()));
+    // let ln_manager = Arc::new(LnManager::new(settings, executor.clone(), exit.clone()));
     Self {
       client,
-      executor,
-      exit,
-      ln_manager,
+      // executor,
+      // exit,
+      // ln_manager,
       _block: PhantomData
     }
   }
 }
 
-impl<C, Block> LnBridge<C, Block> where
-  Block: traits::Block,
-  C: ProvideRuntimeApi,
-  C::Api: LnApi<Block>,
-{
-  pub fn on_linked(&self) {
-    // let n = self.client.info().best_number;
-    let runtime_api = self.client.runtime_api();
-  }
-}
+// impl<C, Block> LnBridge<C, Block> where
+//   Block: traits::Block,
+//   C: ProvideRuntimeApi,
+//   C::Api: LnApi<Block>,
+// {
+//   pub fn on_linked(&self) {
+//     // let n = self.client.info().best_number;
+//     let runtime_api = self.client.runtime_api();
+//   }
+// }
