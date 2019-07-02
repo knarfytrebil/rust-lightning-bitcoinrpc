@@ -138,6 +138,8 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                     let mut args = line.split_at(2).1.split(' ');
                     match lightning_invoice::Invoice::from_str(args.next().unwrap()) {
                         Ok(invoice) => {
+                            // Raw Invoice Generated Here
+                            let raw_invoice = invoice.clone().into_signed_raw();
                             if match invoice.currency() {
                                 lightning_invoice::Currency::Bitcoin => constants::Network::Bitcoin,
                                 lightning_invoice::Currency::BitcoinTestnet => constants::Network::Testnet,
@@ -195,31 +197,30 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                                 let final_cltv = if invoice.min_final_cltv_expiry().is_none() {
                                     &MinFinalCltvExpiry(9)
                                 } else {
-                                    invoice.min_final_cltv_expiry().unwrap()
+                                    raw_invoice.min_final_cltv_expiry().unwrap()
                                 };
-                                // println!("{:#?}", final_cltv);
-                                // if final_cltv.0 > std::u32::MAX as u64 {
-                                //     println!("Invoice had garbage final cltv");
-                                //     fail_return!();
-                                // }
-                                // match router.get_route(&*invoice.recover_payee_pub_key(), Some(&channel_manager.list_usable_channels()), &route_hint, amt, final_cltv.0 as u32) {
-                                //     Ok(route) => {
-                                //         let mut payment_hash = PaymentHash([0; 32]);
-                                //         payment_hash.0.copy_from_slice(&invoice.payment_hash().0[..]);
-                                //         match channel_manager.send_payment(route, payment_hash) {
-                                //             Ok(()) => {
-                                //                 println!("Sending {} msat", amt);
-                                //                 let _ = event_notify.try_send(());
-                                //             },
-                                //             Err(e) => {
-                                //                 println!("Failed to send HTLC: {:?}", e);
-                                //             }
-                                //         }
-                                //     },
-                                //     Err(e) => {
-                                //         println!("Failed to find route: {}", e.err);
-                                //     }
-                                // }
+                                if final_cltv.0 > std::u32::MAX as u64 {
+                                    println!("Invoice had garbage final cltv");
+                                    fail_return!();
+                                }
+                                match router.get_route(&invoice.recover_payee_pub_key(), Some(&channel_manager.list_usable_channels()), &route_hint, amt, final_cltv.0 as u32) {
+                                    Ok(route) => {
+                                        let mut payment_hash = PaymentHash([0; 32]);
+                                        payment_hash.0.copy_from_slice(&invoice.payment_hash().into_inner()[..]);
+                                        match channel_manager.send_payment(route, payment_hash) {
+                                            Ok(()) => {
+                                                println!("Sending {} msat", amt);
+                                                let _ = event_notify.try_send(());
+                                            },
+                                            Err(e) => {
+                                                println!("Failed to send HTLC: {:?}", e);
+                                            }
+                                        }
+                                    },
+                                    Err(e) => {
+                                        println!("Failed to find route: {}", e.err);
+                                    }
+                                }
                             }
                         },
                         Err(err) => {
