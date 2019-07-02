@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::fs;
 
-use tokio::runtime::TaskExecutor;
+use substrate_service::SpawnTaskHandle;
 use exit_future::Exit;
 use future;
 use futures::sync::mpsc;
@@ -48,14 +48,14 @@ impl EventHandler {
     channel_manager: Arc<channelmanager::ChannelManager>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    executor: TaskExecutor,
+    spawn_task_handle: SpawnTaskHandle,
     exit: Exit
   ) -> mpsc::Sender<()> {
 		let us = Arc::new(Self { network, file_prefix, rpc_client, peer_manager, channel_manager, monitor, broadcaster, txn_to_broadcast: Mutex::new(HashMap::new()), payment_preimages });
 		let (sender, receiver) = mpsc::channel(2);
 		let mut self_sender = sender.clone();
     let exit_event = exit.clone();
-		executor.clone().spawn(receiver.for_each(move |_| {
+		spawn_task_handle.clone().spawn_task(receiver.for_each(move |_| {
 			us.peer_manager.process_events();
 			let mut events = us.channel_manager.get_and_clear_pending_events();
 			events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -132,7 +132,7 @@ impl EventHandler {
 					Event::PendingHTLCsForwardable { time_forwardable } => {
 						let us = us.clone();
 						let mut self_sender = self_sender.clone();
-						executor.clone().spawn(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+						spawn_task_handle.spawn_task(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							us.channel_manager.process_pending_htlc_forwards();
 							let _ = self_sender.try_send(());
 							Ok(())

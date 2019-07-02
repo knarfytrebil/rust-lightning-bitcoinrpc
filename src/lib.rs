@@ -20,6 +20,8 @@ extern crate config;
 extern crate exit_future;
 extern crate log;
 extern crate ln_primitives;
+extern crate sr_primitives;
+extern crate substrate_service;
 
 #[macro_use]
 extern crate serde_derive;
@@ -40,13 +42,16 @@ use std::marker::PhantomData;
 
 use futures::future;
 use futures::future::Future;
-use tokio::runtime::TaskExecutor;
+use futures::sync::mpsc;
+// use tokio::runtime::TaskExecutor;
 use exit_future::Exit;
 
 mod lnbridge;
 use lnbridge::settings::Settings;
 
+use sr_primitives::traits::{self, ProvideRuntimeApi};
 pub use ln_primitives::LnApi;
+use substrate_service::SpawnTaskHandle;
 
 // #[allow(dead_code, unreachable_code)]
 // fn _check_usize_is_64() {
@@ -54,25 +59,29 @@ pub use ln_primitives::LnApi;
 // 	unsafe { mem::transmute::<*const usize, [u8; 8]>(panic!()); }
 // }
 
-// pub struct LnBridge {}
-
 pub struct LnBridge<C, Block> {
   client: Arc<C>,
-  // executor: TaskExecutor,
-  // exit: Exit,
-  // ln_manager: Arc<LnManager>,
+  ln_manager: Arc<LnManager>,
   _block: PhantomData<Block>,
 }
 
-impl<C, Block> LnBridge<C, Block> {
-  pub fn new(client: Arc<C>) -> Self {
+impl<C, Block> LnBridge<C, Block> where
+  Block: traits::Block,
+  C: ProvideRuntimeApi,
+  C::Api: LnApi<Block>,
+{
+  pub fn new(
+    client: Arc<C>,
+    spawn_task_handle: SpawnTaskHandle,
+    // to_spawn_tx: mpsc::UnboundedSender<Box<dyn Future<Item = (), Error = ()> + Send>>,
+    exit: Exit
+  ) -> Self {
     let settings = Settings::new().unwrap();
-    // let ln_manager = Arc::new(LnManager::new(settings, executor.clone(), exit.clone()));
+    // let client = service.client();
+    let ln_manager = Arc::new(LnManager::new(settings, spawn_task_handle, exit));
     Self {
       client,
-      // executor,
-      // exit,
-      // ln_manager,
+      ln_manager,
       _block: PhantomData
     }
   }
