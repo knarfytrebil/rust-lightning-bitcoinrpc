@@ -10,7 +10,7 @@ use lightning::ln::channelmonitor;
 use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::util::ser::ReadableArgs;
 
-use lnbridge::log_printer::LogPrinter;
+use ln_bridge::log_printer::LogPrinter;
 use log::{info, error};
 
 pub struct ChannelMonitor {

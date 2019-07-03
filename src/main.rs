@@ -30,6 +30,8 @@ mod command_handler;
 mod event_handler;
 mod ln_manager;
 mod rpc_client;
+mod ln_cmd;
+
 use ln_manager::LnManager;
 
 use std::mem;
@@ -39,8 +41,8 @@ use futures::future;
 use futures::future::Future;
 use tokio::runtime::TaskExecutor;
 
-mod lnbridge;
-use lnbridge::settings::Settings;
+mod ln_bridge;
+use ln_bridge::settings::Settings;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {

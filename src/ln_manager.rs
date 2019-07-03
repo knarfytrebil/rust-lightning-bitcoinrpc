@@ -27,11 +27,11 @@ use channel_monitor::ChannelMonitor;
 use event_handler::EventHandler;
 use rpc_client::RPCClient;
 
-use lnbridge;
-use lnbridge::channel_manager::RestoreArgs as RestoreManagerArgs;
-use lnbridge::log_printer::LogPrinter;
-use lnbridge::settings::Settings;
-use lnbridge::Restorable;
+use ln_bridge;
+use ln_bridge::channel_manager::RestoreArgs as RestoreManagerArgs;
+use ln_bridge::log_printer::LogPrinter;
+use ln_bridge::settings::Settings;
+use ln_bridge::Restorable;
 use log::{error, info};
 
 pub struct LnManager {
@@ -67,7 +67,7 @@ impl LnManager {
         }
         let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
-        let our_node_seed = lnbridge::key::get_key_seed(data_path.clone());
+        let our_node_seed = ln_bridge::key::get_key_seed(data_path.clone());
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
         let (import_key_1, import_key_2) =
             bip32::ExtendedPrivKey::new_master(network, &our_node_seed)
@@ -109,7 +109,7 @@ impl LnManager {
          */
 
 
-        // let (import_key_1, import_key_2) = lnbridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
+        // let (import_key_1, import_key_2) = ln_bridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
         let chain_monitor = Arc::new(ChainInterface::new(
             rpc_client.clone(),
             network,

@@ -26,9 +26,11 @@ use lightning_net_tokio::SocketDescriptor;
 use lightning_invoice::MinFinalCltvExpiry;
 
 use ln_manager::LnManager;
-use lnbridge::commander;
-use lnbridge::settings::Settings;
-use lnbridge::utils::*;
+use ln_bridge::commander;
+use ln_bridge::settings::Settings;
+use ln_bridge::utils::{hex_str, slice_to_be64, hex_to_compressed_pubkey, hex_to_vec};
+
+use ln_cmd::help;
 
 #[derive(FromPrimitive)]
 enum Command {
@@ -56,24 +58,13 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
     let keys: Arc<KeysManager> = lnManager.keys;
     let settings: Settings = lnManager.settings;
     let executor = executor_command.clone();
+    let our_node_id = hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize());
 
+    help::show_help_str();
     println!("Bound on port {}!", settings.port);
-    println!(
-        "Our node_id: {}",
-        hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize())
-    );
-    println!("Started interactive shell! Commands:");
-    println!("'g 1' get node_id");
-    println!("'c pubkey@host:port' Connect to given host+port, with given pubkey for auth");
-    println!("'n pubkey value push_value' Create a channel with the given connected node (by pubkey), value in satoshis, and push the given msat value");
-    println!("'k channel_id' Close a channel with the given id");
-    println!("'f all' Force close all channels, closing to chain");
-    println!("'l p' List the node_ids of all connected peers");
-    println!("'l c' List details about all channels");
-    println!("'s invoice [amt]' Send payment to an invoice, optionally with amount as whole msat if its not in the invoice");
-    println!("'p' Gets a new invoice for receiving funds");
-    print!("> ");
+    println!("node_id: {}", our_node_id);
     std::io::stdout().flush().unwrap();
+
     executor.clone().spawn(tokio_codec::FramedRead::new(tokio_fs::stdin(), tokio_codec::LinesCodec::new()).for_each(move |line| {
         macro_rules! fail_return {
             () => {

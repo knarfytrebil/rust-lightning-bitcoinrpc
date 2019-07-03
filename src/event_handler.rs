@@ -22,7 +22,7 @@ use lightning::util::ser::Writeable;
 
 use lightning_net_tokio::SocketDescriptor;
 
-use lnbridge::utils::*;
+use ln_bridge::utils::*;
 use log::{error, info};
 use rpc_client::RPCClient;
 

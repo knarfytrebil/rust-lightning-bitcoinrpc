@@ -1,6 +1,6 @@
 use rpc_client::*;
 
-use lnbridge::utils::hex_to_vec;
+use ln_bridge::utils::hex_to_vec;
 
 use bitcoin;
 use lightning;
