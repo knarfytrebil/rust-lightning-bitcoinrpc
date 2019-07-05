@@ -59,9 +59,9 @@ fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let executor = rt.executor();
     let settings = Settings::new(setting_arg).unwrap();
-    let lnManager = LnManager::new(settings, executor.clone());
+    let ln_manager = LnManager::new(settings, executor.clone());
 
-    command_handler::run_command_board(lnManager, executor);
+    command_handler::run_command_board(ln_manager, executor);
 
     rt.shutdown_on_idle().wait().unwrap();
 }

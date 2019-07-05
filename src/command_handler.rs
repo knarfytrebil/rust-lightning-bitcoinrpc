@@ -44,17 +44,17 @@ enum Command {
     Invoice = 0x70, // p
 }
 
-pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
-    let network: constants::Network = lnManager.network;
-    let router: Arc<router::Router> = lnManager.router;
-    let event_notify: mpsc::Sender<()> = lnManager.event_notify;
-    let channel_manager: Arc<ChannelManager> = lnManager.channel_manager;
-    let peer_manager: Arc<PeerManager<SocketDescriptor>> = lnManager.peer_manager;
+pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) {
+    let network: constants::Network = ln_manager.network;
+    let router: Arc<router::Router> = ln_manager.router;
+    let event_notify: mpsc::Sender<()> = ln_manager.event_notify;
+    let channel_manager: Arc<ChannelManager> = ln_manager.channel_manager;
+    let peer_manager: Arc<PeerManager<SocketDescriptor>> = ln_manager.peer_manager;
     let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> =
-        lnManager.payment_preimages;
-    let secp_ctx: Secp256k1<All> = lnManager.secp_ctx;
-    let keys: Arc<KeysManager> = lnManager.keys;
-    let settings: Settings = lnManager.settings;
+        ln_manager.payment_preimages;
+    let secp_ctx: Secp256k1<All> = ln_manager.secp_ctx;
+    let keys: Arc<KeysManager> = ln_manager.keys;
+    let settings: Settings = ln_manager.settings;
     let executor = executor_command.clone();
     let our_node_id =
         hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize());
