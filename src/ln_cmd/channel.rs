@@ -1,9 +1,8 @@
 use futures::sync::mpsc;
-use std;
 use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;
-use ln_bridge::utils::{hex_str, hex_to_compressed_pubkey, hex_to_vec, slice_to_be64};
+use ln_bridge::utils::{hex_str,  hex_to_vec};
 
 // Close single channel
 pub fn close(

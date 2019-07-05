@@ -1,9 +1,8 @@
 use std::fs;
 
-use secp256k1::{All, Secp256k1};
 
-use bitcoin::network::constants::Network;
-use bitcoin::util::bip32;
+
+
 use lightning::util::ser::Writer;
 
 use rand::{thread_rng, Rng};

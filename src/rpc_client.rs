@@ -9,7 +9,7 @@ use bitcoin::blockdata::block::BlockHeader;
 
 use futures::{future, Future, Stream};
 
-use log::{error, info};
+use log::{info};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Deserialize)]

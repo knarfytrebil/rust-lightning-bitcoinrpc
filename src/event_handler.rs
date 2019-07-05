@@ -23,7 +23,7 @@ use lightning::util::ser::Writeable;
 use lightning_net_tokio::SocketDescriptor;
 
 use ln_bridge::utils::*;
-use log::{error, info};
+use log::{info};
 use rpc_client::RPCClient;
 
 pub struct EventHandler {

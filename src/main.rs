@@ -39,7 +39,6 @@ use std::env;
 
 use futures::future;
 use futures::future::Future;
-use tokio::runtime::TaskExecutor;
 
 mod ln_bridge;
 use ln_bridge::settings::Settings;

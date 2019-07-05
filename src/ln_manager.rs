@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::fs;
-use std::mem;
+// use std::mem;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use std::vec::Vec;
+// use std::vec::Vec;
 
-use futures::future;
+// use futures::future;
 use futures::future::Future;
 use futures::sync::mpsc;
 use futures::Stream;
@@ -32,7 +32,7 @@ use ln_bridge::channel_manager::RestoreArgs as RestoreManagerArgs;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;
-use log::{error, info};
+use log::{info};
 
 pub struct LnManager {
     pub rpc_client: Arc<RPCClient>,

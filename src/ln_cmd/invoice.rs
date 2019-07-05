@@ -1,8 +1,39 @@
-use lightning_invoice::Invoice;
-use lightning_invoice::Currency;
 use bitcoin::network::constants::Network;
+use bitcoin_hashes::Hash;
+use futures::sync::mpsc;
+use lightning::ln::channelmanager::{ChannelManager, PaymentHash};
+use lightning::ln::router;
+use lightning_invoice::Currency;
+use lightning_invoice::Invoice;
+use lightning_invoice::MinFinalCltvExpiry;
+use ln_bridge::utils::slice_to_be64;
+use std;
+use std::str::FromStr;
+use std::sync::Arc;
 
-pub fn send(line: String) {
+// convert currency to network
+fn to_network(currency: Currency) -> Network {
+    match currency {
+        Currency::Bitcoin => Network::Bitcoin,
+        Currency::BitcoinTestnet => Network::Testnet,
+        Currency::Regtest => Network::Regtest,
+    }
+}
+
+pub fn send(
+    line: String,
+    channel_manager: Arc<ChannelManager>,
+    mut event_notify: mpsc::Sender<()>,
+    network: Network,
+    router: Arc<router::Router>,
+) -> std::result::Result<(), String> {
+    macro_rules! fail_return {
+        () => {
+            print!("> ");
+            return Ok(());
+        };
+    }
+
     let mut args = line.split_at(2).1.split(' ');
     match Invoice::from_str(args.next().unwrap()) {
         Ok(invoice) => {
@@ -14,7 +45,7 @@ pub fn send(line: String) {
                 Currency::Regtest => Network::Regtest,
             } != network
             {
-                println!("Wrong network on invoice");
+                Err("Wrong network on invoice".to_string())
             } else {
                 let arg2 = args.next();
                 let amt = if let Some(amt) = invoice.amount_pico_btc().and_then(|amt| {
@@ -26,7 +57,6 @@ pub fn send(line: String) {
                 }) {
                     if arg2.is_some() {
                         println!("Invoice had amount, you shouldn't specify one");
-                        fail_return!();
                     }
                     amt
                 } else {
@@ -92,49 +122,53 @@ pub fn send(line: String) {
                             Ok(()) => {
                                 println!("Sending {} msat", amt);
                                 let _ = event_notify.try_send(());
+                                Ok(())
                             }
                             Err(e) => {
                                 println!("Failed to send HTLC: {:?}", e);
+                                Err("Failed to send HLTC".to_string())
                             }
                         }
                     }
                     Err(e) => {
                         println!("Failed to find route: {}", e.err);
+                        Err("Failed to find route".to_string())
                     }
                 }
             }
         }
         Err(err) => {
             println!("Bad invoice {:?}", err);
+            Err("Bad Invoice".to_string())
         }
     }
 }
 
-pub fn pay() {
-    let value = line.split_at(2).1;
-    let mut payment_preimage = [0; 32];
-    thread_rng().fill_bytes(&mut payment_preimage);
-    let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
-    //TODO: Store this on disk somewhere!
-    payment_preimages.lock().unwrap().insert(
-        PaymentHash(payment_hash.into_inner()),
-        PaymentPreimage(payment_preimage),
-    );
-    println!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
-
-    let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
-        constants::Network::Bitcoin => lightning_invoice::Currency::Bitcoin,
-        constants::Network::Testnet => lightning_invoice::Currency::BitcoinTestnet,
-        constants::Network::Regtest => lightning_invoice::Currency::Regtest, //TODO
-    })
-    .payment_hash(payment_hash)
-    .description("rust-lightning-bitcoinrpc invoice".to_string())
-    //.route(chans)
-    .amount_pico_btc(value.parse::<u64>().unwrap())
-    .current_timestamp()
-    .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
-    match invoice_res {
-        Ok(invoice) => println!("Invoice: {}", invoice),
-        Err(e) => println!("Error creating invoice: {:?}", e),
-    }
-}
+// pub fn pay() {
+//     let value = line.split_at(2).1;
+//     let mut payment_preimage = [0; 32];
+//     thread_rng().fill_bytes(&mut payment_preimage);
+//     let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
+//     //TODO: Store this on disk somewhere!
+//     payment_preimages.lock().unwrap().insert(
+//         PaymentHash(payment_hash.into_inner()),
+//         PaymentPreimage(payment_preimage),
+//     );
+//     println!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
+//
+//     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
+//         Network::Bitcoin => Currency::Bitcoin,
+//         Network::Testnet => Currency::BitcoinTestnet,
+//         Network::Regtest => Currency::Regtest, //TODO
+//     })
+//     .payment_hash(payment_hash)
+//     .description("rust-lightning-bitcoinrpc invoice".to_string())
+//     //.route(chans)
+//     .amount_pico_btc(value.parse::<u64>().unwrap())
+//     .current_timestamp()
+//     .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
+//     match invoice_res {
+//         Ok(invoice) => println!("Invoice: {}", invoice),
+//         Err(e) => println!("Error creating invoice: {:?}", e),
+//     }
+// }

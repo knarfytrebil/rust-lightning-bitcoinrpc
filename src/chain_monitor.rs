@@ -25,7 +25,7 @@ use bitcoin::consensus::encode;
 use bitcoin::network::constants::Network;
 use bitcoin::util::hash::BitcoinHash;
 
-use log::{error, info};
+use log::{info};
 use std;
 use std::cmp;
 use std::collections::HashMap;

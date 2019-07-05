@@ -11,7 +11,7 @@ use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::util::ser::ReadableArgs;
 
 use ln_bridge::log_printer::LogPrinter;
-use log::{info, error};
+use log::{info};
 
 pub struct ChannelMonitor {
 	pub monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,

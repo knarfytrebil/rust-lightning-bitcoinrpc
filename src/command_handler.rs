@@ -1,20 +1,17 @@
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::io::Write;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use futures::future::Future;
 use futures::sync::mpsc;
 use futures::Stream;
-use rand::{thread_rng, Rng};
 use tokio::runtime::TaskExecutor;
 
 use secp256k1::key::PublicKey;
 use secp256k1::{All, Secp256k1};
 
 use bitcoin::network::constants;
-use bitcoin_hashes::Hash;
 
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
@@ -23,11 +20,9 @@ use lightning::ln::router;
 
 use lightning_net_tokio::SocketDescriptor;
 
-use lightning_invoice::MinFinalCltvExpiry;
-
 use ln_bridge::commander;
 use ln_bridge::settings::Settings;
-use ln_bridge::utils::{hex_str, hex_to_compressed_pubkey, hex_to_vec, slice_to_be64};
+use ln_bridge::utils::{hex_str};
 use ln_manager::LnManager;
 
 use ln_cmd::channel;
@@ -50,17 +45,9 @@ enum Command {
 }
 
 pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
-    macro_rules! fail_return {
-        () => {
-            print!("> ");
-            std::io::stdout().flush().unwrap();
-            return Ok(());
-        };
-    }
-
     let network: constants::Network = lnManager.network;
     let router: Arc<router::Router> = lnManager.router;
-    let mut event_notify: mpsc::Sender<()> = lnManager.event_notify;
+    let event_notify: mpsc::Sender<()> = lnManager.event_notify;
     let channel_manager: Arc<ChannelManager> = lnManager.channel_manager;
     let peer_manager: Arc<PeerManager<SocketDescriptor>> = lnManager.peer_manager;
     let payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>> =
@@ -135,10 +122,18 @@ pub fn run_command_board(lnManager: LnManager, executor_command: TaskExecutor) {
                         }
                         Some(Command::Send) => {
                             // 's'
-                            invoice::send(line.clone());
+                            let _ = invoice::send(
+                                line.clone(),
+                                channel_manager.clone(),
+                                event_notify.clone(),
+                                network.clone(),
+                                router.clone(),
+                            );
                         }
                         Some(Command::Invoice) => {
                             // 'p'
+                            // invoice::pay(line.clone(), channel_manager.clone());
+                            println!("pay invoice");
                         }
                         _ => println!("Unknown command: {}", line.as_bytes()[0] as char),
                     }
