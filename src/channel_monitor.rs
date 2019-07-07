@@ -13,10 +13,13 @@ use lightning::util::ser::ReadableArgs;
 use ln_bridge::log_printer::LogPrinter;
 use log::{info};
 
+#[allow(dead_code)]
 pub struct ChannelMonitor {
 	pub monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
 	pub file_prefix: String,
 }
+
+#[allow(dead_code)]
 impl ChannelMonitor {
 	pub fn load_from_disk(file_prefix: &String) -> Vec<(chain::transaction::OutPoint, channelmonitor::ChannelMonitor)> {
 		let mut res = Vec::new();

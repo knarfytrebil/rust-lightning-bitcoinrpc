@@ -12,6 +12,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 // convert currency to network
+#[allow(dead_code)]
 fn to_network(currency: Currency) -> Network {
     match currency {
         Currency::Bitcoin => Network::Bitcoin,

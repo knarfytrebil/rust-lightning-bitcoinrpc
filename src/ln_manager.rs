@@ -259,7 +259,7 @@ impl LnManager {
         }
     }
     pub fn get_network(rpc_client: Arc<RPCClient>, executor: TaskExecutor) -> Result<constants::Network, &'static str> {
-        let mut thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
         // Blocked Here
         // thread_rt.block_on(
         //     rpc_client

@@ -91,5 +91,6 @@ pub fn fund_channel(
         None => println!("Bad PubKey for remote node"),
     }
 }
-
+ 
+#[allow(dead_code)]
 pub fn close_channel() {}

@@ -44,6 +44,7 @@ enum Command {
     Invoice = 0x70, // p
 }
 
+#[allow(dead_code)]
 pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) {
     let network: constants::Network = ln_manager.network;
     let router: Arc<router::Router> = ln_manager.router;
