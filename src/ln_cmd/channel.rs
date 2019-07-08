@@ -2,7 +2,47 @@ use futures::sync::mpsc;
 use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;
-use ln_bridge::utils::{hex_str,  hex_to_vec};
+use ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
+
+// fund channel
+pub fn fund_channel(
+    line: String,
+    channel_manager: Arc<ChannelManager>,
+    mut event_notify: mpsc::Sender<()>,
+) {
+    match hex_to_compressed_pubkey(line.split_at(0).1) {
+        Some(pk) => {
+            if line.as_bytes()[33 * 2] == ' ' as u8 {
+                let mut args = line.split_at(33 * 2 + 1).1.split(' ');
+                if let Some(value_str) = args.next() {
+                    if let Some(push_str) = args.next() {
+                        if let Ok(value) = value_str.parse() {
+                            if let Ok(push) = push_str.parse() {
+                                match channel_manager.create_channel(pk, value, push, 0) {
+                                    Ok(_) => println!("Channel created, sending open_channel!"),
+                                    Err(e) => println!("Failed to open channel: {:?}!", e),
+                                }
+                                let _ = event_notify.try_send(());
+                            } else {
+                                println!("Couldn't parse third argument into a push value");
+                            }
+                        } else {
+                            println!("Couldn't parse second argument into a value");
+                        }
+                    } else {
+                        println!("Couldn't read third argument");
+                    }
+                } else {
+                    println!("Couldn't read second argument");
+                }
+            } else {
+                println!("Invalid line, should be n pubkey value");
+            }
+        }
+        None => println!("Bad PubKey for remote node"),
+    }
+}
+
 
 // Close single channel
 pub fn close(
