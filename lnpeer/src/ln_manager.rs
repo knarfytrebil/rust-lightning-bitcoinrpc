@@ -54,9 +54,9 @@ impl LnManager {
 	  let secp_ctx = Secp256k1::new();
 	  let fee_estimator = Arc::new(FeeEstimator::new());
 
-    info!("Checking validity of RPC URL to bitcoind...");
+    logger.info("Checking validity of RPC URL to bitcoind...");
     let network = LnManager::get_network(rpc_client.clone(), spawn_task_handle.clone(), exit.clone());
-    info!("Success! Starting up...");
+    logger.info("Success! Starting up...");
     if network == constants::Network::Bitcoin {
 		  panic!("LOL, you're insane");
 	  }
@@ -128,7 +128,7 @@ impl LnManager {
 		let peer_manager_listener = peer_manager.clone();
 		let event_listener = event_notify.clone();
 		spawn_task_handle.spawn_task(listener.incoming().for_each(move |sock| {
-			info!("Got new inbound connection, waiting on them to start handshake...");
+			logger.info("Got new inbound connection, waiting on them to start handshake...");
 			Connection::setup_inbound(peer_manager_listener.clone(), event_listener.clone(), sock);
 			Ok(())
 		}).map_err(|_| ()).select(exit.clone()).then(|_| { Ok(()) }));

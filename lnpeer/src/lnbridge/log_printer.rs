@@ -1,4 +1,5 @@
 use lightning::util::logger::{Logger, Level, Record};
+use log::{info, error};
 
 pub struct LogPrinter {
   // pub level: Level,
@@ -12,5 +13,11 @@ impl Logger for LogPrinter {
 			  println!("{:<5} [{} : {}, {}] {}", record.level.to_string(), record.module_path, record.file, record.line, record.args);
       }
 		}
+  }
+  fn info(&self, msg: String) {
+    info!(msg)
+  }
+  fn error(&self, msg: String) {
+    error!(msg)
   }
 }
