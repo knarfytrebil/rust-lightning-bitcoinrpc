@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::fs;
 
-use substrate_service::SpawnTaskHandle;
+use substrate_service::{SpawnTaskHandle, Executor};
 use exit_future::Exit;
 use future;
 use futures::sync::mpsc;
@@ -55,7 +55,7 @@ impl EventHandler {
 		let (sender, receiver) = mpsc::channel(2);
 		let mut self_sender = sender.clone();
     let exit_event = exit.clone();
-		spawn_task_handle.clone().spawn_task(receiver.for_each(move |_| {
+		spawn_task_handle.clone().execute(Box::new(receiver.for_each(move |_| {
 			us.peer_manager.process_events();
 			let mut events = us.channel_manager.get_and_clear_pending_events();
 			events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -132,11 +132,11 @@ impl EventHandler {
 					Event::PendingHTLCsForwardable { time_forwardable } => {
 						let us = us.clone();
 						let mut self_sender = self_sender.clone();
-						spawn_task_handle.spawn_task(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+						spawn_task_handle.execute(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							us.channel_manager.process_pending_htlc_forwards();
 							let _ = self_sender.try_send(());
 							Ok(())
-						}).select(exit.clone()).then(|_| { Ok(()) }));
+						}).select(exit.clone()).then(|_| { Ok(()) })));
 					},
 					Event::SpendableOutputs { mut outputs } => {
 						for output in outputs.drain(..) {
@@ -168,7 +168,7 @@ impl EventHandler {
 			fs::rename(&tmp_filename, &filename).unwrap();
 
 			future::Either::B(future::result(Ok(())))
-		}).select(exit_event.clone()).then(|_| { Ok(()) }));
+		}).select(exit_event.clone()).then(|_| { Ok(()) })));
 		sender
 	}
 }

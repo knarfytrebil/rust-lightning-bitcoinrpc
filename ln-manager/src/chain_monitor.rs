@@ -6,7 +6,7 @@ use bitcoin;
 use lightning;
 use serde_json;
 use tokio;
-use substrate_service::SpawnTaskHandle;
+use substrate_service::{SpawnTaskHandle, Executor};
 use exit_future::Exit;
 
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
@@ -145,7 +145,7 @@ impl chaininterface::BroadcasterInterface for ChainInterface {
 	fn broadcast_transaction (&self, tx: &bitcoin::blockdata::transaction::Transaction) {
 		self.txn_to_broadcast.lock().unwrap().insert(tx.txid(), tx.clone());
 		let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-		self.spawn_task_handle.spawn_task(self.rpc_client.make_rpc_call("sendrawtransaction", &[&tx_ser], true).then(|_| { Ok(()) }).select(self.exit.clone()).then(|_| { Ok(())}));
+		self.spawn_task_handle.execute(Box::new(self.rpc_client.make_rpc_call("sendrawtransaction", &[&tx_ser], true).then(|_| { Ok(()) }).select(self.exit.clone()).then(|_| { Ok(())})));
 	}
 }
 
@@ -161,7 +161,7 @@ fn find_fork_step(steps_tx: mpsc::Sender<ForkStep>, current_header: GetHeaderRes
 	} else if current_header.height == 1 {
 		return;
 	} else if target_header_opt.is_none() || target_header_opt.as_ref().unwrap().1.height < current_header.height {
-		spawn_task_handle.clone().spawn_task(steps_tx.send(ForkStep::ConnectBlock((current_header.previousblockhash.clone(), current_header.height - 1))).then(move |send_res| {
+		spawn_task_handle.clone().execute(Box::new(steps_tx.send(ForkStep::ConnectBlock((current_header.previousblockhash.clone(), current_header.height - 1))).then(move |send_res| {
 			if let Ok(steps_tx) = send_res {
 				future::Either::A(rpc_client.get_header(&current_header.previousblockhash).then(move |new_cur_header| {
 					find_fork_step(steps_tx, new_cur_header.unwrap(), target_header_opt, rpc_client, spawn_task_handle, exit);
@@ -171,11 +171,11 @@ fn find_fork_step(steps_tx: mpsc::Sender<ForkStep>, current_header: GetHeaderRes
 				// Caller droped the receiver, we should give up now
 				future::Either::B(future::result(Ok(())))
 			}
-		}).select(exit_fork.clone()).then(|_| { Ok(()) }));
+		}).select(exit_fork.clone()).then(|_| { Ok(()) })));
 	} else {
 		let target_header = target_header_opt.unwrap().1;
 		// Everything below needs to disconnect target, so go ahead and do that now
-		spawn_task_handle.clone().spawn_task(steps_tx.send(ForkStep::DisconnectBlock(target_header.to_block_header())).then(move |send_res| {
+		spawn_task_handle.clone().execute(Box::new(steps_tx.send(ForkStep::DisconnectBlock(target_header.to_block_header())).then(move |send_res| {
 			if let Ok(steps_tx) = send_res {
 				future::Either::A(if target_header.previousblockhash == current_header.previousblockhash {
 					// Found the fork, also connect current and finish!
@@ -210,7 +210,7 @@ fn find_fork_step(steps_tx: mpsc::Sender<ForkStep>, current_header: GetHeaderRes
 				// Caller droped the receiver, we should give up now
 				future::Either::B(future::result(Ok(())))
 			}
-		}).select(exit_fork.clone()).then(|_| { Ok(()) }));
+		}).select(exit_fork.clone()).then(|_| { Ok(()) })));
 	}
 }
 /// Walks backwards from current_hash and target_hash finding the fork and sending ForkStep events
@@ -219,7 +219,7 @@ fn find_fork_step(steps_tx: mpsc::Sender<ForkStep>, current_header: GetHeaderRes
 fn find_fork(mut steps_tx: mpsc::Sender<ForkStep>, current_hash: String, target_hash: String, rpc_client: Arc<RPCClient>, spawn_task_handle: SpawnTaskHandle, exit: Exit) {
 	if current_hash == target_hash { return; }
   let exit_fork = exit.clone();
-	spawn_task_handle.clone().spawn_task(rpc_client.get_header(&current_hash).then(move |current_resp| {
+	spawn_task_handle.clone().execute(Box::new(rpc_client.get_header(&current_hash).then(move |current_resp| {
 		let current_header = current_resp.unwrap();
 		assert!(steps_tx.start_send(ForkStep::ConnectBlock((current_hash, current_header.height))).unwrap().is_ready());
 
@@ -238,14 +238,14 @@ fn find_fork(mut steps_tx: mpsc::Sender<ForkStep>, current_hash: String, target_
 				Ok(())
 			}))
 		}
-	}).select(exit_fork.clone()).then(|_| { Ok(()) }));
+	}).select(exit_fork.clone()).then(|_| { Ok(()) })));
 }
 
 pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPCClient>, chain_monitor: Arc<ChainInterface>, event_notify: mpsc::Sender<()>, spawn_task_handle_chain: SpawnTaskHandle, exit_chain: Exit) {
-	spawn_task_handle_chain.spawn_task(FeeEstimator::update_values(fee_estimator.clone(), &rpc_client).select(exit_chain.clone()).then(|_| { Ok(()) }));
+	spawn_task_handle_chain.execute(Box::new(FeeEstimator::update_values(fee_estimator.clone(), &rpc_client).select(exit_chain.clone()).then(|_| { Ok(()) })));
 	let cur_block = Arc::new(Mutex::new(String::from("")));
   let exit = exit_chain.clone();
-	spawn_task_handle_chain.clone().spawn_task(tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1)).for_each(move |_| {
+	spawn_task_handle_chain.clone().execute(Box::new(tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1)).for_each(move |_| {
 		let cur_block = cur_block.clone();
 		let fee_estimator = fee_estimator.clone();
 		let rpc_client = rpc_client.clone();
@@ -292,5 +292,5 @@ pub fn spawn_chain_monitor(fee_estimator: Arc<FeeEstimator>, rpc_client: Arc<RPC
 					.then(|_| { Ok(()) })
 			}))
 		}).then(|_| { Ok(()) })
-	}).then(|_| { Ok(()) }).select(exit.clone()).then(|_| { Ok(()) }));
+	}).then(|_| { Ok(()) }).select(exit.clone()).then(|_| { Ok(()) })));
 }
