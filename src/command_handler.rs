@@ -20,7 +20,6 @@ use lightning::ln::router;
 
 use lightning_net_tokio::SocketDescriptor;
 
-use ln_bridge::commander;
 use ln_bridge::settings::Settings;
 use ln_bridge::utils::hex_str;
 use ln_manager::LnManager;
@@ -77,7 +76,7 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                         }
                         Some(Command::Connect) => {
                             // 'c'
-                            commander::connect(
+                            peer::connect(
                                 line.split_at(2).1.parse().unwrap(),
                                 peer_manager.clone(),
                                 event_notify.clone(),
@@ -85,7 +84,7 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                         }
                         Some(Command::FundChannel) => {
                             // 'n'
-                            commander::fund_channel(
+                            channel::fund_channel(
                                 line.split_at(2).1.parse().unwrap(),
                                 channel_manager.clone(),
                                 event_notify.clone(),
