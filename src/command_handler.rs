@@ -22,7 +22,7 @@ use lightning_net_tokio::SocketDescriptor;
 
 use ln_bridge::commander;
 use ln_bridge::settings::Settings;
-use ln_bridge::utils::{hex_str};
+use ln_bridge::utils::hex_str;
 use ln_manager::LnManager;
 
 use ln_cmd::channel;
@@ -133,8 +133,13 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                         }
                         Some(Command::Invoice) => {
                             // 'p'
-                            // invoice::pay(line.clone(), channel_manager.clone());
-                            println!("pay invoice");
+                            invoice::pay(
+                                line.clone(),
+                                payment_preimages.clone(),
+                                network.clone(),
+                                secp_ctx.clone(),
+                                keys.clone(),
+                            );
                         }
                         _ => println!("Unknown command: {}", line.as_bytes()[0] as char),
                     }

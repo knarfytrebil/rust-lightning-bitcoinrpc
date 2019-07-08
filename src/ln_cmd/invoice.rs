@@ -1,16 +1,20 @@
 use bitcoin::network::constants::Network;
 use bitcoin_hashes::Hash;
 use futures::sync::mpsc;
-use lightning::ln::channelmanager::{ChannelManager, PaymentHash};
+use lightning::chain::keysinterface::{KeysInterface, KeysManager};
+use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::router;
 use lightning_invoice::Currency;
 use lightning_invoice::Invoice;
 use lightning_invoice::MinFinalCltvExpiry;
-use ln_bridge::utils::slice_to_be64;
+use ln_bridge::utils::{hex_str, slice_to_be64};
+use rand::{thread_rng, Rng};
 use std;
+use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use secp256k1::{All, Secp256k1};
 // convert currency to network
 #[allow(dead_code)]
 fn to_network(currency: Currency) -> Network {
@@ -145,31 +149,37 @@ pub fn send(
     }
 }
 
-// pub fn pay() {
-//     let value = line.split_at(2).1;
-//     let mut payment_preimage = [0; 32];
-//     thread_rng().fill_bytes(&mut payment_preimage);
-//     let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
-//     //TODO: Store this on disk somewhere!
-//     payment_preimages.lock().unwrap().insert(
-//         PaymentHash(payment_hash.into_inner()),
-//         PaymentPreimage(payment_preimage),
-//     );
-//     println!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
-//
-//     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
-//         Network::Bitcoin => Currency::Bitcoin,
-//         Network::Testnet => Currency::BitcoinTestnet,
-//         Network::Regtest => Currency::Regtest, //TODO
-//     })
-//     .payment_hash(payment_hash)
-//     .description("rust-lightning-bitcoinrpc invoice".to_string())
-//     //.route(chans)
-//     .amount_pico_btc(value.parse::<u64>().unwrap())
-//     .current_timestamp()
-//     .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
-//     match invoice_res {
-//         Ok(invoice) => println!("Invoice: {}", invoice),
-//         Err(e) => println!("Error creating invoice: {:?}", e),
-//     }
-// }
+pub fn pay(
+    line: String,
+    payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
+    network: Network,
+    secp_ctx: Secp256k1<All>,
+    keys: Arc<KeysManager>,
+) {
+    let value = line.split_at(2).1;
+    let mut payment_preimage = [0; 32];
+    thread_rng().fill_bytes(&mut payment_preimage);
+    let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
+    //TODO: Store this on disk somewhere!
+    payment_preimages.lock().unwrap().insert(
+        PaymentHash(payment_hash.into_inner()),
+        PaymentPreimage(payment_preimage),
+    );
+    println!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
+
+    let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
+        Network::Bitcoin => Currency::Bitcoin,
+        Network::Testnet => Currency::BitcoinTestnet,
+        Network::Regtest => Currency::Regtest, //TODO
+    })
+    .payment_hash(payment_hash)
+    .description("rust-lightning-bitcoinrpc invoice".to_string())
+    //.route(chans)
+    .amount_pico_btc(value.parse::<u64>().unwrap())
+    .current_timestamp()
+    .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
+    match invoice_res {
+        Ok(invoice) => println!("Invoice: {}", invoice),
+        Err(e) => println!("Error creating invoice: {:?}", e),
+    }
+}
