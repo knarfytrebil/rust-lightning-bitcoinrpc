@@ -1,61 +1,72 @@
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::fs;
+use std::sync::{Arc, Mutex};
 
 use substrate_service::{SpawnTaskHandle, Executor};
 use exit_future::Exit;
+
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
+use executor::TaskExecutor;
 
-use bitcoin::network::constants;
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
+use bitcoin::network::constants;
 
 use lightning::chain;
-use lightning::chain::keysinterface::{SpendableOutputDescriptor};
-use lightning::ln::peer_handler;
+use lightning::chain::keysinterface::SpendableOutputDescriptor;
 use lightning::ln::channelmanager;
 use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage};
 use lightning::ln::channelmonitor;
+use lightning::ln::peer_handler;
 use lightning::util::events::{Event, EventsProvider};
 use lightning::util::ser::Writeable;
 
-use lightning_net_tokio::{SocketDescriptor};
+use lightning_net_tokio::SocketDescriptor;
 
-use rpc_client::{RPCClient};
-use lnbridge::utils::*;
-use log::{info, error};
+use ln_bridge::utils::*;
+use log::{info};
+use rpc_client::RPCClient;
 
 pub struct EventHandler {
-	network: constants::Network,
-	file_prefix: String,
-	rpc_client: Arc<RPCClient>,
-	peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
-	channel_manager: Arc<channelmanager::ChannelManager>,
-	monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
-	broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
-	txn_to_broadcast: Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
-	payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-}
-impl EventHandler {
-	pub fn setup(
     network: constants::Network,
     file_prefix: String,
     rpc_client: Arc<RPCClient>,
     peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
-    monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     channel_manager: Arc<channelmanager::ChannelManager>,
+    monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+    txn_to_broadcast:
+        Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    spawn_task_handle: SpawnTaskHandle,
-    exit: Exit
-  ) -> mpsc::Sender<()> {
-		let us = Arc::new(Self { network, file_prefix, rpc_client, peer_manager, channel_manager, monitor, broadcaster, txn_to_broadcast: Mutex::new(HashMap::new()), payment_preimages });
-		let (sender, receiver) = mpsc::channel(2);
-		let mut self_sender = sender.clone();
-    let exit_event = exit.clone();
-		spawn_task_handle.clone().execute(Box::new(receiver.for_each(move |_| {
+}
+impl EventHandler {
+    pub fn setup(
+        network: constants::Network,
+        file_prefix: String,
+        rpc_client: Arc<RPCClient>,
+        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+        monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
+        channel_manager: Arc<channelmanager::ChannelManager>,
+        broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+        payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
+        executor: TaskExecutor,
+    ) -> mpsc::Sender<()> {
+        let us = Arc::new(Self {
+            network,
+            file_prefix,
+            rpc_client,
+            peer_manager,
+            channel_manager,
+            monitor,
+            broadcaster,
+            txn_to_broadcast: Mutex::new(HashMap::new()),
+            payment_preimages,
+        });
+        let (sender, receiver) = mpsc::channel(2);
+        let mut self_sender = sender.clone();
+        executor.clone().spawn(receiver.for_each(move |_| {
 			us.peer_manager.process_events();
 			let mut events = us.channel_manager.get_and_clear_pending_events();
 			events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -132,11 +143,11 @@ impl EventHandler {
 					Event::PendingHTLCsForwardable { time_forwardable } => {
 						let us = us.clone();
 						let mut self_sender = self_sender.clone();
-						spawn_task_handle.execute(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+						executor.execute(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							us.channel_manager.process_pending_htlc_forwards();
 							let _ = self_sender.try_send(());
 							Ok(())
-						}).select(exit.clone()).then(|_| { Ok(()) })));
+						}).then(|_| { Ok(()) })));
 					},
 					Event::SpendableOutputs { mut outputs } => {
 						for output in outputs.drain(..) {
@@ -168,7 +179,7 @@ impl EventHandler {
 			fs::rename(&tmp_filename, &filename).unwrap();
 
 			future::Either::B(future::result(Ok(())))
-		}).select(exit_event.clone()).then(|_| { Ok(()) })));
-		sender
-	}
+		}).then(|_| { Ok(()) }));
+        sender
+    }
 }

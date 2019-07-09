@@ -1,0 +1,3 @@
+port = 9736
+rpc_url = "admin2:123@127.0.0.1:19011"
+lndata = "ln/data_2"
