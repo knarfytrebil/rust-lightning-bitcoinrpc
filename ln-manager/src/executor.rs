@@ -3,14 +3,7 @@ use futures::sync::mpsc;
 use futures::Stream;
 pub use futures::future::Executor;
 use std::marker::Sync;
+use std::marker::Sized;
 use std::clone::Clone;
-// use substrate_service::{SpawnTaskHandle, Executor};
 
-pub type FutureExecutor = Executor<Box<dyn Future<Item = (), Error = ()> + Send>>;
-
-#[derive(Clone)]
-pub struct TaskExecutor {}
-
-// pub trait TaskExecutor {
-//   fn spawn(&self, future: Box<dyn Future<Item = (), Error = ()> + Send>);
-// }
+pub trait TaskExecutor: Executor<Box<dyn Future<Item = (), Error = ()> + Send>> + Clone + Sized + Send + Sync + 'static {}
