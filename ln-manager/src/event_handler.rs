@@ -181,7 +181,7 @@ impl EventHandler {
 			  fs::rename(&tmp_filename, &filename).unwrap();
 
 			  future::Either::B(future::result(Ok(())))
-		  }).then(|_| { Ok(()) })
+		  }).select(exit_event).then(|_| { Ok(()) })
     );
     sender
   }

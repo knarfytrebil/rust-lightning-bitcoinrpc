@@ -131,19 +131,22 @@ pub struct ChainInterface<T> {
   txn_to_broadcast: Mutex<HashMap<Sha256dHash, bitcoin::blockdata::transaction::Transaction>>,
   rpc_client: Arc<RPCClient>,
   larva: T,
+  exit: Exit,
 }
 impl<T> ChainInterface<T> {
   pub fn new(
     rpc_client: Arc<RPCClient>,
     network: Network,
     logger: Arc<Logger>,
-    larva: T
+    larva: T,
+    exit: Exit
   ) -> Self {
     ChainInterface {
       util: chaininterface::ChainWatchInterfaceUtil::new(network, logger),
       txn_to_broadcast: Mutex::new(HashMap::new()),
       rpc_client,
-      larva
+      larva,
+      exit
     }
   }
 
@@ -227,7 +230,9 @@ fn find_fork_step(
   target_header_opt: Option<(String, GetHeaderResponse)>,
   rpc_client: Arc<RPCClient>,
   larva: impl Larva,
+  exit: Exit,
 ) {
+  let exit_fork = exit.clone();
   if target_header_opt.is_some()
     && target_header_opt.as_ref().unwrap().0 == current_header.previousblockhash
   {
@@ -256,6 +261,7 @@ fn find_fork_step(
                     target_header_opt,
                     rpc_client,
                     larva,
+                    exit,
                   );
                   Ok(())
                 }),
@@ -264,7 +270,9 @@ fn find_fork_step(
             // Caller droped the receiver, we should give up now
             future::Either::B(future::result(Ok(())))
           }
-        }),
+        })
+        .select(exit_fork.clone())
+        .then(|_| { Ok(()) }),
     );
   } else {
     let target_header = target_header_opt.unwrap().1;
@@ -300,6 +308,7 @@ fn find_fork_step(
                         )),
                         rpc_client,
                         larva,
+                        exit,
                       );
                       Ok(())
                     }),
@@ -338,6 +347,7 @@ fn find_fork_step(
                                     )),
                                     rpc_client,
                                     larva,
+                                    exit,
                                   );
                                   Ok(())
                                 })
@@ -355,7 +365,9 @@ fn find_fork_step(
             // Caller droped the receiver, we should give up now
             future::Either::B(future::result(Ok(())))
           }
-        }),
+        })
+        .select(exit_fork.clone())
+        .then(|_| { Ok(()) }),
     );
   }
 }
@@ -369,6 +381,7 @@ fn find_fork(
   target_hash: String,
   rpc_client: Arc<RPCClient>,
   larva: impl Larva,
+  exit: Exit,
 ) {
   if current_hash == target_hash {
     return;
@@ -400,6 +413,7 @@ fn find_fork(
                   Some((target_hash, target_header)),
                   rpc_client,
                   larva.clone(),
+                  exit.clone()
                 ),
                 Err(_) => {
                   assert_eq!(target_hash, "");
@@ -409,6 +423,7 @@ fn find_fork(
                     None,
                     rpc_client,
                     larva.clone(),
+                    exit.clone(),
                   )
                 }
               }
@@ -426,13 +441,14 @@ pub fn spawn_chain_monitor(
   chain_monitor: Arc<ChainInterface<impl Larva>>,
   event_notify: mpsc::Sender<()>,
   larva_chain: impl Larva,
+  exit_chain: Exit,
 ) {
-  println!("SPANNNNNNNN");
   larva_chain.clone().spawn_task(FeeEstimator::update_values(
     fee_estimator.clone(),
     &rpc_client,
-  ));
+  ).select(exit_chain.clone()).then(|_| { Ok(())}));
   let cur_block = Arc::new(Mutex::new(String::from("")));
+  let exit = exit_chain.clone();
   larva_chain.clone().spawn_task(
     tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1))
       .for_each(move |_| {
@@ -442,6 +458,7 @@ pub fn spawn_chain_monitor(
         let chain_monitor = chain_monitor.clone();
         let mut event_notify = event_notify.clone();
         let larva = larva_chain.clone();
+        let exit = exit_chain.clone();
         rpc_client
           .make_rpc_call("getblockchaininfo", &[], false)
           .and_then(move |v| {
@@ -463,6 +480,7 @@ pub fn spawn_chain_monitor(
               old_block,
               rpc_client.clone(),
               larva.clone(),
+              exit.clone(),
             );
             info!("NEW BEST BLOCK!");
             future::Either::B(events_rx.collect().then(move |events_res| {
@@ -520,6 +538,7 @@ pub fn spawn_chain_monitor(
           })
           .then(|_| Ok(()))
       })
+      .select(exit.clone().then(|_| { Ok(()) }))
       .then(|_| Ok(())),
   );
 }

@@ -95,7 +95,7 @@ impl LnManager {
     let fee_estimator = Arc::new(FeeEstimator::new());
 
     info!("Checking validity of RPC URL to bitcoind...");
-    let network = LnManager::get_network(rpc_client.clone(), larva.clone()).unwrap();
+    let network = LnManager::get_network(rpc_client.clone(), larva.clone(), exit.clone()).unwrap();
     info!("Success! Starting up...");
     if network == constants::Network::Bitcoin {
       panic!("LOL, you're insane");
@@ -155,6 +155,7 @@ impl LnManager {
       network,
       logger.clone(),
       larva.clone(),
+      exit.clone(),
     ));
     larva.clone().spawn_task(
       rpc_client
@@ -174,6 +175,8 @@ impl LnManager {
           ],
           false,
         )
+        .then(|_| Ok(()))
+        .select(exit.clone())
         .then(|_| Ok(())),
     );
     larva.clone().spawn_task(
@@ -194,6 +197,8 @@ impl LnManager {
           ],
           false,
         )
+        .then(|_| Ok(()))
+        .select(exit.clone())
         .then(|_| Ok(())),
     );
 
@@ -275,14 +280,17 @@ impl LnManager {
       chain_monitor,
       event_notify.clone(),
       larva.clone(),
+      exit.clone(),
     );
 
-    larva.clone().execute(Box::new(
+    larva.clone().spawn_task(Box::new(
       tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0))
         .for_each(move |_| {
           //TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
           Ok(())
         })
+        .map_err(|_| ())
+        .select(exit.clone())
         .then(|_| Ok(())),
     ));
     Self {
@@ -299,7 +307,7 @@ impl LnManager {
       settings,
     }
   }
-  pub fn get_network(rpc_client: Arc<RPCClient>, larva: impl Larva) -> Result<constants::Network, &'static str> {
+  pub fn get_network(rpc_client: Arc<RPCClient>, larva: impl Larva, exit: Exit) -> Result<constants::Network, &'static str> {
     let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     // Blocked Here
     // thread_rt.block_on(
