@@ -72,8 +72,7 @@ use ln_bridge::channel_manager::{RestoreArgs as RestoreManagerArgs };
 use ln_bridge::log_printer::LogPrinter;
 use log::{info, error};
 
-// pub use futures::future::Executor;
-use executor::TaskExecutor;
+use executor::Larva;
 
 pub struct LnManager {
   pub rpc_client: Arc<RPCClient>,
@@ -89,14 +88,14 @@ pub struct LnManager {
 }
 
 impl LnManager {
-  pub fn new(settings: Settings, executor: impl TaskExecutor, exit: Exit) -> Self {
+  pub fn new(settings: Settings, larva: impl Larva, exit: Exit) -> Self {
     let logger = Arc::new(LogPrinter {});
     let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
     let secp_ctx = Secp256k1::new();
     let fee_estimator = Arc::new(FeeEstimator::new());
 
     info!("Checking validity of RPC URL to bitcoind...");
-    let network = LnManager::get_network(rpc_client.clone(), executor.clone()).unwrap();
+    let network = LnManager::get_network(rpc_client.clone(), larva.clone()).unwrap();
     info!("Success! Starting up...");
     if network == constants::Network::Bitcoin {
       panic!("LOL, you're insane");
@@ -155,9 +154,9 @@ impl LnManager {
       rpc_client.clone(),
       network,
       logger.clone(),
-      executor.clone(),
+      larva.clone(),
     ));
-    executor.clone().execute(Box::new(
+    larva.clone().spawn_task(
       rpc_client
         .make_rpc_call(
           "importprivkey",
@@ -176,8 +175,8 @@ impl LnManager {
           false,
         )
         .then(|_| Ok(())),
-    ));
-    executor.clone().execute(Box::new(
+    );
+    larva.clone().spawn_task(
       rpc_client
         .make_rpc_call(
           "importprivkey",
@@ -196,7 +195,7 @@ impl LnManager {
           false,
         )
         .then(|_| Ok(())),
-    ));
+    );
 
     let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
     let monitor = Arc::new(ChannelMonitor {
@@ -245,7 +244,7 @@ impl LnManager {
       channel_manager.clone(),
       chain_monitor.clone(), // chain broadcaster
       payment_preimages.clone(),
-      executor.clone(),
+      larva.clone(),
       exit.clone()
     );
 
@@ -255,7 +254,7 @@ impl LnManager {
 
     let peer_manager_listener = peer_manager.clone();
     let event_listener = event_notify.clone();
-    executor.execute(Box::new(
+    larva.spawn_task(
       listener
         .incoming()
         .for_each(move |sock| {
@@ -268,17 +267,17 @@ impl LnManager {
           Ok(())
         })
         .then(|_| Ok(())),
-    ));
+    );
 
     spawn_chain_monitor(
       fee_estimator,
       rpc_client.clone(),
       chain_monitor,
       event_notify.clone(),
-      executor.clone(),
+      larva.clone(),
     );
 
-    executor.clone().execute(Box::new(
+    larva.clone().execute(Box::new(
       tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0))
         .for_each(move |_| {
           //TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
@@ -300,7 +299,7 @@ impl LnManager {
       settings,
     }
   }
-  pub fn get_network(rpc_client: Arc<RPCClient>, executor: impl TaskExecutor) -> Result<constants::Network, &'static str> {
+  pub fn get_network(rpc_client: Arc<RPCClient>, larva: impl Larva) -> Result<constants::Network, &'static str> {
     let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     // Blocked Here
     // thread_rt.block_on(

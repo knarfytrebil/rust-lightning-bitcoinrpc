@@ -7,7 +7,7 @@ use exit_future::Exit;
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
-use executor::TaskExecutor;
+use executor::Larva;
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -50,8 +50,7 @@ impl EventHandler {
     channel_manager: Arc<channelmanager::ChannelManager>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    // executor: SpawnTaskHandle,
-    executor: impl TaskExecutor,
+    larva: impl Larva,
     exit: Exit
   ) -> mpsc::Sender<()> {
     let us = Arc::new(Self {
@@ -68,7 +67,7 @@ impl EventHandler {
     let (sender, receiver) = mpsc::channel(2);
     let mut self_sender = sender.clone();
     let exit_event = exit.clone();
-    executor.clone().execute(Box::new(
+    larva.clone().spawn_task(
       receiver.for_each(move |_| {
 			  us.peer_manager.process_events();
 			  let mut events = us.channel_manager.get_and_clear_pending_events();
@@ -146,7 +145,7 @@ impl EventHandler {
 					  Event::PendingHTLCsForwardable { time_forwardable } => {
 						  let us = us.clone();
 						  let mut self_sender = self_sender.clone();
-						  executor.execute(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+						  larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							  us.channel_manager.process_pending_htlc_forwards();
 							  let _ = self_sender.try_send(());
 							  Ok(())
@@ -183,7 +182,7 @@ impl EventHandler {
 
 			  future::Either::B(future::result(Ok(())))
 		  }).then(|_| { Ok(()) })
-    ));
+    );
     sender
   }
 }
