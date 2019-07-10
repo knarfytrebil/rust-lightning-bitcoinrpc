@@ -10,7 +10,7 @@ bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.3"
 lightning = "0.0.9"
 lightning-net-tokio = "0.0.1"
-lightning-invoice = { path = "../../../lab/rust-lightning-invoice" }
+lightning-invoice = { path = "../../rust-lightning-invoice" }
 secp256k1 = "0.12"
 hyper = "0.12"
 tokio-io = "0.1"
