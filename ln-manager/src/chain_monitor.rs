@@ -204,7 +204,7 @@ impl<T: Sync + Send> chaininterface::ChainWatchInterface for ChainInterface<T> {
   }
 }
 
-impl<T: Sync + Send + Larva + Executor<Box<dyn Future<Item = (), Error = ()> + Send>>> chaininterface::BroadcasterInterface for ChainInterface<T> {
+impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainInterface<T> {
   fn broadcast_transaction(&self, tx: &bitcoin::blockdata::transaction::Transaction) {
     self.txn_to_broadcast
       .lock()

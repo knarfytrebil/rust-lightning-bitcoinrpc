@@ -25,7 +25,25 @@ use lnbridge::settings::Settings;
 
 use sr_primitives::traits::{self, ProvideRuntimeApi};
 pub use ln_primitives::LnApi;
-use substrate_service::SpawnTaskHandle;
+use substrate_service::Executor;
+
+#[derive(Clone)]
+struct Drone<T> {
+  spawn_task_handle: T,
+}
+impl<T> Drone<T> {
+  fn new(spawn_task_handle: T) -> Self {
+    Self { spawn_task_handle }
+  }
+}
+impl<T: Executor<Box<dyn Future<Item = (), Error = ()> + Send>> + Sync + Send + Clone + 'static> Larva for Drone<T> {
+  fn spawn_task(
+    &self,
+    task: impl Future<Item = (), Error = ()> + Send + 'static
+  ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>> {
+    self.spawn_task_handle.execute(Box::new(task))
+  }
+}
 
 pub struct LnBridge<C, Block> {
   client: Arc<C>,
@@ -40,13 +58,13 @@ impl<C, Block> LnBridge<C, Block> where
 {
   pub fn new(
     client: Arc<C>,
-    spawn_task_handle: SpawnTaskHandle,
-    // to_spawn_tx: mpsc::UnboundedSender<Box<dyn Future<Item = (), Error = ()> + Send>>,
+    spawn_task_handle: impl Executor<Box<dyn Future<Item = (), Error = ()> + Send>> + Sync + Send + Clone + 'static,
     exit: Exit
   ) -> Self {
     let settings = Settings::new().unwrap();
     // let client = service.client();
-    let ln_manager = Arc::new(LnManager::new(settings, spawn_task_handle, exit));
+    let drone = Drone::new(spawn_task_handle);
+    let ln_manager = Arc::new(LnManager::new(settings, drone, exit));
     Self {
       client,
       ln_manager,

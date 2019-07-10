@@ -29,8 +29,8 @@ mod rpc_client;
 mod chain_monitor;
 mod channel_monitor;
 mod event_handler;
-mod ln_bridge;
-mod executor;
+pub mod ln_bridge;
+pub mod executor;
 
 use std::mem;
 

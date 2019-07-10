@@ -4,13 +4,10 @@ version = "2.0.0"
 
 [dependencies]
 ln-primitives = { path = "../primitives" }
-sr-primitives = { path = "../../core/sr-primitives" }
-substrate-service = { path = "../../core/service" }
+sr-primitives = { path = "../../../substrate/core/sr-primitives" }
+substrate-service = { path = "../../../substrate/core/service" }
 ln-manager = { path = "../ln-manager" }
 
 [features]
 default = ["std"]
-std = [
-  "client/std",
-  "runtime-primitives/std"
-]
+std = []
