@@ -25,12 +25,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate num_derive;
 
-mod chain_monitor;
-mod channel_monitor;
-mod command_handler;
-mod event_handler;
-mod ln_manager;
-mod rpc_client;
+mod ln_bridge;
 mod ln_cmd;
 
 use ln_manager::LnManager;
@@ -41,7 +36,6 @@ use std::env;
 use futures::future;
 use futures::future::Future;
 
-mod ln_bridge;
 use ln_bridge::settings::Settings;
 
 #[allow(dead_code, unreachable_code)]
