@@ -97,6 +97,7 @@ impl LnManager {
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
             LnManager::get_network(rpc_client.clone(), larva.clone(), exit.clone()).unwrap();
+
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
             panic!("LOL, you're insane");
@@ -128,9 +129,7 @@ impl LnManager {
                 })
                 .unwrap();
 
-        /*
-         * For debug
-         */
+        /* ==> For debug */
         let pub_key_1 = bitcoin::util::key::PrivateKey {
             key: import_key_1,
             compressed: true,
@@ -152,9 +151,7 @@ impl LnManager {
             "Address - Cooperative Close: {:?}",
             &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
         );
-        /*
-         * For debug
-         */
+        /* <== For debug */
 
         // let (import_key_1, import_key_2) = ln_bridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
         let chain_monitor = Arc::new(ChainInterface::new(
@@ -164,6 +161,7 @@ impl LnManager {
             larva.clone(),
             exit.clone(),
         ));
+
         let _ = larva.clone().spawn_task(
             rpc_client
                 .make_rpc_call(

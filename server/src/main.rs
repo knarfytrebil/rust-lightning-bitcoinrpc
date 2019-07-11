@@ -4,11 +4,13 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate bytes;
 extern crate config;
+extern crate exit_future;
 extern crate futures;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;
 extern crate lightning_net_tokio;
+extern crate ln_manager;
 extern crate log;
 extern crate num_traits;
 extern crate rand;
@@ -18,7 +20,6 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
-extern crate ln_manager;
 
 #[macro_use]
 extern crate serde_derive;
@@ -30,11 +31,10 @@ mod ln_cmd;
 
 use ln_manager::LnManager;
 
-use std::mem;
 use std::env;
+use std::mem;
 
-use futures::future;
-use futures::future::Future;
+use exit_future::Exit;
 
 use ln_bridge::settings::Settings;
 
@@ -56,7 +56,7 @@ fn main() {
     let settings = Settings::new(setting_arg).unwrap();
     let ln_manager = LnManager::new(settings, executor.clone());
 
-    command_handler::run_command_board(ln_manager, executor);
+    // command_handler::run_command_board(ln_manager, executor);
 
-    rt.shutdown_on_idle().wait().unwrap();
+    // rt.shutdown_on_idle().wait().unwrap();
 }
