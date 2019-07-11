@@ -23,6 +23,7 @@ extern crate tokio_io;
 
 #[macro_use]
 extern crate serde_derive;
+
 #[macro_use]
 extern crate num_derive;
 
@@ -30,13 +31,14 @@ mod ln_bridge;
 mod ln_cmd;
 
 use ln_manager::LnManager;
+use ln_manager::executor::Larva;
+use futures::future;
+use futures::future::Future;
 
 use std::env;
 use std::mem;
 
-use exit_future::Exit;
-
-use ln_bridge::settings::Settings;
+use ln_manager::ln_bridge::settings::Settings;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
@@ -46,15 +48,35 @@ fn _check_usize_is_64() {
     }
 }
 
+#[derive(Clone)]
+struct Droid {}
+
+impl Droid {
+    fn new() -> Self {
+        Droid {}
+    }
+}
+
+impl Larva for Droid {
+    fn spawn_task(
+        &self,
+        task: impl Future<Item = (), Error = ()> + Send + 'static,
+    ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
+    {
+        Ok(())
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     // FIXME: Hard code setting argument
     let setting_arg = &args[1];
     println!("USE SETTING FILE - {:?}", setting_arg);
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    let executor = rt.executor();
     let settings = Settings::new(setting_arg).unwrap();
-    let ln_manager = LnManager::new(settings, executor.clone());
+
+    let (signal, exit) = exit_future::signal();
+    let droid = Droid::new();
+    let ln_manager = LnManager::new(settings, droid, exit);
 
     // command_handler::run_command_board(ln_manager, executor);
 
