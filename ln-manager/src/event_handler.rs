@@ -28,8 +28,36 @@ use ln_bridge::utils::*;
 use log::{info};
 use rpc_client::RPCClient;
 
-pub fn divide_rest_event(event: Event, us: Arc<EventHandler>) {
+pub fn divide_rest_event(
+    event: Event,
+    us: Arc<EventHandler>,
+    mut sender: mpsc::Sender<()>,
+    larva: impl Larva, exit: Exit
+) {
     match event {
+        Event::PaymentReceived { payment_hash, amt } => {
+						let images = us.payment_preimages.lock().unwrap();
+						if let Some(payment_preimage) = images.get(&payment_hash) {
+							  if us.channel_manager.claim_funds(payment_preimage.clone()) {
+								    info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
+							  } else {
+								    info!("Failed to claim money we were told we had?");
+							  }
+						} else {
+							  us.channel_manager.fail_htlc_backwards(&payment_hash);
+							  info!("Received payment but we didn't know the preimage :(");
+						}
+						let _ = sender.try_send(());
+				},
+        Event::PendingHTLCsForwardable { time_forwardable } => {
+						let us = us.clone();
+						let mut sender = sender.clone();
+						larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+							  us.channel_manager.process_pending_htlc_forwards();
+							  let _ = sender.try_send(());
+							  Ok(())
+						}).select(exit.clone()).then(|_| { Ok(()) })));
+				},
         Event::FundingBroadcastSafe { funding_txo, .. } => {
 						let mut txn = us.txn_to_broadcast.lock().unwrap();
 						let tx = txn.remove(&funding_txo).unwrap();
@@ -42,7 +70,6 @@ pub fn divide_rest_event(event: Event, us: Arc<EventHandler>) {
 				Event::PaymentFailed { payment_hash, rejected_by_dest } => {
 						info!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
 				},
-
 				Event::SpendableOutputs { mut outputs } => {
 						for output in outputs.drain(..) {
 							  match output {
@@ -152,30 +179,15 @@ impl EventHandler {
 							                      })
 						                    }));
 					              },
-                        Event::PaymentReceived { payment_hash, amt } => {
-						                let images = us.payment_preimages.lock().unwrap();
-						                if let Some(payment_preimage) = images.get(&payment_hash) {
-							                  if us.channel_manager.claim_funds(payment_preimage.clone()) {
-								                    info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
-							                  } else {
-								                    info!("Failed to claim money we were told we had?");
-							                  }
-						                } else {
-							                  us.channel_manager.fail_htlc_backwards(&payment_hash);
-							                  info!("Received payment but we didn't know the preimage :(");
-						                }
-						                let _ = self_sender.try_send(());
-				                },
-                        Event::PendingHTLCsForwardable { time_forwardable } => {
-						                let us = us.clone();
-						                let mut self_sender = self_sender.clone();
-						                larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
-							                  us.channel_manager.process_pending_htlc_forwards();
-							                  let _ = self_sender.try_send(());
-							                  Ok(())
-						                }).select(exit.clone()).then(|_| { Ok(()) })));
-				                },
-                        _ => { divide_rest_event(event, us.clone()) }
+                        _ => {
+                            divide_rest_event(
+                                event,
+                                us.clone(),
+                                self_sender.clone(),
+                                larva.clone(),
+                                exit.clone(),
+                            )
+                        }
 				            }
 			          }
 
