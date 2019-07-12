@@ -30,10 +30,10 @@ extern crate num_derive;
 mod ln_bridge;
 mod ln_cmd;
 
-use ln_manager::LnManager;
-use ln_manager::executor::Larva;
 use futures::future;
 use futures::future::Future;
+use ln_manager::executor::Larva;
+use ln_manager::LnManager;
 
 use std::env;
 use std::mem;
@@ -76,7 +76,7 @@ fn main() {
 
     let (signal, exit) = exit_future::signal();
     let droid = Droid::new();
-    let ln_manager = LnManager::new(settings, droid, exit);
+    let ln_manager = LnManager::new(settings, droid.clone(), exit.clone());
 
     // command_handler::run_command_board(ln_manager, executor);
 
