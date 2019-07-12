@@ -412,8 +412,8 @@ fn find_fork(
                   current_header,
                   Some((target_hash, target_header)),
                   rpc_client,
-                  larva.clone(),
-                  exit.clone()
+                  larva,
+                  exit,
                 ),
                 Err(_) => {
                   assert_eq!(target_hash, "");
@@ -422,8 +422,8 @@ fn find_fork(
                     current_header,
                     None,
                     rpc_client,
-                    larva.clone(),
-                    exit.clone(),
+                    larva,
+                    exit,
                   )
                 }
               }

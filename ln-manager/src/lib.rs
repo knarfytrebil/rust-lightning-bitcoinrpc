@@ -96,7 +96,7 @@ impl LnManager {
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
-            LnManager::get_network(rpc_client.clone(), larva.clone(), exit.clone()).unwrap();
+            LnManager::get_network(&rpc_client, &larva, exit.clone()).unwrap();
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -319,8 +319,8 @@ impl LnManager {
     }
 
     pub fn get_network(
-        rpc_client: Arc<RPCClient>,
-        larva: impl Larva,
+        rpc_client: &Arc<RPCClient>,
+        larva: &impl Larva,
         exit: Exit,
     ) -> Result<constants::Network, &'static str> {
         let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
