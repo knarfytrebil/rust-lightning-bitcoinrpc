@@ -52,7 +52,7 @@ pub fn divide_rest_event(
         Event::PendingHTLCsForwardable { time_forwardable } => {
 						let us = us.clone();
 						let mut sender = sender.clone();
-						larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+						let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							  us.channel_manager.process_pending_htlc_forwards();
 							  let _ = sender.try_send(());
 							  Ok(())
@@ -89,6 +89,97 @@ pub fn divide_rest_event(
 				},
         _ => { }
     }
+}
+
+fn handle_fund_tx(
+    mut self_sender: mpsc::Sender<()>,
+    &temporary_channel_id: &[u8; 32],
+    us: Arc<EventHandler>,
+    value: &[&str; 2]
+) -> impl Future<Item = (), Error = ()> {
+    us.rpc_client.make_rpc_call(
+        "createrawtransaction",
+        value,
+        false
+    ).and_then(move |tx_hex| {
+				us.rpc_client.make_rpc_call(
+            "fundrawtransaction",
+            &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
+            false
+        ).and_then(move |funded_tx| {
+						let changepos = funded_tx["changepos"].as_i64().unwrap();
+						assert!(changepos == 0 || changepos == 1);
+						us.rpc_client.make_rpc_call(
+                "signrawtransactionwithwallet",
+                &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
+                false
+            ).and_then(move |signed_tx| {
+								assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
+								let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
+								let outpoint = chain::transaction::OutPoint {
+										txid: tx.txid(),
+										index: if changepos == 0 { 1 } else { 0 },
+								};
+								us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
+								us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
+								let _ = self_sender.try_send(());
+								info!("Generated funding tx!");
+								Ok(())
+						})
+				})
+		})
+}
+
+fn handle_receiver(
+    us: Arc<EventHandler>,
+    mut self_sender: &mpsc::Sender<()>,
+    larva: &impl Larva,
+    exit: &Exit,
+) -> impl Future<Item = (), Error = ()> {
+    us.peer_manager.process_events();
+		let mut events = us.channel_manager.get_and_clear_pending_events();
+		events.append(&mut us.monitor.get_and_clear_pending_events());
+		for event in events {
+				match event {
+					  Event::FundingGenerationReady { temporary_channel_id, channel_value_satoshis, output_script, .. } => {
+						    let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], match us.network {
+							      constants::Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
+							      constants::Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
+							      constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
+						    }
+						    ).expect("LN funding tx should always be to a SegWit output").to_address();
+                return future::Either::A(
+                    handle_fund_tx(
+                        self_sender.clone(),
+                        &temporary_channel_id,
+                        us.clone(),
+                        &["[]", &format!(
+                            "{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0
+                        )])
+                );
+					  },
+            _ => {
+                divide_rest_event(
+                    event,
+                    us.clone(),
+                    self_sender.clone(),
+                    larva.clone(),
+                    exit.clone(),
+                )
+            }
+				}
+		}
+
+		let filename = format!("{}/manager_data", us.file_prefix);
+		let tmp_filename = filename.clone() + ".tmp";
+
+		{
+				let mut f = fs::File::create(&tmp_filename).unwrap();
+				us.channel_manager.write(&mut f).unwrap();
+		}
+		fs::rename(&tmp_filename, &filename).unwrap();
+
+		future::Either::B(future::result(Ok(())))
 }
 
 pub struct EventHandler {
@@ -128,79 +219,11 @@ impl EventHandler {
             payment_preimages,
         });
         let (sender, receiver) = mpsc::channel(2);
-        let mut self_sender = sender.clone();
+        let self_sender = sender.clone();
         let exit_event = exit.clone();
-        larva.clone().spawn_task(
+        let _ = larva.clone().spawn_task(
             receiver.for_each(move |_| {
-			          us.peer_manager.process_events();
-			          let mut events = us.channel_manager.get_and_clear_pending_events();
-			          events.append(&mut us.monitor.get_and_clear_pending_events());
-			          for event in events {
-				            match event {
-					              Event::FundingGenerationReady { temporary_channel_id, channel_value_satoshis, output_script, .. } => {
-						                let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], match us.network {
-							                  constants::Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
-							                  constants::Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
-							                  constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
-						                }
-						                ).expect("LN funding tx should always be to a SegWit output").to_address();
-						                let us = us.clone();
-						                let mut self_sender = self_sender.clone();
-						                return future::Either::A(
-                                us.rpc_client.make_rpc_call(
-                                    "createrawtransaction",
-                                    &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)],
-                                    false
-                                ).and_then(move |tx_hex| {
-							                      us.rpc_client.make_rpc_call(
-                                        "fundrawtransaction",
-                                        &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
-                                        false
-                                    ).and_then(move |funded_tx| {
-								                        let changepos = funded_tx["changepos"].as_i64().unwrap();
-								                        assert!(changepos == 0 || changepos == 1);
-								                        us.rpc_client.make_rpc_call(
-                                            "signrawtransactionwithwallet",
-                                            &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
-                                            false
-                                        ).and_then(move |signed_tx| {
-									                          assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
-									                          let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
-									                          let outpoint = chain::transaction::OutPoint {
-										                            txid: tx.txid(),
-										                            index: if changepos == 0 { 1 } else { 0 },
-									                          };
-									                          us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
-									                          us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
-									                          let _ = self_sender.try_send(());
-									                          info!("Generated funding tx!");
-									                          Ok(())
-								                        })
-							                      })
-						                    }));
-					              },
-                        _ => {
-                            divide_rest_event(
-                                event,
-                                us.clone(),
-                                self_sender.clone(),
-                                larva.clone(),
-                                exit.clone(),
-                            )
-                        }
-				            }
-			          }
-
-			          let filename = format!("{}/manager_data", us.file_prefix);
-			          let tmp_filename = filename.clone() + ".tmp";
-
-			          {
-				            let mut f = fs::File::create(&tmp_filename).unwrap();
-				            us.channel_manager.write(&mut f).unwrap();
-			          }
-			          fs::rename(&tmp_filename, &filename).unwrap();
-
-			          future::Either::B(future::result(Ok(())))
+			          handle_receiver(us.clone(), &self_sender, &larva, &exit)
 		        }).select(exit_event).then(|_| { Ok(()) })
         );
         sender

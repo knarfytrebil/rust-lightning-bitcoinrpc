@@ -88,7 +88,7 @@ pub struct LnManager {
 }
 
 impl LnManager {
-    pub fn new(settings: Settings, larva: impl Larva, exit: Exit) -> Self {
+    pub fn new(settings: Settings, larva: impl Larva + 'static, exit: Exit) -> Self {
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
