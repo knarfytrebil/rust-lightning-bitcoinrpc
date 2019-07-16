@@ -30,10 +30,8 @@ extern crate num_derive;
 mod ln_bridge;
 mod ln_cmd;
 
-use futures::future;
-use futures::future::Future;
-use ln_manager::executor::Larva;
 use ln_manager::LnManager;
+use ln_cmd::tasks::{Probe};
 
 use std::env;
 use std::mem;
@@ -48,25 +46,6 @@ fn _check_usize_is_64() {
     }
 }
 
-#[derive(Clone)]
-struct Droid {}
-
-impl Droid {
-    fn new() -> Self {
-        Droid {}
-    }
-}
-
-impl Larva for Droid {
-    fn spawn_task(
-        &self,
-        task: impl Future<Item = (), Error = ()> + Send + 'static,
-    ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
-    {
-        Ok(())
-    }
-}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     // FIXME: Hard code setting argument
@@ -75,8 +54,8 @@ fn main() {
     let settings = Settings::new(setting_arg).unwrap();
 
     let (signal, exit) = exit_future::signal();
-    let droid = Droid::new();
-    let ln_manager = LnManager::new(settings, droid.clone(), exit.clone());
+    let probe = Probe::new();
+    let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
 
     // command_handler::run_command_board(ln_manager, executor);
 
