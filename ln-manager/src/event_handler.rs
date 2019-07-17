@@ -131,7 +131,7 @@ fn handle_fund_tx(
 }
 
 fn handle_receiver(
-    us: Arc<EventHandler>,
+    us: &Arc<EventHandler>,
     mut self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
     exit: &Exit,
@@ -223,7 +223,7 @@ impl EventHandler {
         let exit_event = exit.clone();
         let _ = larva.clone().spawn_task(
             receiver.for_each(move |_| {
-			          handle_receiver(us.clone(), &self_sender, &larva, &exit)
+			          handle_receiver(&us, &self_sender, &larva, &exit)
 		        }).select(exit_event).then(|_| { Ok(()) })
         );
         sender
