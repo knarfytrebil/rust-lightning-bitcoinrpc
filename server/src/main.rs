@@ -51,6 +51,7 @@ fn main() {
     // FIXME: Hard code setting argument
     let setting_arg = &args[1];
     println!("USE SETTING FILE - {:?}", setting_arg);
+
     let settings = Settings::new(setting_arg).unwrap();
 
     let (signal, exit) = exit_future::signal();
