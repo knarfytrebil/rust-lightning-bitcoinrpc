@@ -1,4 +1,3 @@
-use futures::future;
 use futures::future::Future;
 use futures::{Async, Poll};
 use ln_manager::executor::Larva;
@@ -33,9 +32,17 @@ impl Future for Action {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        task: impl Future<Item = (), Error = ()> + Send + 'static,
+        mut task: impl Future<Item = (), Error = ()> + Send + 'static,
     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
     {
+        loop {
+            match task.poll().unwrap() {
+                Async::Ready(_) => {}
+                Async::NotReady => {
+                    break;
+                }
+            }
+        }
         Ok(())
     }
 }
