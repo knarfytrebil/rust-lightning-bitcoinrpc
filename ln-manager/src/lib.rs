@@ -22,22 +22,15 @@ extern crate tokio_io;
 #[macro_use]
 extern crate serde_derive;
 
-mod chain_monitor;
-mod channel_monitor;
-mod event_handler;
 pub mod executor;
 pub mod ln_bridge;
-mod rpc_client;
 
 use std::collections::HashMap;
 use std::fs;
-// use std::mem;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-// use std::vec::Vec;
 
 use futures::future;
-
 use futures::future::Future;
 use futures::sync::mpsc;
 use futures::Stream;
@@ -53,12 +46,11 @@ use lightning_net_tokio::{Connection, SocketDescriptor};
 use secp256k1::key::PublicKey;
 use secp256k1::{All, Secp256k1};
 
-use chain_monitor::{spawn_chain_monitor, ChainWatchInterfaceUtil, ChainBroadcaster, FeeEstimator};
-use channel_monitor::ChannelMonitor;
-use event_handler::EventHandler;
-use rpc_client::RPCClient;
-
+use ln_bridge::chain_monitor::{spawn_chain_monitor, ChainWatchInterfaceUtil, ChainBroadcaster, FeeEstimator};
+use ln_bridge::channel_monitor::ChannelMonitor;
 use ln_bridge::channel_manager::RestoreArgs as RestoreManagerArgs;
+use ln_bridge::event_handler::EventHandler;
+use ln_bridge::rpc_client::RPCClient;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;

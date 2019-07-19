@@ -1,4 +1,4 @@
-use rpc_client::*;
+use super::rpc_client::{RPCClient, GetHeaderResponse};
 
 use ln_bridge::utils::hex_to_vec;
 

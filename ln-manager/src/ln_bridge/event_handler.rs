@@ -5,7 +5,6 @@ use std::sync::{Arc, Mutex};
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
-use executor::Larva;
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -22,9 +21,10 @@ use lightning::util::ser::Writeable;
 
 use lightning_net_tokio::SocketDescriptor;
 
-use ln_bridge::utils::*;
+use ln_bridge::utils::{hex_to_vec, hex_str};
+use super::rpc_client::RPCClient;
+use executor::Larva;
 use log::{info};
-use rpc_client::RPCClient;
 
 pub fn divide_rest_event(
     event: Event,
