@@ -28,9 +28,9 @@ use rpc_client::RPCClient;
 
 pub fn divide_rest_event(
     event: Event,
-    us: Arc<EventHandler>,
+    us: &Arc<EventHandler>,
     mut sender: mpsc::Sender<()>,
-    larva: impl Larva,
+    larva: &impl Larva,
 ) {
     match event {
         Event::PaymentReceived { payment_hash, amt } => {
@@ -130,7 +130,7 @@ fn handle_fund_tx(
 
 fn handle_receiver(
     us: &Arc<EventHandler>,
-    mut self_sender: &mpsc::Sender<()>,
+    self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
 ) -> impl Future<Item = (), Error = ()> {
     us.peer_manager.process_events();
@@ -158,9 +158,9 @@ fn handle_receiver(
             _ => {
                 divide_rest_event(
                     event,
-                    us.clone(),
+                    &us,
                     self_sender.clone(),
-                    larva.clone(),
+                    larva,
                 )
             }
 				}
