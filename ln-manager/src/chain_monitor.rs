@@ -16,6 +16,7 @@ use futures::sync::mpsc;
 use futures::{Sink, Stream};
 
 use lightning::chain::chaininterface;
+pub use lightning::chain::chaininterface::{ChainWatchInterfaceUtil, ChainWatchInterface};
 use lightning::chain::chaininterface::ChainError;
 use lightning::util::logger::Logger;
 
@@ -123,26 +124,21 @@ impl chaininterface::FeeEstimator for FeeEstimator {
     }
 }
 
-
-pub struct ChainInterface<T> {
-    util: chaininterface::ChainWatchInterfaceUtil,
+pub struct ChainBroadcaster<T> {
     txn_to_broadcast: Mutex<HashMap<Sha256dHash, bitcoin::blockdata::transaction::Transaction>>,
     rpc_client: Arc<RPCClient>,
     larva: T,
 }
-impl<T> ChainInterface<T> {
+
+impl<T> ChainBroadcaster<T> {
     pub fn new(
         rpc_client: Arc<RPCClient>,
-        network: Network,
-        logger: Arc<Logger>,
         larva: T,
     ) -> Self {
-        ChainInterface {
-            util: chaininterface::ChainWatchInterfaceUtil::new(network, logger),
+        Self {
             txn_to_broadcast: Mutex::new(HashMap::new()),
             rpc_client,
             larva,
-            // exit
         }
     }
 
@@ -162,45 +158,8 @@ impl<T> ChainInterface<T> {
         future::join_all(send_futures).then(|_| -> Result<(), ()> { Ok(()) })
     }
 }
-impl<T: Sync + Send> chaininterface::ChainWatchInterface for ChainInterface<T> {
-    fn install_watch_tx(
-        &self,
-        txid: &bitcoin_hashes::sha256d::Hash,
-        script: &bitcoin::blockdata::script::Script,
-    ) {
-        self.util.install_watch_tx(txid, script);
-    }
 
-    fn install_watch_outpoint(
-        &self,
-        outpoint: (bitcoin_hashes::sha256d::Hash, u32),
-        script_pubkey: &bitcoin::blockdata::script::Script,
-    ) {
-        self.util.install_watch_outpoint(outpoint, script_pubkey);
-    }
-
-    fn watch_all_txn(&self) {
-        self.util.watch_all_txn();
-    }
-
-    fn register_listener(
-        &self,
-        listener: std::sync::Weak<lightning::chain::chaininterface::ChainListener + 'static>,
-    ) {
-        self.util.register_listener(listener);
-    }
-
-    fn get_chain_utxo(
-        &self,
-        genesis_hash: bitcoin_hashes::sha256d::Hash,
-        unspent_tx_output_identifier: u64,
-    ) -> Result<(bitcoin::blockdata::script::Script, u64), ChainError> {
-        self.util
-            .get_chain_utxo(genesis_hash, unspent_tx_output_identifier)
-    }
-}
-
-impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainInterface<T> {
+impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroadcaster<T> {
     fn broadcast_transaction(&self, tx: &bitcoin::blockdata::transaction::Transaction) {
         self.txn_to_broadcast
             .lock()
@@ -422,7 +381,8 @@ fn find_fork(
 pub fn spawn_chain_monitor(
     fee_estimator: Arc<FeeEstimator>,
     rpc_client: Arc<RPCClient>,
-    chain_monitor: Arc<ChainInterface<impl Larva>>,
+    chain_watcher: Arc<ChainWatchInterfaceUtil>,
+    chain_broadcaster: Arc<ChainBroadcaster<impl Larva>>,
     event_notify: mpsc::Sender<()>,
     larva_chain: impl Larva,
 ) {
@@ -438,7 +398,8 @@ pub fn spawn_chain_monitor(
                 let cur_block = cur_block.clone();
                 let fee_estimator = fee_estimator.clone();
                 let rpc_client = rpc_client.clone();
-                let chain_monitor = chain_monitor.clone();
+                let chain_watcher = chain_watcher.clone();
+                let chain_broadcaster = chain_broadcaster.clone();
                 let mut event_notify = event_notify.clone();
                 let larva = larva_chain.clone();
                 rpc_client
@@ -469,14 +430,14 @@ pub fn spawn_chain_monitor(
                             for event in events.iter().rev() {
                                 if let &ForkStep::DisconnectBlock(ref header) = &event {
                                     info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
-                                    chain_monitor.util.block_disconnected(header);
+                                    chain_watcher.block_disconnected(header);
                                 }
                             }
                             let mut connect_futures = Vec::with_capacity(events.len());
                             for event in events.iter().rev() {
                                 if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
                                     let block_height = *height;
-                                    let chain_monitor = chain_monitor.clone();
+                                    let chain_watcher = chain_watcher.clone();
                                     connect_futures.push(
                                         rpc_client
                                             .make_rpc_call(
@@ -496,7 +457,7 @@ pub fn spawn_chain_monitor(
                                                     "Connecting block {}",
                                                     block.bitcoin_hash().to_hex()
                                                 );
-                                                chain_monitor.util.block_connected_with_filtering(
+                                                chain_watcher.block_connected_with_filtering(
                                                     &block,
                                                     block_height,
                                                 );
@@ -513,7 +474,7 @@ pub fn spawn_chain_monitor(
                                     let _ = event_notify.try_send(());
                                     Ok(())
                                 })
-                                .then(move |_: Result<(), ()>| chain_monitor.rebroadcast_txn())
+                                .then(move |_: Result<(), ()>| chain_broadcaster.rebroadcast_txn())
                                 .then(|_| Ok(()))
                         }))
                     })

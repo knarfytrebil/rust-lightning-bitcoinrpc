@@ -58,7 +58,7 @@ use lightning_net_tokio::{Connection, SocketDescriptor};
 use secp256k1::key::PublicKey;
 use secp256k1::{All, Secp256k1};
 
-use chain_monitor::{spawn_chain_monitor, ChainInterface, FeeEstimator};
+use chain_monitor::{spawn_chain_monitor, ChainWatchInterfaceUtil, ChainBroadcaster, FeeEstimator};
 use channel_monitor::ChannelMonitor;
 use event_handler::EventHandler;
 use rpc_client::RPCClient;
@@ -151,10 +151,12 @@ impl LnManager {
         /* <== For debug */
 
         // let (import_key_1, import_key_2) = ln_bridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
-        let chain_monitor = Arc::new(ChainInterface::new(
-            rpc_client.clone(),
+        let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(
             network,
             logger.clone(),
+        ));
+        let chain_broadcaster = Arc::new(ChainBroadcaster::new(
+            rpc_client.clone(),
             larva.clone(),
         ));
 
@@ -204,8 +206,8 @@ impl LnManager {
 
         let monitor = Arc::new(ChannelMonitor {
             monitor: channelmonitor::SimpleManyChannelMonitor::new(
-                chain_monitor.clone(),
-                chain_monitor.clone(),
+                chain_watcher.clone(),
+                chain_broadcaster.clone(),
                 logger.clone(),
                 fee_estimator.clone(),
             ),
@@ -218,15 +220,15 @@ impl LnManager {
             network.clone(),
             fee_estimator.clone(),
             monitor.clone(),
-            chain_monitor.clone(), // chain watcher
-            chain_monitor.clone(), // chain broadcaster
+            chain_watcher.clone(), // chain watcher
+            chain_broadcaster.clone(), // chain broadcaster
             logger.clone(),
             keys.clone(),
         ));
 
         let router = Arc::new(router::Router::new(
             PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()),
-            chain_monitor.clone(), // chain watch
+            chain_watcher.clone(), // chain watch
             logger.clone(),
         ));
 
@@ -248,7 +250,7 @@ impl LnManager {
             peer_manager.clone(),
             monitor.monitor.clone(),
             channel_manager.clone(),
-            chain_monitor.clone(), // chain broadcaster
+            chain_broadcaster.clone(), // chain broadcaster
             payment_preimages.clone(),
             larva.clone(),
         );
@@ -277,7 +279,8 @@ impl LnManager {
         spawn_chain_monitor(
             fee_estimator,
             rpc_client.clone(),
-            chain_monitor,
+            chain_watcher,
+            chain_broadcaster,
             event_notify.clone(),
             larva.clone(),
         );
