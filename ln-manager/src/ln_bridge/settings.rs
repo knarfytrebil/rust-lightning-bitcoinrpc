@@ -1,16 +1,26 @@
-use config::{ConfigError, Config, File}; // clap-rs
+use config::{Config, ConfigError, File}; // clap-rs
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
+pub struct Lightning {
+    pub lndata: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Bitcoind {
+    pub port: u16,
+    pub rpc_url: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Settings {
-  pub port: u16,
-  pub rpc_url: String,
-  pub lndata: String,
+    pub lightning: Lightning,
+    pub bitcoind: Bitcoind
 }
 
 impl Settings {
-  pub fn new(arg: &String) -> Result<Self, ConfigError> {
-    let mut settings = Config::new();
-    settings.merge(File::with_name(arg)).unwrap();
-    settings.try_into()
-  }
+    pub fn new(arg: &String) -> Result<Self, ConfigError> {
+        let mut settings = Config::new();
+        settings.merge(File::with_name(arg)).unwrap();
+        settings.try_into()
+    }
 }

@@ -87,7 +87,7 @@ pub struct LnManager {
 impl LnManager {
     pub fn new(settings: Settings, larva: impl Larva) -> Self {
         let logger = Arc::new(LogPrinter {});
-        let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
+        let rpc_client = Arc::new(RPCClient::new(settings.bitcoind.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
         let fee_estimator = Arc::new(FeeEstimator::new());
 
@@ -100,7 +100,7 @@ impl LnManager {
             panic!("LOL, you're insane");
         }
 
-        let data_path = settings.lndata.clone();
+        let data_path = settings.lightning.lndata.clone();
         if !fs::metadata(&data_path).unwrap().is_dir() {
             panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
         }
@@ -254,7 +254,7 @@ impl LnManager {
         );
 
         let listener =
-            tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.port).parse().unwrap())
+            tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.bitcoind.port).parse().unwrap())
                 .unwrap();
 
         let peer_manager_listener = peer_manager.clone();

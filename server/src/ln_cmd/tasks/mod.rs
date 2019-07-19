@@ -1,4 +1,4 @@
-pub mod ln_mgr;
+pub mod node;
 
 use futures::future::Future;
 use futures::{Async, Poll};
@@ -65,7 +65,7 @@ impl Action {
 
     pub fn start(&self) {
         println!("start");
-        (self.task_gen)()();
+        let _ = (self.task_gen)()();
     }
 }
 

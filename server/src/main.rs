@@ -56,7 +56,8 @@ fn main() {
 
     let settings = Settings::new(setting_arg).unwrap();
 
-    ln_node::run(settings);
+    println!("{:?}", settings);
+    // ln_node::run(settings);
 
     // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
 
