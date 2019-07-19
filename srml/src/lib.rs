@@ -29,11 +29,12 @@ use substrate_service::{SpawnTaskHandle, Executor};
 
 #[derive(Clone)]
 struct Drone {
-  spawn_task_handle: SpawnTaskHandle,
+    spawn_task_handle: SpawnTaskHandle,
+    exit: Exit
 }
-impl<T> Drone<T> {
-  fn new(spawn_task_handle: T) -> Self {
-    Self { spawn_task_handle }
+impl Drone {
+  fn new(spawn_task_handle: SpawnTaskHandle, exit: Exit) -> Self {
+    Self { spawn_task_handle, exit }
   }
 }
 impl Larva for Drone<T> {
@@ -41,7 +42,7 @@ impl Larva for Drone<T> {
     &self,
     task: impl Future<Item = (), Error = ()> + Send + 'static
   ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>> {
-    self.spawn_task_handle.execute(Box::new(task))
+    self.spawn_task_handle.execute(Box::new(task.select(exit).then(|_| Ok(()))))
   }
 }
 
@@ -63,8 +64,8 @@ impl<C, Block> LnBridge<C, Block> where
   ) -> Self {
     let settings = Settings::new().unwrap();
     // let client = service.client();
-    let drone = Drone::new(spawn_task_handle);
-    let ln_manager = Arc::new(LnManager::new(settings, drone, exit));
+    let drone = Drone::new(spawn_task_handle, exit);
+    let ln_manager = Arc::new(LnManager::new(settings, drone));
     Self {
       client,
       ln_manager,
