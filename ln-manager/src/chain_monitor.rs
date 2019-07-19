@@ -196,7 +196,7 @@ fn find_fork_step(
     } else if target_header_opt.is_none()
         || target_header_opt.as_ref().unwrap().1.height < current_header.height
     {
-        larva.clone().spawn_task(
+        let _ = larva.clone().spawn_task(
             steps_tx
                 .send(ForkStep::ConnectBlock((
                     current_header.previousblockhash.clone(),
@@ -227,7 +227,7 @@ fn find_fork_step(
     } else {
         let target_header = target_header_opt.unwrap().1;
         // Everything below needs to disconnect target, so go ahead and do that now
-        larva.clone().spawn_task(
+        let _ = larva.clone().spawn_task(
             steps_tx
                 .send(ForkStep::DisconnectBlock(target_header.to_block_header()))
                 .then(move |send_res| {
@@ -305,8 +305,7 @@ fn find_fork_step(
                                                 // Caller droped the receiver, we should give up now
                                                 future::Either::B(future::result(Ok(())))
                                             }
-                                        }),
-                                ))
+                                        })))
                             },
                         )
                     } else {
@@ -332,49 +331,46 @@ fn find_fork(
         return;
     }
 
-    larva.clone().spawn_task(
-        rpc_client
-            .get_header(&current_hash)
-            .then(move |current_resp| {
-                let current_header = current_resp.unwrap();
-                assert!(steps_tx
-                        .start_send(ForkStep::ConnectBlock((
-                            current_hash,
-                            current_header.height
-                        )))
-                        .unwrap()
-                        .is_ready());
+    let _ = larva.clone().spawn_task(rpc_client.get_header(&current_hash).then(move |current_resp| {
+        let current_header = current_resp.unwrap();
+        assert!(steps_tx
+                .start_send(ForkStep::ConnectBlock((
+                    current_hash,
+                    current_header.height
+                )))
+                .unwrap()
+                .is_ready());
 
-                if current_header.previousblockhash == target_hash || current_header.height == 1 {
-                    // Fastpath one-new-block-connected or reached block 1
-                    future::Either::A(future::result(Ok(())))
-                } else {
-                    future::Either::B(rpc_client.get_header(&target_hash).then(
-                        move |target_resp| {
-                            match target_resp {
-                                Ok(target_header) => find_fork_step(
-                                    steps_tx,
-                                    current_header,
-                                    Some((target_hash, target_header)),
-                                    rpc_client,
-                                    larva,
-                                ),
-                                Err(_) => {
-                                    assert_eq!(target_hash, "");
-                                    find_fork_step(
-                                        steps_tx,
-                                        current_header,
-                                        None,
-                                        rpc_client,
-                                        larva,
-                                    )
-                                }
-                            }
-                            Ok(())
-                        },
-                    ))
-                }
-            }),
+        if current_header.previousblockhash == target_hash || current_header.height == 1 {
+            // Fastpath one-new-block-connected or reached block 1
+            future::Either::A(future::result(Ok(())))
+        } else {
+            future::Either::B(rpc_client.get_header(&target_hash).then(
+                move |target_resp| {
+                    match target_resp {
+                        Ok(target_header) => find_fork_step(
+                            steps_tx,
+                            current_header,
+                            Some((target_hash, target_header)),
+                            rpc_client,
+                            larva,
+                        ),
+                        Err(_) => {
+                            assert_eq!(target_hash, "");
+                            find_fork_step(
+                                steps_tx,
+                                current_header,
+                                None,
+                                rpc_client,
+                                larva,
+                            )
+                        }
+                    }
+                    Ok(())
+                },
+            ))
+        }
+    }),
     );
 }
 
@@ -384,15 +380,15 @@ pub fn spawn_chain_monitor(
     chain_watcher: Arc<ChainWatchInterfaceUtil>,
     chain_broadcaster: Arc<ChainBroadcaster<impl Larva>>,
     event_notify: mpsc::Sender<()>,
-    larva_chain: impl Larva,
+    larva: impl Larva,
 ) {
-    larva_chain.clone().spawn_task(FeeEstimator::update_values(
+    let _ = larva.clone().spawn_task(FeeEstimator::update_values(
         fee_estimator.clone(),
         &rpc_client,
     ));
 
     let cur_block = Arc::new(Mutex::new(String::from("")));
-    larva_chain.clone().spawn_task(
+    let _ = larva.clone().spawn_task(
         tokio::timer::Interval::new(Instant::now(), Duration::from_secs(1))
             .for_each(move |_| {
                 let cur_block = cur_block.clone();
@@ -401,7 +397,7 @@ pub fn spawn_chain_monitor(
                 let chain_watcher = chain_watcher.clone();
                 let chain_broadcaster = chain_broadcaster.clone();
                 let mut event_notify = event_notify.clone();
-                let larva = larva_chain.clone();
+                let larva = larva.clone();
                 rpc_client
                     .make_rpc_call("getblockchaininfo", &[], false)
                     .and_then(move |v| {

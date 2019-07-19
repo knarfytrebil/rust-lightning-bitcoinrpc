@@ -243,6 +243,7 @@ impl LnManager {
 
         let payment_preimages = Arc::new(Mutex::new(HashMap::new()));
 
+        // clone for move (handle receiver)
         let event_notify = EventHandler::setup(
             network,
             data_path,

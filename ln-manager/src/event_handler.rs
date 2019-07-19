@@ -113,7 +113,8 @@ fn handle_fund_tx(
                 false
             ).and_then(move |signed_tx| {
 								assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
-								let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
+								let tx: blockdata::transaction::Transaction =
+                    encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
 								let outpoint = chain::transaction::OutPoint {
 										txid: tx.txid(),
 										index: if changepos == 0 { 1 } else { 0 },
@@ -217,7 +218,11 @@ impl EventHandler {
         let self_sender = sender.clone();
         let _ = larva.clone().spawn_task(
             receiver.for_each(move |_| {
-			          handle_receiver(&us, &self_sender, &larva)
+			          handle_receiver(
+                    &us,
+                    &self_sender,
+                    &larva
+                )
 		        })
         );
         sender
