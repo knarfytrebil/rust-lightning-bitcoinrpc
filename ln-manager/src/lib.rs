@@ -244,7 +244,7 @@ impl LnManager {
         );
 
         let listener =
-            tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.bitcoind.port).parse().unwrap())
+            tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
                 .unwrap();
 
         let peer_manager_listener = peer_manager.clone();
