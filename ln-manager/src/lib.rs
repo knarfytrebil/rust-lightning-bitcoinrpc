@@ -88,7 +88,7 @@ pub struct LnManager {
 }
 
 impl LnManager {
-    pub fn new(settings: Settings, larva: impl Larva, exit: Exit) -> Self {
+    pub fn new(settings: Settings, larva: impl Larva + 'static, exit: Exit) -> Self {
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
@@ -96,7 +96,7 @@ impl LnManager {
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
-            LnManager::get_network(rpc_client.clone(), larva.clone(), exit.clone()).unwrap();
+            LnManager::get_network(&rpc_client, &larva, exit.clone()).unwrap();
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -319,8 +319,8 @@ impl LnManager {
     }
 
     pub fn get_network(
-        rpc_client: Arc<RPCClient>,
-        larva: impl Larva,
+        rpc_client: &Arc<RPCClient>,
+        larva: &impl Larva,
         exit: Exit,
     ) -> Result<constants::Network, &'static str> {
         let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();

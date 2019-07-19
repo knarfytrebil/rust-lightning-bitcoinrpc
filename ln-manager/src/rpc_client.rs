@@ -170,7 +170,7 @@ impl RPCClient {
                                     info!("Failed to parse RPC server response!");
                                     return future::err(());
                                 }
-                            }),
+                            })
                     )
                 }
             })
