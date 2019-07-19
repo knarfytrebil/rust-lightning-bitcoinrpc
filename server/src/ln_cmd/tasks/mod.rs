@@ -86,7 +86,7 @@ impl Future for Action {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        mut task: impl Future<Item = (), Error = ()> + Send + 'static,
+        mut task: impl Future<Item = (), Error = ()> + Send,
     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
     {
         match self.async {
