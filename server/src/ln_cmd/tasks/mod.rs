@@ -1,13 +1,12 @@
+pub mod ln_mgr;
+
 use futures::future::Future;
 use futures::{Async, Poll};
 use ln_manager::executor::Larva;
 use std::thread;
 
-pub type TaskFn = Fn() -> Result<(), String>;
-pub type TaskGen = fn() -> Box<TaskFn>;
-
 /* Task Execution Example */
-// 
+//
 // use ln_cmd::tasks::{Probe, ProbT, TaskFn, TaskGen, Action};
 //
 // let async_exec = Probe::new(ProbT::NonBlocking);
@@ -29,10 +28,13 @@ pub type TaskGen = fn() -> Box<TaskFn>;
 //
 /* End of Example */
 
+pub type TaskFn = Fn() -> Result<(), String>;
+pub type TaskGen = fn() -> Box<TaskFn>;
+
 #[derive(Clone)]
 pub enum ProbT {
     Blocking,
-    NonBlocking  
+    NonBlocking,
 }
 
 #[derive(Clone)]

@@ -4,7 +4,6 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate bytes;
 extern crate config;
-extern crate exit_future;
 extern crate futures;
 extern crate hyper;
 extern crate lightning;

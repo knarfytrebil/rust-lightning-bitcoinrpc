@@ -29,14 +29,14 @@ extern crate num_derive;
 
 mod ln_bridge;
 mod ln_cmd;
-
-use ln_manager::LnManager;
-use ln_manager::executor::Larva;
+mod ln_node;
 
 use std::env;
 use std::mem;
 
+use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings;
+use ln_manager::LnManager;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
@@ -46,15 +46,17 @@ fn _check_usize_is_64() {
     }
 }
 
-
-
 fn main() {
     let args: Vec<String> = env::args().collect();
+
     // FIXME: Hard code setting argument
     let setting_arg = &args[1];
+
     println!("USE SETTING FILE - {:?}", setting_arg);
 
     let settings = Settings::new(setting_arg).unwrap();
+
+    ln_node::run();
 
     // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
 
