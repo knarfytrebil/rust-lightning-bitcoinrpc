@@ -31,12 +31,10 @@ mod ln_bridge;
 mod ln_cmd;
 
 use ln_manager::LnManager;
-use ln_cmd::tasks::{Probe, TaskFn, TaskGen, Action};
 use ln_manager::executor::Larva;
 
 use std::env;
 use std::mem;
-use std::{thread, time};
 
 use ln_manager::ln_bridge::settings::Settings;
 
@@ -48,16 +46,7 @@ fn _check_usize_is_64() {
     }
 }
 
-fn test_task() -> Result<(), String> {
-    println!("hello, test");
-    let dur = time::Duration::from_millis(100);
-    thread::sleep(dur);
-    Ok(())
-}
 
-fn test_gen() -> Box<TaskFn> {
-    Box::new(test_task)
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -67,17 +56,7 @@ fn main() {
 
     let settings = Settings::new(setting_arg).unwrap();
 
-    let probe = Probe::new();
-
-    let test_action: Action = Action::new(test_gen, false);
-
-
-    probe.spawn_task(test_action);
-
-    let dur = time::Duration::from_millis(10000);
-    thread::sleep(dur);
     // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
-    
 
     // command_handler::run_command_board(ln_manager, executor);
 
