@@ -1,13 +1,8 @@
 use std::fs;
 
-use secp256k1::{Secp256k1, All};
-
-use bitcoin::network::constants::Network;
-use bitcoin::util::bip32;
 use lightning::util::ser::Writer;
 
 use rand::{thread_rng, Rng};
-// use super::{Restorable};
 
 // pub struct Key {
 //   seed: [u8; 32]

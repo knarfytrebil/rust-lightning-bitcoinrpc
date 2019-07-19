@@ -1,5 +1,4 @@
-use lightning::util::logger::{Logger, Level, Record};
-use log::{info, error};
+use lightning::util::logger::{Logger, Record};
 
 pub struct LogPrinter {
   // pub level: Level,

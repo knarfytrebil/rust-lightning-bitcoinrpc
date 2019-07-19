@@ -21,8 +21,6 @@ extern crate tokio_io;
 
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate num_derive;
 
 mod chain_monitor;
 mod channel_monitor;
@@ -30,8 +28,6 @@ mod event_handler;
 pub mod executor;
 pub mod ln_bridge;
 mod rpc_client;
-
-use std::mem;
 
 use std::collections::HashMap;
 use std::fs;
@@ -41,7 +37,6 @@ use std::time::{Duration, Instant};
 // use std::vec::Vec;
 
 use futures::future;
-use futures::future::Executor;
 
 use futures::future::Future;
 use futures::sync::mpsc;
@@ -67,7 +62,7 @@ use ln_bridge::channel_manager::RestoreArgs as RestoreManagerArgs;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;
-use log::{error, info};
+use log::{info};
 
 use executor::Larva;
 
@@ -311,10 +306,10 @@ impl LnManager {
     }
 
     pub fn get_network(
-        rpc_client: &Arc<RPCClient>,
-        larva: &impl Larva,
+        _rpc_client: &Arc<RPCClient>,
+        _larva: &impl Larva,
     ) -> Result<constants::Network, &'static str> {
-        let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        let _thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
         // Blocked Here
         // thread_rt.block_on(
         //     rpc_client

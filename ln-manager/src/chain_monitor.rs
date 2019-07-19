@@ -3,7 +3,6 @@ use rpc_client::*;
 use ln_bridge::utils::hex_to_vec;
 
 use bitcoin;
-use lightning;
 use serde_json;
 use tokio;
 
@@ -17,16 +16,12 @@ use futures::{Sink, Stream};
 
 use lightning::chain::chaininterface;
 pub use lightning::chain::chaininterface::{ChainWatchInterfaceUtil, ChainWatchInterface};
-use lightning::chain::chaininterface::ChainError;
-use lightning::util::logger::Logger;
 
 use bitcoin::blockdata::block::Block;
 use bitcoin::consensus::encode;
-use bitcoin::network::constants::Network;
 use bitcoin::util::hash::BitcoinHash;
 
-use log::{info};
-use std;
+use log::info;
 use std::cmp;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -166,7 +161,7 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
             .unwrap()
             .insert(tx.txid(), tx.clone());
         let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-        self.larva.spawn_task(
+        let _ = self.larva.spawn_task(
             self.rpc_client
                 .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
                 .then(|_| Ok(())),

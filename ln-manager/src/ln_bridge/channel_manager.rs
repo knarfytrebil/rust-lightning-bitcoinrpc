@@ -58,7 +58,7 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
 		config.channel_options.announced_channel = ANNOUNCE_CHANNELS;
 
     if let Ok(mut f) = fs::File::open(args.data_path + "/manager_data") {
-      let (last_block_hash, manager) = {
+      let (_last_block_hash, manager) = {
         let mut monitors_refs = HashMap::new();
         for (outpoint, monitor) in args.monitors_loaded.iter() {
           monitors_refs.insert(*outpoint, monitor);
@@ -88,7 +88,7 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
       args.chain_watcher.register_listener(Arc::downgrade(&manager_as_listener));
       manager
     } else {
-      if(!args.monitors_loaded.is_empty()) {
+      if !args.monitors_loaded.is_empty() {
         panic!("Found some channel monitors but no channel state!");
       }
       ChannelManager::new(

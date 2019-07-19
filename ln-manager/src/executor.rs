@@ -1,5 +1,4 @@
 use futures::future::Future;
-use futures::Stream;
 
 pub trait Larva: Clone + Sized + Send + Sync + 'static {
     fn spawn_task(
