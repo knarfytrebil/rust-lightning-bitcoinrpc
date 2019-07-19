@@ -41,8 +41,6 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 // use std::vec::Vec;
 
-// use substrate_service::{SpawnTaskHandle, Executor};
-use exit_future::Exit;
 use futures::future;
 use futures::future::Executor;
 
@@ -88,7 +86,7 @@ pub struct LnManager {
 }
 
 impl LnManager {
-    pub fn new(settings: Settings, larva: impl Larva + 'static, exit: Exit) -> Self {
+    pub fn new(settings: Settings, larva: impl Larva) -> Self {
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
@@ -96,7 +94,7 @@ impl LnManager {
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
-            LnManager::get_network(&rpc_client, &larva, exit.clone()).unwrap();
+            LnManager::get_network(&rpc_client, &larva).unwrap();
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -159,7 +157,6 @@ impl LnManager {
             network,
             logger.clone(),
             larva.clone(),
-            exit.clone(),
         ));
 
         let _ = larva.clone().spawn_task(
@@ -181,8 +178,6 @@ impl LnManager {
                     false,
                 )
                 .then(|_| Ok(()))
-                .select(exit.clone())
-                .then(|_| Ok(())),
         );
 
         let _ = larva.clone().spawn_task(
@@ -204,8 +199,6 @@ impl LnManager {
                     false,
                 )
                 .then(|_| Ok(()))
-                .select(exit.clone())
-                .then(|_| Ok(())),
         );
 
         let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
@@ -259,7 +252,6 @@ impl LnManager {
             chain_monitor.clone(), // chain broadcaster
             payment_preimages.clone(),
             larva.clone(),
-            exit.clone(),
         );
 
         let listener =
@@ -289,7 +281,6 @@ impl LnManager {
             chain_monitor,
             event_notify.clone(),
             larva.clone(),
-            exit.clone(),
         );
 
         let _ = larva.clone().spawn_task(Box::new(
@@ -299,8 +290,6 @@ impl LnManager {
                     Ok(())
                 })
                 .map_err(|_| ())
-                .select(exit.clone())
-                .then(|_| Ok(())),
         ));
 
         Self {
@@ -321,7 +310,6 @@ impl LnManager {
     pub fn get_network(
         rpc_client: &Arc<RPCClient>,
         larva: &impl Larva,
-        exit: Exit,
     ) -> Result<constants::Network, &'static str> {
         let thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
         // Blocked Here
