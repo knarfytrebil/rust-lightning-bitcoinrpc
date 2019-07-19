@@ -25,18 +25,18 @@ use lnbridge::settings::Settings;
 
 use sr_primitives::traits::{self, ProvideRuntimeApi};
 pub use ln_primitives::LnApi;
-use substrate_service::Executor;
+use substrate_service::{SpawnTaskHandle, Executor};
 
 #[derive(Clone)]
-struct Drone<T> {
-  spawn_task_handle: T,
+struct Drone {
+  spawn_task_handle: SpawnTaskHandle,
 }
 impl<T> Drone<T> {
   fn new(spawn_task_handle: T) -> Self {
     Self { spawn_task_handle }
   }
 }
-impl<T: Executor<Box<dyn Future<Item = (), Error = ()> + Send>> + Sync + Send + Clone + 'static> Larva for Drone<T> {
+impl Larva for Drone<T> {
   fn spawn_task(
     &self,
     task: impl Future<Item = (), Error = ()> + Send + 'static

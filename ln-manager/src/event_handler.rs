@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
 
-use exit_future::Exit;
-
 use future;
 use futures::sync::mpsc;
 use futures::{Future, Stream};
@@ -32,7 +30,7 @@ pub fn divide_rest_event(
     event: Event,
     us: Arc<EventHandler>,
     mut sender: mpsc::Sender<()>,
-    larva: impl Larva, exit: Exit
+    larva: impl Larva,
 ) {
     match event {
         Event::PaymentReceived { payment_hash, amt } => {
@@ -56,7 +54,7 @@ pub fn divide_rest_event(
 							  us.channel_manager.process_pending_htlc_forwards();
 							  let _ = sender.try_send(());
 							  Ok(())
-						}).select(exit.clone()).then(|_| { Ok(()) })));
+						})));
 				},
         Event::FundingBroadcastSafe { funding_txo, .. } => {
 						let mut txn = us.txn_to_broadcast.lock().unwrap();
@@ -134,7 +132,6 @@ fn handle_receiver(
     us: &Arc<EventHandler>,
     mut self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
-    exit: &Exit,
 ) -> impl Future<Item = (), Error = ()> {
     us.peer_manager.process_events();
 		let mut events = us.channel_manager.get_and_clear_pending_events();
@@ -164,7 +161,6 @@ fn handle_receiver(
                     us.clone(),
                     self_sender.clone(),
                     larva.clone(),
-                    exit.clone(),
                 )
             }
 				}
@@ -205,7 +201,6 @@ impl EventHandler {
         broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
         payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
         larva: impl Larva,
-        exit: Exit
     ) -> mpsc::Sender<()> {
         let us = Arc::new(Self {
             network,
@@ -220,11 +215,10 @@ impl EventHandler {
         });
         let (sender, receiver) = mpsc::channel(2);
         let self_sender = sender.clone();
-        let exit_event = exit.clone();
         let _ = larva.clone().spawn_task(
             receiver.for_each(move |_| {
-			          handle_receiver(&us, &self_sender, &larva, &exit)
-		        }).select(exit_event).then(|_| { Ok(()) })
+			          handle_receiver(&us, &self_sender, &larva)
+		        })
         );
         sender
     }
