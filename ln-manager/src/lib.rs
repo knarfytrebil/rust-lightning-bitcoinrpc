@@ -138,14 +138,8 @@ impl LnManager {
         /* <== For debug */
 
         // let (import_key_1, import_key_2) = ln_bridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
-        let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(
-            network,
-            logger.clone(),
-        ));
-        let chain_broadcaster = Arc::new(ChainBroadcaster::new(
-            rpc_client.clone(),
-            larva.clone(),
-        ));
+        let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(network, logger.clone()));
+        let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
         let _ = larva.clone().spawn_task(
             rpc_client
@@ -207,8 +201,8 @@ impl LnManager {
             network.clone(),
             fee_estimator.clone(),
             monitor.clone(),
-            chain_watcher.clone(), // chain watcher
-            chain_broadcaster.clone(), // chain broadcaster
+            chain_watcher.clone(),
+            chain_broadcaster.clone(),
             logger.clone(),
             keys.clone(),
         ));
