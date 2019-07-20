@@ -1,7 +1,7 @@
 [lightning]
 lndata = "ln/data_1"
+port = 9735
 
 [bitcoind]
-port = 9735
 rpc_url = "admin1:123@127.0.0.1:19001"
 
