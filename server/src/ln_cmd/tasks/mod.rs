@@ -4,6 +4,10 @@ pub mod udp_srv;
 use futures::future::Future;
 use futures::{Async, Poll};
 use ln_manager::executor::Larva;
+
+use ln_manager::ln_bridge::settings::Settings as MgrSettings;
+use ln_node::settings::Settings as NodeSettings;
+
 use std::thread;
 
 /* Task Execution Example */
@@ -29,13 +33,19 @@ use std::thread;
 //
 /* End of Example */
 
-pub type TaskFn = Fn() -> Result<(), String>;
+pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
 
 #[derive(Clone)]
 pub enum ProbT {
     Blocking,
     NonBlocking,
+}
+
+#[derive(Clone, Debug)]
+pub enum Arg {
+    MgrConf(MgrSettings),
+    NodeConf(NodeSettings),
 }
 
 #[derive(Clone)]
@@ -53,20 +63,23 @@ pub struct Action {
     done: bool,
     started: bool,
     task_gen: TaskGen,
+    args: Vec<Arg>
 }
 
 impl Action {
-    pub fn new(task_gen: TaskGen, done: bool) -> Self {
+    pub fn new(task_gen: TaskGen, args: Vec<Arg>) -> Self {
         Action {
-            done: done,
+            done: false,
             started: false,
             task_gen: task_gen,
+            args: args,
         }
     }
 
     pub fn start(&self) {
         println!("start");
-        let _ = (self.task_gen)()();
+        let task = (self.task_gen)();
+        let _ = task(self.args.clone());
     }
 }
 

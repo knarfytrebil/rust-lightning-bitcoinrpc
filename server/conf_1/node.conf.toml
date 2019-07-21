@@ -1,2 +1,2 @@
 [server]
-port = 8124
+address = "0.0.0.0:8123"

@@ -4,6 +4,3 @@ port = 9735
 
 [bitcoind]
 rpc_url = "admin1:123@127.0.0.1:19001"
-
-[lightning_server]
-aa = 1

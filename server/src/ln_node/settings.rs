@@ -1,11 +1,11 @@
 use config::{Config, ConfigError, File}; // clap-rs
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Server {
-    pub port: u16,
+    pub address: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub server: Server,
 }
