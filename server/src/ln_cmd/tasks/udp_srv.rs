@@ -1,5 +1,5 @@
 use protocol;
-use ln_cmd::tasks::{Action, Arg, ProbT, Probe, TaskFn, TaskGen};
+use ln_cmd::tasks::{Arg, TaskFn};
 use ln_node::settings::Settings as NodeSettings;
 
 use std::net::UdpSocket;
@@ -21,7 +21,7 @@ pub fn task(arg: Vec<Arg>) -> Result<(), String> {
         match udp_socket.recv_from(&mut buf) {
             Ok((sz, src)) => {
                 thread::spawn(move || {
-                    handle_message(sock, sz, src, buf);
+                    handle_msg(sock, sz, src, buf);
                 });
             }
             Err(e) => {
@@ -30,6 +30,8 @@ pub fn task(arg: Vec<Arg>) -> Result<(), String> {
         }
     }
 
+    // exit here
+    // FIXME: Unreachable
     Ok(())
 }
 
@@ -37,7 +39,7 @@ pub fn gen() -> Box<TaskFn> {
     Box::new(task)
 }
 
-fn handle_message(
+fn handle_msg(
     sock: std::net::UdpSocket,
     sz: usize,
     src: std::net::SocketAddr,
@@ -62,6 +64,6 @@ fn handle_message(
 
     let resp_msg = protocol::Message::Response(resp);
     let ser = protocol::serialize_message(resp_msg);
-    //println!("Handling connection from {}", src);
+    // println!("Handling connection from {}", src);
     sock.send_to(&ser, &src).expect("Failed to send a response");
 }
