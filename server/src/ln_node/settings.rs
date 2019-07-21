@@ -1,20 +1,13 @@
 use config::{Config, ConfigError, File}; // clap-rs
 
 #[derive(Deserialize, Debug)]
-pub struct Lightning {
+pub struct Server {
     pub port: u16,
-    pub lndata: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Bitcoind {
-    pub rpc_url: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Settings {
-    pub lightning: Lightning,
-    pub bitcoind: Bitcoind
+    pub server: Server,
 }
 
 impl Settings {

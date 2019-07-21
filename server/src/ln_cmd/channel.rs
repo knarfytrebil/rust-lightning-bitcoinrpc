@@ -2,7 +2,7 @@ use futures::sync::mpsc;
 use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;
-use ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
+use ln_manager::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
 
 // fund channel
 pub fn fund_channel(

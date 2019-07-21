@@ -1,6 +1,6 @@
 use lightning::ln::peer_handler::PeerManager;
 use lightning_net_tokio::{Connection, SocketDescriptor};
-use ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
+use ln_manager::ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
 
 use std::sync::Arc;
 use std::time::Duration;

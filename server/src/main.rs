@@ -27,16 +27,15 @@ extern crate serde_derive;
 #[macro_use]
 extern crate num_derive;
 
-mod ln_bridge;
 mod ln_cmd;
 mod ln_node;
 
 use std::env;
 use std::mem;
 
-use ln_manager::executor::Larva;
-use ln_manager::ln_bridge::settings::Settings;
-use ln_manager::LnManager;
+use ln_manager::ln_bridge::settings::Settings as MgrSettings;
+use ln_node::settings::Settings as NodeSettings;
+// use ln_manager::LnManager;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
@@ -50,13 +49,18 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // FIXME: Hard code setting argument
-    let setting_arg = &args[1];
+    let ln_conf_arg = &args[1];
+    let node_conf_arg = &args[2];
 
-    println!("USE SETTING FILE - {:?}", setting_arg);
+    println!("USE ln SETTING FILE - {:?}", ln_conf_arg);
+    println!("USE node SETTING FILE - {:?}", node_conf_arg);
 
-    let settings = Settings::new(setting_arg).unwrap();
+    let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
+    let node_conf = NodeSettings::new(node_conf_arg).unwrap();
 
-    println!("{:#?}", settings);
+    println!("{:#?}", ln_conf);
+    println!("{:#?}", node_conf);
+    
     // ln_node::run(settings);
 
     // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
