@@ -58,10 +58,10 @@ fn main() {
     let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
 
-    println!("{:#?}", ln_conf);
-    println!("{:#?}", node_conf);
-    
-    // ln_node::run(settings);
+    // println!("{:#?}", ln_conf);
+    // println!("{:#?}", node_conf);
+
+    ln_node::run(ln_conf, node_conf);
 
     // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
 
