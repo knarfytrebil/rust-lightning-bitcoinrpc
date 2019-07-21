@@ -20,6 +20,7 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
+extern crate protocol;
 
 #[macro_use]
 extern crate serde_derive;

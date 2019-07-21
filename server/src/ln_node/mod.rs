@@ -7,8 +7,8 @@ use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
 pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {
-    println!("{:#?}", ln_conf);
-    println!("{:#?}", node_conf);
+    // println!("{:#?}", ln_conf);
+    // println!("{:#?}", node_conf);
 
     let run_forever = Probe::new(ProbT::Blocking);
     let init_node: Action = Action::new(
