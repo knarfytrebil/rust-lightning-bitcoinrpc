@@ -1,4 +1,4 @@
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;

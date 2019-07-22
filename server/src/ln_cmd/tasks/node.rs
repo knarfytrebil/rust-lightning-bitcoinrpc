@@ -1,7 +1,7 @@
 use ln_cmd::tasks::{udp_srv, ln_mgr};
 use ln_cmd::tasks::{Action, Arg, ProbeT, Probe, TaskFn};
 use futures::future::Future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use ln_manager::executor::Larva;
 
 // TODO: Make argument more readable

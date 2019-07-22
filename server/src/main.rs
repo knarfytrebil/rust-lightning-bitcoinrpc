@@ -21,7 +21,6 @@ extern crate protocol;
 #[macro_use]
 extern crate serde_derive;
 
-#[macro_use]
 extern crate num_derive;
 
 mod ln_cmd;

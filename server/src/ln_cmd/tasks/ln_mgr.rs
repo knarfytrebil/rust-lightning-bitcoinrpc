@@ -2,12 +2,8 @@ use ln_cmd::tasks::{Arg, TaskFn};
 use ln_cmd::tasks::{ProbeT, Probe};
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_manager::LnManager;
-use futures::future::Executor;
 use futures::future::Future;
-use futures::sync::mpsc;
-
-
-use std::thread;
+use futures::channel::mpsc;
 
 pub fn task(arg: Vec<Arg>) -> Result<(), String> {
     let ln_conf: Option<&MgrSettings> = match &arg[0] {

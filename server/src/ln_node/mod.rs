@@ -6,7 +6,7 @@ use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 use futures::future::Future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 
 
 pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {

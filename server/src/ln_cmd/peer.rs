@@ -4,7 +4,7 @@ use ln_manager::ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
 
 use std::sync::Arc;
 use std::time::Duration;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 
 // connect peer
 pub fn connect(

@@ -3,8 +3,8 @@ pub mod node;
 pub mod udp_srv;
 
 use futures::future::Future;
-use futures::sync::mpsc;
-use futures::{Async, Poll};
+use futures::channel::mpsc;
+use futures::{Poll};
 use futures::executor::ThreadPool;
 use ln_manager::executor::Larva;
 
@@ -69,17 +69,16 @@ impl Action {
 }
 
 impl Future for Action {
-    type Item = ();
-    type Error = ();
+    type Output = ();
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self) -> Poll<Output = ()> {
         if !self.started {
             self.start();
             self.started = true;
         }
         match self.done {
-            true => Ok(Async::Ready(())),
-            false => Ok(Async::NotReady),
+            true => Ok(Poll::Ready(())),
+            false => Ok(Poll::Pending),
         }
     }
 }
@@ -87,7 +86,7 @@ impl Future for Action {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        mut task: impl Future<Item = (), Error = ()> + Send + 'static,
+        mut task: impl Future<Output = ()> + Send + 'static,
     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
     {
         // panic handler
@@ -103,10 +102,10 @@ impl Larva for Probe {
                             return err;
                         }
                         Ok(res) => match res {
-                            Async::Ready(r) => {
+                            Poll::Ready(r) => {
                                 return r;
                             }
-                            Async::NotReady => {}
+                            Poll::Pending => {}
                         },
                     }
                 });
@@ -118,10 +117,10 @@ impl Larva for Probe {
                         break;
                     }
                     Ok(res) => match res {
-                        Async::Ready(_) => {
+                        Poll::Ready(_) => {
                             break;
                         }
-                        Async::NotReady => {}
+                        Poll::Pending => {}
                     },
                 }
             },
