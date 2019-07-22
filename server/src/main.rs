@@ -16,10 +16,6 @@ extern crate num_traits;
 extern crate rand;
 extern crate secp256k1;
 extern crate serde_json;
-extern crate tokio;
-extern crate tokio_codec;
-extern crate tokio_fs;
-extern crate tokio_io;
 extern crate protocol;
 
 #[macro_use]
@@ -36,7 +32,6 @@ use std::mem;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
-// use ln_manager::LnManager;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
@@ -58,9 +53,6 @@ fn main() {
 
     let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
-
-    // println!("{:#?}", ln_conf);
-    // println!("{:#?}", node_conf);
 
     ln_node::run(ln_conf, node_conf);
 
