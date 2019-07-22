@@ -24,6 +24,7 @@ extern crate serde_derive;
 
 pub mod executor;
 pub mod ln_bridge;
+pub mod ln_cmd;
 
 use std::collections::HashMap;
 use std::fs;
@@ -54,6 +55,9 @@ use ln_bridge::rpc_client::RPCClient;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;
+
+use ln_cmd::channel::Channel;
+
 use log::{info};
 
 use executor::Larva;
@@ -70,6 +74,8 @@ pub struct LnManager {
     pub keys: Arc<KeysManager>,
     pub settings: Settings,
 }
+// TODO: try use macro
+impl Channel for LnManager {}
 
 impl LnManager {
     pub fn new(settings: Settings, larva: impl Larva) -> Self {
