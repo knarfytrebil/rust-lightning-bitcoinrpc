@@ -1,4 +1,5 @@
 use ln_cmd::tasks::{Arg, TaskFn};
+use ln_cmd::tasks::{ProbT, Probe};
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_manager::LnManager;
 
@@ -9,6 +10,10 @@ pub fn task(arg: Vec<Arg>) -> Result<(), String> {
         Arg::MgrConf(conf) => Some(conf),
         _ => None,
     };
+
+    let inner_runner = Probe::new(ProbT::NonBlocking);
+
+    let ln_manager = LnManager::new(ln_conf.unwrap().clone(), inner_runner);
 
     // exit here
     // FIXME: Unreachable

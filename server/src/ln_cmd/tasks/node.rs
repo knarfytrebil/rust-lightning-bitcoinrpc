@@ -6,10 +6,13 @@ use ln_manager::executor::Larva;
 // arg.0 = ln_conf
 // arg.1 = node_conf
 fn node(arg: Vec<Arg>) -> Result<(), String> {
+
+    // run udp server
     let udp_runner = Probe::new(ProbT::NonBlocking);
     let udp_srv: Action = Action::new(udp_srv::gen, vec![arg[1].clone()]);
     let _ = udp_runner.spawn_task(udp_srv);
 
+    // run ln manager
     let ln_mgr_runner = Probe::new(ProbT::NonBlocking);
     let ln_mgr: Action = Action::new(ln_mgr::gen, vec![arg[0].clone()]);
     let _ = ln_mgr_runner.spawn_task(ln_mgr);
