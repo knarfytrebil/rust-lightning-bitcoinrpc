@@ -29,6 +29,10 @@ use ln_cmd::help;
 use ln_cmd::invoice;
 use ln_cmd::peer;
 
+pub struct Commander {
+    
+}
+
 #[derive(FromPrimitive)]
 enum Command {
     GetInfo = 0x67,       // g
