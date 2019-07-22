@@ -5,35 +5,13 @@ pub mod udp_srv;
 use futures::future::Future;
 use futures::sync::mpsc;
 use futures::{Async, Poll};
+use futures::executor::ThreadPool;
 use ln_manager::executor::Larva;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
 use std::{panic, thread};
-
-/* Task Execution Example */
-//
-// use ln_cmd::tasks::{Probe, ProbeT, TaskFn, TaskGen, Action};
-//
-// let async_exec = Probe::new(ProbeT::NonBlocking);
-//
-// fn test_task() -> Result<(), String> {
-//     println!("hello, test");
-//     let dur = time::Duration::from_millis(100);
-//     thread::sleep(dur);
-//     Ok(())
-// }
-//
-// fn test_gen() -> Box<TaskFn> {
-//     Box::new(test_task)
-// }
-//
-// let test_action: Action = Action::new(test_gen, false);
-//
-// async_exec.spawn_task(test_action);
-//
-/* End of Example */
 
 pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
@@ -43,6 +21,7 @@ pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Item = (), Error
 pub enum ProbeT {
     Blocking,
     NonBlocking,
+    Pool,
 }
 
 #[derive(Clone, Debug)]
@@ -146,6 +125,9 @@ impl Larva for Probe {
                     },
                 }
             },
+            ProbeT::Pool => {
+
+            }
         }
         Ok(())
     }
