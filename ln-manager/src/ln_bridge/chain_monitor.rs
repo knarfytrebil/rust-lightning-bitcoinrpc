@@ -1,4 +1,4 @@
-use super::rpc_client::{RPCClient, GetHeaderResponse};
+use super::rpc_client::{GetHeaderResponse, RPCClient};
 
 use ln_bridge::utils::hex_to_vec;
 
@@ -15,21 +15,21 @@ use futures::sync::mpsc;
 use futures::{Sink, Stream};
 
 use lightning::chain::chaininterface;
-pub use lightning::chain::chaininterface::{ChainWatchInterfaceUtil, ChainWatchInterface};
+pub use lightning::chain::chaininterface::{ChainWatchInterface, ChainWatchInterfaceUtil};
 
 use bitcoin::blockdata::block::Block;
 use bitcoin::consensus::encode;
 use bitcoin::util::hash::BitcoinHash;
 
+use executor::Larva;
 use log::info;
 use std::cmp;
 use std::collections::HashMap;
+use std::marker::Sync;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::vec::Vec;
-use std::marker::Sync;
-use executor::Larva;
 
 pub struct FeeEstimator {
     background_est: AtomicUsize,
@@ -126,10 +126,7 @@ pub struct ChainBroadcaster<T> {
 }
 
 impl<T> ChainBroadcaster<T> {
-    pub fn new(
-        rpc_client: Arc<RPCClient>,
-        larva: T,
-    ) -> Self {
+    pub fn new(rpc_client: Arc<RPCClient>, larva: T) -> Self {
         Self {
             txn_to_broadcast: Mutex::new(HashMap::new()),
             rpc_client,
@@ -217,7 +214,7 @@ fn find_fork_step(
                         // Caller droped the receiver, we should give up now
                         future::Either::B(future::result(Ok(())))
                     }
-                })
+                }),
         );
     } else {
         let target_header = target_header_opt.unwrap().1;
@@ -300,14 +297,15 @@ fn find_fork_step(
                                                 // Caller droped the receiver, we should give up now
                                                 future::Either::B(future::result(Ok(())))
                                             }
-                                        })))
+                                        }),
+                                ))
                             },
                         )
                     } else {
                         // Caller droped the receiver, we should give up now
                         future::Either::B(future::result(Ok(())))
                     }
-                })
+                }),
         );
     }
 }
@@ -326,47 +324,52 @@ fn find_fork(
         return;
     }
 
-    let _ = larva.clone().spawn_task(rpc_client.get_header(&current_hash).then(move |current_resp| {
-        let current_header = current_resp.unwrap();
-        assert!(steps_tx
-                .start_send(ForkStep::ConnectBlock((
-                    current_hash,
-                    current_header.height
-                )))
-                .unwrap()
-                .is_ready());
+    let _ =
+        larva.clone().spawn_task(
+            rpc_client
+                .get_header(&current_hash)
+                .then(move |current_resp| {
+                    let current_header = current_resp.unwrap();
+                    assert!(steps_tx
+                        .start_send(ForkStep::ConnectBlock((
+                            current_hash,
+                            current_header.height
+                        )))
+                        .unwrap()
+                        .is_ready());
 
-        if current_header.previousblockhash == target_hash || current_header.height == 1 {
-            // Fastpath one-new-block-connected or reached block 1
-            future::Either::A(future::result(Ok(())))
-        } else {
-            future::Either::B(rpc_client.get_header(&target_hash).then(
-                move |target_resp| {
-                    match target_resp {
-                        Ok(target_header) => find_fork_step(
-                            steps_tx,
-                            current_header,
-                            Some((target_hash, target_header)),
-                            rpc_client,
-                            larva,
-                        ),
-                        Err(_) => {
-                            assert_eq!(target_hash, "");
-                            find_fork_step(
-                                steps_tx,
-                                current_header,
-                                None,
-                                rpc_client,
-                                larva,
-                            )
-                        }
+                    if current_header.previousblockhash == target_hash || current_header.height == 1
+                    {
+                        // Fastpath one-new-block-connected or reached block 1
+                        future::Either::A(future::result(Ok(())))
+                    } else {
+                        future::Either::B(rpc_client.get_header(&target_hash).then(
+                            move |target_resp| {
+                                match target_resp {
+                                    Ok(target_header) => find_fork_step(
+                                        steps_tx,
+                                        current_header,
+                                        Some((target_hash, target_header)),
+                                        rpc_client,
+                                        larva,
+                                    ),
+                                    Err(_) => {
+                                        assert_eq!(target_hash, "");
+                                        find_fork_step(
+                                            steps_tx,
+                                            current_header,
+                                            None,
+                                            rpc_client,
+                                            larva,
+                                        )
+                                    }
+                                }
+                                Ok(())
+                            },
+                        ))
                     }
-                    Ok(())
-                },
-            ))
-        }
-    }),
-    );
+                }),
+        );
 }
 
 pub fn spawn_chain_monitor(
@@ -441,9 +444,9 @@ pub fn spawn_chain_monitor(
                                                     &hex_to_vec(
                                                         blockhex.unwrap().as_str().unwrap(),
                                                     )
-                                                        .unwrap(),
+                                                    .unwrap(),
                                                 )
-                                                    .unwrap();
+                                                .unwrap();
                                                 info!(
                                                     "Connecting block {}",
                                                     block.bitcoin_hash().to_hex()

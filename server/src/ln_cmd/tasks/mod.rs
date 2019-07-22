@@ -4,13 +4,13 @@ pub mod ln_mgr;
 
 use futures::future::Future;
 use futures::{Async, Poll};
+use futures::sync::mpsc;
 use ln_manager::executor::Larva;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
-use std::thread;
-use std::net::UdpSocket;
+use std::{panic, thread};
 
 /* Task Execution Example */
 //
@@ -37,6 +37,7 @@ use std::net::UdpSocket;
 
 pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
+pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Item = (), Error = ()> + Send>>;
 
 #[derive(Clone)]
 pub enum ProbT {
@@ -53,11 +54,15 @@ pub enum Arg {
 #[derive(Clone)]
 pub struct Probe {
     async: ProbT,
+    sender: UnboundedSender,
 }
 
 impl Probe {
-    pub fn new(async: ProbT) -> Self {
-        Probe { async: async }
+    pub fn new(async: ProbT, sender: UnboundedSender) -> Self {
+        Probe { 
+            async: async,
+            sender: sender 
+        }
     }
 }
 
@@ -79,7 +84,6 @@ impl Action {
     }
 
     pub fn start(&self) {
-        println!("start");
         let task = (self.task_gen)();
         let _ = task(self.args.clone());
     }
@@ -107,9 +111,16 @@ impl Larva for Probe {
         mut task: impl Future<Item = (), Error = ()> + Send + 'static,
     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
     {
+        panic::set_hook(Box::new(|panic_info| {
+            println!("{:?}", &panic_info);
+        }));
         match self.async {
             ProbT::NonBlocking => {
                 thread::spawn(move || loop {
+                    if let Err(err) = task.poll() {
+                        println!("{:?}", err); 
+                        break;
+                    }
                     match task.poll().unwrap() {
                         Async::Ready(_) => {
                             break;
@@ -119,6 +130,10 @@ impl Larva for Probe {
                 });
             }
             ProbT::Blocking => loop {
+                if let Err(err) = task.poll() {
+                    println!("{:?}", err); 
+                    break;
+                }
                 match task.poll().unwrap() {
                     Async::Ready(_) => {
                         break;
@@ -129,4 +144,5 @@ impl Larva for Probe {
         }
         Ok(())
     }
+
 }
