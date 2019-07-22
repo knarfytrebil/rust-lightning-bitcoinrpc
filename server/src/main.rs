@@ -32,6 +32,7 @@ use std::mem;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
+// use ln_manager::LnManager;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
