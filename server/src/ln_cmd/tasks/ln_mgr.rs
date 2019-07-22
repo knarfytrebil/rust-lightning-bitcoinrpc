@@ -1,5 +1,5 @@
 use ln_cmd::tasks::{Arg, TaskFn};
-use ln_cmd::tasks::{ProbT, Probe};
+use ln_cmd::tasks::{ProbeT, Probe};
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_manager::LnManager;
 use futures::future::Executor;
@@ -16,7 +16,7 @@ pub fn task(arg: Vec<Arg>) -> Result<(), String> {
     };
 
     let (mgr_tx, mgr_rx) = mpsc::unbounded::<Box<dyn Future<Item = (), Error = ()> + Send>>();
-    let inner_runner = Probe::new(ProbT::NonBlocking, mgr_tx);
+    let inner_runner = Probe::new(ProbeT::NonBlocking, mgr_tx);
 
     let ln_manager = LnManager::new(ln_conf.unwrap().clone(), inner_runner);
 

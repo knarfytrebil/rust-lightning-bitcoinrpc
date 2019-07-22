@@ -1,10 +1,10 @@
+pub mod ln_mgr;
 pub mod node;
 pub mod udp_srv;
-pub mod ln_mgr;
 
 use futures::future::Future;
-use futures::{Async, Poll};
 use futures::sync::mpsc;
+use futures::{Async, Poll};
 use ln_manager::executor::Larva;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
@@ -14,9 +14,9 @@ use std::{panic, thread};
 
 /* Task Execution Example */
 //
-// use ln_cmd::tasks::{Probe, ProbT, TaskFn, TaskGen, Action};
+// use ln_cmd::tasks::{Probe, ProbeT, TaskFn, TaskGen, Action};
 //
-// let async_exec = Probe::new(ProbT::NonBlocking);
+// let async_exec = Probe::new(ProbeT::NonBlocking);
 //
 // fn test_task() -> Result<(), String> {
 //     println!("hello, test");
@@ -40,7 +40,7 @@ pub type TaskGen = fn() -> Box<TaskFn>;
 pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Item = (), Error = ()> + Send>>;
 
 #[derive(Clone)]
-pub enum ProbT {
+pub enum ProbeT {
     Blocking,
     NonBlocking,
 }
@@ -53,15 +53,15 @@ pub enum Arg {
 
 #[derive(Clone)]
 pub struct Probe {
-    async: ProbT,
+    kind: ProbeT,
     sender: UnboundedSender,
 }
 
 impl Probe {
-    pub fn new(async: ProbT, sender: UnboundedSender) -> Self {
-        Probe { 
-            async: async,
-            sender: sender 
+    pub fn new(kind: ProbeT, sender: UnboundedSender) -> Self {
+        Probe {
+            kind: kind,
+            sender: sender,
         }
     }
 }
@@ -70,7 +70,7 @@ pub struct Action {
     done: bool,
     started: bool,
     task_gen: TaskGen,
-    args: Vec<Arg>
+    args: Vec<Arg>,
 }
 
 impl Action {
@@ -111,38 +111,42 @@ impl Larva for Probe {
         mut task: impl Future<Item = (), Error = ()> + Send + 'static,
     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
     {
+        // panic handler
         panic::set_hook(Box::new(|panic_info| {
             println!("{:?}", &panic_info);
         }));
-        match self.async {
-            ProbT::NonBlocking => {
+
+        match self.kind {
+            ProbeT::NonBlocking => {
                 thread::spawn(move || loop {
-                    if let Err(err) = task.poll() {
-                        println!("{:?}", err); 
+                    match task.poll() {
+                        Err(err) => {
+                            return err;
+                        }
+                        Ok(res) => match res {
+                            Async::Ready(r) => {
+                                return r;
+                            }
+                            Async::NotReady => {}
+                        },
+                    }
+                });
+            }
+            ProbeT::Blocking => loop {
+                match task.poll() {
+                    Err(err) => {
+                        println!("{:?}", err);
                         break;
                     }
-                    match task.poll().unwrap() {
+                    Ok(res) => match res {
                         Async::Ready(_) => {
                             break;
                         }
                         Async::NotReady => {}
-                    }
-                });
-            }
-            ProbT::Blocking => loop {
-                if let Err(err) = task.poll() {
-                    println!("{:?}", err); 
-                    break;
-                }
-                match task.poll().unwrap() {
-                    Async::Ready(_) => {
-                        break;
-                    }
-                    Async::NotReady => {}
+                    },
                 }
             },
         }
         Ok(())
     }
-
 }
