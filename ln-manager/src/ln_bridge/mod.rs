@@ -6,7 +6,6 @@ pub mod channel_monitor;
 pub mod event_handler;
 pub mod utils;
 pub mod log_printer;
-pub mod commander;
 pub mod settings;
 
 pub trait Restorable<R, T> {
