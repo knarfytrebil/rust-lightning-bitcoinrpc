@@ -2,20 +2,21 @@ pub mod ln_mgr;
 pub mod node;
 pub mod udp_srv;
 
-use futures::future::Future;
 use futures::channel::mpsc;
-use futures::{Poll};
+use futures::future::Future;
+use futures::task::{Context, Poll};
 use futures::executor::ThreadPool;
-use ln_manager::executor::Larva;
+use ln_cmd::executor::Larva;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
+use std::pin::Pin;
 use std::{panic, thread};
 
 pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
-pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Item = (), Error = ()> + Send>>;
+pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Output = ()> + Send>>;
 
 #[derive(Clone)]
 pub enum ProbeT {
@@ -71,14 +72,14 @@ impl Action {
 impl Future for Action {
     type Output = ();
 
-    fn poll(&mut self) -> Poll<Output = ()> {
+    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
         if !self.started {
             self.start();
             self.started = true;
         }
         match self.done {
-            true => Ok(Poll::Ready(())),
-            false => Ok(Poll::Pending),
+            true => Poll::Ready(()),
+            false => Poll::Pending,
         }
     }
 }
@@ -87,8 +88,8 @@ impl Larva for Probe {
     fn spawn_task(
         &self,
         mut task: impl Future<Output = ()> + Send + 'static,
-    ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>>
-    {
+    ) -> Result<(), futures::task::SpawnError> {
+
         // panic handler
         panic::set_hook(Box::new(|panic_info| {
             println!("{:?}", &panic_info);
@@ -124,9 +125,7 @@ impl Larva for Probe {
                     },
                 }
             },
-            ProbeT::Pool => {
-
-            }
+            ProbeT::Pool => {}
         }
         Ok(())
     }

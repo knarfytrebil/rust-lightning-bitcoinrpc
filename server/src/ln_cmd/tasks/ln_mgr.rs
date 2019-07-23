@@ -11,10 +11,10 @@ pub fn task(arg: Vec<Arg>) -> Result<(), String> {
         _ => None,
     };
 
-    let (mgr_tx, mgr_rx) = mpsc::unbounded::<Box<dyn Future<Item = (), Error = ()> + Send>>();
-    let inner_runner = Probe::new(ProbeT::NonBlocking, mgr_tx);
+    // let (mgr_tx, mgr_rx) = mpsc::unbounded::<Box<dyn Future<Item = (), Error = ()> + Send>>();
+    // let inner_runner = Probe::new(ProbeT::NonBlocking, mgr_tx);
 
-    let ln_manager = LnManager::new(ln_conf.unwrap().clone(), inner_runner);
+    // let ln_manager = LnManager::new(ln_conf.unwrap().clone(), inner_runner);
 
     // exit here
     // FIXME: Unreachable
