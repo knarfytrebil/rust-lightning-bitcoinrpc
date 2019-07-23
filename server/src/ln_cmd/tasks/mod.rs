@@ -87,7 +87,7 @@ impl Future for Action {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        mut task: impl Future<Output = ()> + Send + 'static,
+        task: impl Future<Output = ()> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
 
         // panic handler
