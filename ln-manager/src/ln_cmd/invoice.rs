@@ -1,6 +1,6 @@
 use bitcoin::network::constants::Network;
 use bitcoin_hashes::Hash;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::router;

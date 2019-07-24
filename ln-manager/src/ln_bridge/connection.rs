@@ -3,7 +3,7 @@ use bytes::BufMut;
 use futures::future;
 use futures::future::Future;
 use futures::{AsyncSink, Stream, Sink};
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 
 use secp256k1::key::PublicKey;
 
@@ -31,7 +31,7 @@ pub struct Connection {
 	  writer: Option<mpsc::Sender<bytes::Bytes>>,
 	  event_notify: mpsc::Sender<()>,
 	  pending_read: Vec<u8>,
-	  read_blocker: Option<futures::sync::oneshot::Sender<Result<(), ()>>>,
+	  read_blocker: Option<futures::channel::oneshot::Sender<Result<(), ()>>>,
 	  read_paused: bool,
 	  need_disconnect: bool,
 	  id: u64,
@@ -49,7 +49,7 @@ impl Connection {
 				        assert!(lock.pending_read.is_empty());
 				        if lock.read_paused {
 					          lock.pending_read = pending_read;
-					          let (sender, blocker) = futures::sync::oneshot::channel();
+					          let (sender, blocker) = futures::channel::oneshot::channel();
 					          lock.read_blocker = Some(sender);
 					          return future::Either::A(blocker.then(|_| { Ok(()) }));
 				        }

@@ -32,7 +32,7 @@ use std::time::{Duration, Instant};
 
 use futures::future;
 use futures::future::Future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use futures::Stream;
 
 use bitcoin::network::constants;

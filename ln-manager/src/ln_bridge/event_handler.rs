@@ -3,7 +3,7 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 
 use future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use futures::{Future, Stream};
 
 use bitcoin::blockdata;
@@ -94,7 +94,7 @@ fn handle_fund_tx<T: Larva>(
     &temporary_channel_id: &[u8; 32],
     us: Arc<EventHandler<T>>,
     value: &[&str; 2]
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Output = Result<(), ()>> {
     us.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
@@ -133,7 +133,7 @@ fn handle_receiver<T: Larva>(
     us: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Output = Result<(), ()>> {
     us.peer_manager.process_events();
 		let mut events = us.channel_manager.get_and_clear_pending_events();
 		events.append(&mut us.monitor.get_and_clear_pending_events());

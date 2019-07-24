@@ -11,7 +11,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use futures::future;
 use futures::future::Future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use futures::{Sink, Stream};
 
 use lightning::chain::chaininterface;
@@ -44,8 +44,8 @@ impl FeeEstimator {
             high_prio_est: AtomicUsize::new(0),
         }
     }
-    fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Item = (), Error = ()> {
-        let mut reqs: Vec<Box<Future<Item = (), Error = ()> + Send>> = Vec::with_capacity(3);
+    fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
+        let mut reqs: Vec<Box<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
         {
             let us = us.clone();
             reqs.push(Box::new(
