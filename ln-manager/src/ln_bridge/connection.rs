@@ -165,9 +165,7 @@ impl SocketDescriptor {
 		    Self { conn, id, peer_manager }
 	  }
 }
-impl peer_handler::SocketDescriptor for SocketDescriptor {
-	  fn send_data(&mut self, data: &Vec<u8>, write_offset: usize, resume_read: bool) -> usize {
-		    macro_rules! schedule_read {
+macro_rules! schedule_read {
 			      ($us_ref: expr) => {
 				        tokio::spawn(future::lazy(move || -> Result<(), ()> {
 					          let mut read_data = Vec::new();
@@ -201,7 +199,8 @@ impl peer_handler::SocketDescriptor for SocketDescriptor {
 				        }));
 			      }
 		    }
-
+impl peer_handler::SocketDescriptor for SocketDescriptor {
+	  fn send_data(&mut self, data: &Vec<u8>, write_offset: usize, resume_read: bool) -> usize {
 		    let mut us = self.conn.lock().unwrap();
 		    if resume_read {
 			      let us_ref = self.clone();
