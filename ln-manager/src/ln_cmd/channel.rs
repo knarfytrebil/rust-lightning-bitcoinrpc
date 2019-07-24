@@ -4,7 +4,7 @@ use std::sync::Arc;
 use lightning::ln::channelmanager::ChannelManager;
 use ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
 
-pub trait Channel {
+pub trait ChannelC {
     fn fund_channel(&self, line: String);
     fn close(&self, line: String);
     fn force_close_all(&self, line: String);

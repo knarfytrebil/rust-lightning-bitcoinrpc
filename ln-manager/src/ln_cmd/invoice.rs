@@ -25,12 +25,17 @@ fn to_network(currency: Currency) -> Network {
     }
 }
 
+pub trait InvoiceC {
+    fn send(&self, line: String) -> std::result::Result<(), String>;
+    fn pay(&self, line: String);
+}
+
 pub fn send(
     line: String,
-    channel_manager: Arc<ChannelManager>,
+    channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
-    network: Network,
-    router: Arc<router::Router>,
+    network: &Network,
+    router: &Arc<router::Router>,
 ) -> std::result::Result<(), String> {
     macro_rules! fail_return {
         () => {
@@ -48,7 +53,7 @@ pub fn send(
                 Currency::Bitcoin => Network::Bitcoin,
                 Currency::BitcoinTestnet => Network::Testnet,
                 Currency::Regtest => Network::Regtest,
-            } != network
+            } != *network
             {
                 Err("Wrong network on invoice".to_string())
             } else {
@@ -151,10 +156,10 @@ pub fn send(
 
 pub fn pay(
     line: String,
-    payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
-    network: Network,
-    secp_ctx: Secp256k1<All>,
-    keys: Arc<KeysManager>,
+    payment_preimages: &Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
+    network: &Network,
+    secp_ctx: &Secp256k1<All>,
+    keys: &Arc<KeysManager>,
 ) {
     let value = line.split_at(2).1;
     let mut payment_preimage = [0; 32];

@@ -287,6 +287,7 @@ name = "futures-util-preview"
 version = "0.3.0-alpha.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-channel-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-io-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",

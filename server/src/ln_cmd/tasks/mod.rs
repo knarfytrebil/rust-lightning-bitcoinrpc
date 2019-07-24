@@ -3,7 +3,6 @@ pub mod node;
 pub mod udp_srv;
 
 use futures::channel::mpsc;
-// use futures01::future::Future as Future01;
 use futures::future::Future;
 use futures::future::{FutureObj};
 use futures::task::{Context, Poll, Spawn};

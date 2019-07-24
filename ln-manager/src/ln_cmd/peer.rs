@@ -6,20 +6,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use futures::sync::mpsc;
 
-pub trait Peer {
-    fn connect(
-        node: String,
-        peer_manager: Arc<PeerManager<SocketDescriptor>>,
-        event_notify: mpsc::Sender<()>,
-    ) {
-        connect(node, peer_manager, event_notify)
-    }
+pub trait PeerC {
+    fn connect(&self, node: String);
+    fn list(&self);
 }
 
 // connect peer
 pub fn connect(
     node: String,
-    peer_manager: Arc<PeerManager<SocketDescriptor>>,
+    peer_manager: &Arc<PeerManager<SocketDescriptor>>,
     event_notify: mpsc::Sender<()>,
 ) {
     // TODO: hard code split offset
@@ -33,6 +28,7 @@ pub fn connect(
                     match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
                         Ok(stream) => {
                             println!("connected, initiating handshake!");
+                            let peer_manager = peer_manager.clone();
                             Connection::setup_outbound(
                                 peer_manager,
                                 event_notify,
@@ -60,7 +56,7 @@ pub fn connect(
 }
 
 
-pub fn list(peer_manager: Arc<PeerManager<SocketDescriptor>>) {
+pub fn list(peer_manager: &Arc<PeerManager<SocketDescriptor>>) {
     let mut nodes = String::new();
     for node_id in peer_manager.get_peer_node_ids() {
         nodes += &format!("{}, ", hex_str(&node_id.serialize()));
