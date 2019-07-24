@@ -7,19 +7,15 @@ use ln_cmd::executor::Larva;
 // TODO: Make argument more readable
 // arg.0 = ln_conf
 // arg.1 = node_conf
-fn node(arg: Vec<Arg>) -> Result<(), String> {
+fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
 
     // run udp server
-    let (udp_tx, udp_rx) = mpsc::unbounded::<Box<dyn Future<Output = ()> + Send>>();
-    let udp_runner = Probe::new(ProbeT::NonBlocking, udp_tx);
-    let udp_srv: Action = Action::new(udp_srv::gen, vec![arg[1].clone()]);
-    let _ = udp_runner.spawn_task(udp_srv);
+    let udp_srv: Action = Action::new(udp_srv::gen, vec![arg[1].clone()], exec.clone());
+    let _ = udp_srv.spawn();
 
     // run ln manager
-    let (ln_tx, ln_rx) = mpsc::unbounded::<Box<dyn Future<Output = ()> + Send>>();
-    let ln_mgr_runner = Probe::new(ProbeT::NonBlocking, ln_tx);
-    let ln_mgr: Action = Action::new(ln_mgr::gen, vec![arg[0].clone()]);
-    let _ = ln_mgr_runner.spawn_task(ln_mgr);
+    let ln_mgr: Action = Action::new(ln_mgr::gen, vec![arg[0].clone()], exec.clone());
+    let _ = ln_mgr.spawn();
 
     Ok(())
 }

@@ -1,11 +1,11 @@
 use protocol;
-use ln_cmd::tasks::{Arg, TaskFn};
+use ln_cmd::tasks::{Arg, TaskFn, Probe};
 use ln_node::settings::Settings as NodeSettings;
 
 use std::net::UdpSocket;
 use std::thread;
 
-pub fn task(arg: Vec<Arg>) -> Result<(), String> {
+pub fn task(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
     let node_conf: Option<&NodeSettings> = match &arg[0] {
         Arg::NodeConf(conf) => Some(conf),
         _ => None,

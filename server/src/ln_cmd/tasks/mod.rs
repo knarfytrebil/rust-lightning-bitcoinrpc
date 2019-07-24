@@ -3,25 +3,21 @@ pub mod node;
 pub mod udp_srv;
 
 use futures::channel::mpsc;
-use futures::task::{Context, Poll};
-use futures::executor::ThreadPool;
-use ln_cmd::executor::Larva;
 use futures::future::Future;
+use futures::task::{Context, Poll};
+use ln_cmd::executor::Larva;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
 use std::pin::Pin;
-use std::{panic, thread};
 
-pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
+pub type TaskFn = Fn(Vec<Arg>, Probe) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
-pub type UnboundedSender = mpsc::UnboundedSender<Box<dyn Future<Output = ()> + Send>>;
+pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = ()> + Send>>>;
 
 #[derive(Clone)]
 pub enum ProbeT {
-    Blocking,
-    NonBlocking,
     Pool,
 }
 
@@ -47,39 +43,33 @@ impl Probe {
 }
 
 pub struct Action {
-    done: bool,
-    started: bool,
     task_gen: TaskGen,
     args: Vec<Arg>,
+    exec: Probe,
 }
 
 impl Action {
-    pub fn new(task_gen: TaskGen, args: Vec<Arg>) -> Self {
+    pub fn new(task_gen: TaskGen, args: Vec<Arg>, exec: Probe) -> Self {
         Action {
-            done: false,
-            started: false,
             task_gen: task_gen,
             args: args,
+            exec: exec,
         }
     }
 
-    pub fn start(&self) {
-        let task = (self.task_gen)();
-        let _ = task(self.args.clone());
+    pub fn spawn(self) -> Result<(), futures::task::SpawnError> {
+        self.exec.clone().spawn_task(self)
     }
 }
 
 impl Future for Action {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
-        if !self.started {
-            self.start();
-            self.started = true;
-        }
-        match self.done {
-            true => Poll::Ready(()),
-            false => Poll::Pending,
+    fn poll(self: Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
+        let task = (self.task_gen)();
+        match task(self.args.clone(), self.exec.clone()) {
+            Ok(res) => Poll::Ready(res),
+            Err(_) => Poll::Pending,
         }
     }
 }
@@ -89,44 +79,15 @@ impl Larva for Probe {
         &self,
         task: impl Future<Output = ()> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
-
-        // panic handler
-        panic::set_hook(Box::new(|panic_info| {
-            println!("{:?}", &panic_info);
-        }));
-
         match self.kind {
-            ProbeT::NonBlocking => {
-                thread::spawn(move || loop {
-                    match task.poll() {
-                        Err(err) => {
-                            return err;
-                        }
-                        Ok(res) => match res {
-                            Poll::Ready(r) => {
-                                return r;
-                            }
-                            Poll::Pending => {}
-                        },
-                    }
-                });
-            }
-            ProbeT::Blocking => loop {
-                match task.poll() {
-                    Err(err) => {
-                        println!("{:?}", err);
-                        break;
-                    }
-                    Ok(res) => match res {
-                        Poll::Ready(_) => {
-                            break;
-                        }
-                        Poll::Pending => {}
-                    },
+            ProbeT::Pool => {
+                if let Err(err) = self.sender.unbounded_send(Box::pin(task)) {
+                    println!("{}", err);
+                    Err(futures::task::SpawnError::shutdown())
+                } else {
+                    Ok(())
                 }
-            },
-            ProbeT::Pool => {}
+            }
         }
-        Ok(())
     }
 }

@@ -2,9 +2,10 @@ extern crate futures;
 
 use futures::future::Future;
 use futures::task::{Context, Poll};
+use futures::executor::LocalPool;
 use std::pin::Pin;
 
-pub type TaskFn = Fn(Vec<Arg>) -> Result<(), String>;
+pub type TaskFn = Fn(Vec<Arg>) -> Result<bool, String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
 
 #[derive(Clone)]
@@ -19,8 +20,6 @@ pub enum Arg {
     Conf(String),
 }
 struct Task {
-    done: bool,
-    started: bool,
     task_gen: TaskGen,
     args: Vec<Arg>,
 }
@@ -28,37 +27,30 @@ struct Task {
 impl Task {
     pub fn new(task_gen: TaskGen, args: Vec<Arg>) -> Self {
         Task {
-            done: false,
-            started: false,
             task_gen: task_gen,
             args: args,
         }
     }
-
-    fn start(&self) {
-        let task = (self.task_gen)();
-        let _ = task(self.args.clone());
-    }
 }
 
 impl Future for Task {
-    type Output = ();
+    type Output = bool;
 
-    fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
-        if !self.started {
-            self.start();
-            self.started = true;
-        }
-        match self.done {
-            true => Poll::Ready(()),
-            false => Poll::Pending,
+    fn poll(self: Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
+        let task = (self.task_gen)();
+        match task(self.args.clone()) {
+            Ok(res) => Poll::Ready(res),
+            Err(error) => Poll::Pending,
         }
     }
 }
 
-fn test_task(args: Vec<Arg>) -> Result<(), String> {
+fn test_task(args: Vec<Arg>) -> Result<bool, String> {
     println!("hi from task");
-    Ok(())
+    for i in args.iter() {
+        println!("{:?}", i);
+    }
+    Ok(true)
 }
 
 fn gen() -> Box<TaskFn> {
@@ -67,5 +59,9 @@ fn gen() -> Box<TaskFn> {
 
 fn main() {
     println!("Hello, world!");
+
     let t = Task::new(gen, vec![Arg::Conf(String::from("frank"))]);
+    let mut pool = LocalPool::new();
+
+    pool.run_until(t);
 }

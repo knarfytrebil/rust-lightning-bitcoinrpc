@@ -5,16 +5,14 @@ use ln_manager::LnManager;
 use futures::future::Future;
 use futures::channel::mpsc;
 
-pub fn task(arg: Vec<Arg>) -> Result<(), String> {
+pub fn task(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
     let ln_conf: Option<&MgrSettings> = match &arg[0] {
         Arg::MgrConf(conf) => Some(conf),
         _ => None,
     };
 
-    // let (mgr_tx, mgr_rx) = mpsc::unbounded::<Box<dyn Future<Item = (), Error = ()> + Send>>();
-    // let inner_runner = Probe::new(ProbeT::NonBlocking, mgr_tx);
 
-    // let ln_manager = LnManager::new(ln_conf.unwrap().clone(), inner_runner);
+    // let ln_manager = LnManager::new(ln_conf.unwrap().clone(), exec.clone());
 
     // exit here
     // FIXME: Unreachable
