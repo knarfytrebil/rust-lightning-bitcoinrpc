@@ -143,13 +143,13 @@ impl Connection {
 		    });
         // TODO: consider lifetime
 		    let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
-			                   .and_then(move |stream| {
-				                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, &larva);
-				                     future::ok(())
-			                   }).or_else(|_| {
-				                     //TODO: return errors somehow
-				                     future::ok(())
-			                   }));
+			                                   .and_then(move |stream| {
+				                                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, &larva);
+				                                     future::ok(())
+			                                   }).or_else(|_| {
+				                                     //TODO: return errors somehow
+				                                     future::ok(())
+			                                   }));
 	  }
 }
 
@@ -165,40 +165,42 @@ impl SocketDescriptor {
 		    Self { conn, id, peer_manager }
 	  }
 }
+
 macro_rules! schedule_read {
-			      ($us_ref: expr) => {
-				        tokio::spawn(future::lazy(move || -> Result<(), ()> {
-					          let mut read_data = Vec::new();
-					          {
-						            let mut us = $us_ref.conn.lock().unwrap();
-						            mem::swap(&mut read_data, &mut us.pending_read);
-					          }
-					          if !read_data.is_empty() {
-						            let mut us_clone = $us_ref.clone();
-						            match $us_ref.peer_manager.read_event(&mut us_clone, read_data) {
-							              Ok(pause_read) => {
-								                if pause_read { return Ok(()); }
-							              },
-							              Err(_) => {
-								                //TODO: Not actually sure how to do this
-								                return Ok(());
-							              }
-						            }
-					          }
-					          let mut us = $us_ref.conn.lock().unwrap();
-					          if let Some(sender) = us.read_blocker.take() {
-						            sender.send(Ok(())).unwrap();
-					          }
-					          us.read_paused = false;
-					          if let Err(e) = us.event_notify.try_send(()) {
-						            // Ignore full errors as we just need them to poll after this point, so if the user
-						            // hasn't received the last send yet, it doesn't matter.
-						            assert!(e.is_full());
-					          }
-					          Ok(())
-				        }));
-			      }
-		    }
+		($us_ref: expr) => {
+				tokio::spawn(future::lazy(move || -> Result<(), ()> {
+					  let mut read_data = Vec::new();
+					  {
+						    let mut us = $us_ref.conn.lock().unwrap();
+						    mem::swap(&mut read_data, &mut us.pending_read);
+					  }
+					  if !read_data.is_empty() {
+						    let mut us_clone = $us_ref.clone();
+						    match $us_ref.peer_manager.read_event(&mut us_clone, read_data) {
+							      Ok(pause_read) => {
+								        if pause_read { return Ok(()); }
+							      },
+							      Err(_) => {
+								        //TODO: Not actually sure how to do this
+								        return Ok(());
+							      }
+						    }
+					  }
+					  let mut us = $us_ref.conn.lock().unwrap();
+					  if let Some(sender) = us.read_blocker.take() {
+						    sender.send(Ok(())).unwrap();
+					  }
+					  us.read_paused = false;
+					  if let Err(e) = us.event_notify.try_send(()) {
+						    // Ignore full errors as we just need them to poll after this point, so if the user
+						    // hasn't received the last send yet, it doesn't matter.
+						    assert!(e.is_full());
+					  }
+					  Ok(())
+				}));
+		}
+}
+
 impl peer_handler::SocketDescriptor for SocketDescriptor {
 	  fn send_data(&mut self, data: &Vec<u8>, write_offset: usize, resume_read: bool) -> usize {
 		    let mut us = self.conn.lock().unwrap();
