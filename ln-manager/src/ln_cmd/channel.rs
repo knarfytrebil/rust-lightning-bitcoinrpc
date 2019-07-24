@@ -1,13 +1,20 @@
-use futures::channel::mpsc;
+use futures::sync::mpsc;
 use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;
-use ln_manager::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
+use ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
+
+pub trait ChannelC {
+    fn fund_channel(&self, line: String);
+    fn close(&self, line: String);
+    fn force_close_all(&self, line: String);
+    fn list(&self);
+}
 
 // fund channel
 pub fn fund_channel(
     line: String,
-    channel_manager: Arc<ChannelManager>,
+    channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
 ) {
     match hex_to_compressed_pubkey(line.split_at(0).1) {
@@ -47,7 +54,7 @@ pub fn fund_channel(
 // Close single channel
 pub fn close(
     line: String,
-    channel_manager: Arc<ChannelManager>,
+    channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
 ) {
     if line.len() == 64 + 2 {
@@ -68,7 +75,7 @@ pub fn close(
 }
 
 // Force close all channels
-pub fn force_close_all(line: String, channel_manager: Arc<ChannelManager>) {
+pub fn force_close_all(line: String, channel_manager: &Arc<ChannelManager>) {
     if line.len() == 5
         && line.as_bytes()[2] == 'a' as u8
         && line.as_bytes()[3] == 'l' as u8
@@ -81,7 +88,7 @@ pub fn force_close_all(line: String, channel_manager: Arc<ChannelManager>) {
 }
 
 // List existing channels
-pub fn list(channel_manager: Arc<ChannelManager>) {
+pub fn list(channel_manager: &Arc<ChannelManager>) {
     println!("All channels:");
     for chan_info in channel_manager.list_channels() {
         if let Some(short_id) = chan_info.short_channel_id {

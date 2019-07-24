@@ -1,6 +1,7 @@
-// Prints Help String
-pub fn show_help_str() {
-    let help_str = r###"
+pub trait HelpC {
+    // Prints Help String
+    fn show_help_str() {
+        let help_str = r###"
 [Available Commands]
 'g 1' get node_id
 'c pubkey@host:port' Connect to given host+port, with given pubkey for auth
@@ -11,5 +12,6 @@ pub fn show_help_str() {
 'l c' List details about all channels
 's invoice [amt]' Send payment to an invoice, optionally with amount as whole msat if its not in the invoice
 'p' Gets a new invoice for receiving funds"###;
-    print!("{}", help_str);
+        print!("{}", help_str);
+    }
 }

@@ -6,6 +6,7 @@ use futures::channel::mpsc;
 use futures::future::Future;
 use futures::task::{Context, Poll};
 use ln_cmd::executor::SpawnHandler;
+use futures::executor::{ThreadPool};
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
@@ -25,21 +26,6 @@ pub enum ProbeT {
 pub enum Arg {
     MgrConf(MgrSettings),
     NodeConf(NodeSettings),
-}
-
-#[derive(Clone)]
-pub struct Probe {
-    kind: ProbeT,
-    sender: UnboundedSender,
-}
-
-impl Probe {
-    pub fn new(kind: ProbeT, sender: UnboundedSender) -> Self {
-        Probe {
-            kind: kind,
-            sender: sender,
-        }
-    }
 }
 
 pub struct Action {
@@ -74,6 +60,22 @@ impl Future for Action {
     }
 }
 
+#[derive(Clone)]
+pub struct Probe {
+    kind: ProbeT,
+    sender: UnboundedSender,
+    thread_pool: ThreadPool,
+}
+
+impl Probe {
+    pub fn new(kind: ProbeT, sender: UnboundedSender) -> Self {
+        Probe {
+            kind: kind,
+            sender: sender,
+            thread_pool: ThreadPool::new().unwrap(),
+        }
+    }
+}
 impl SpawnHandler for Probe {
     fn spawn_task(
         &self,

@@ -8,7 +8,6 @@ extern crate futures;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;
-extern crate lightning_net_tokio;
 extern crate log;
 extern crate num_traits;
 extern crate rand;
@@ -24,6 +23,7 @@ extern crate serde_derive;
 
 pub mod executor;
 pub mod ln_bridge;
+pub mod ln_cmd;
 
 use std::collections::HashMap;
 use std::fs;
@@ -42,10 +42,10 @@ use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::peer_handler::PeerManager;
 use lightning::ln::{channelmanager, channelmonitor, peer_handler, router};
-use lightning_net_tokio::{Connection, SocketDescriptor};
 use secp256k1::key::PublicKey;
 use secp256k1::{All, Secp256k1};
 
+use ln_bridge::connection::{Connection, SocketDescriptor};
 use ln_bridge::chain_monitor::{spawn_chain_monitor, ChainWatchInterfaceUtil, ChainBroadcaster, FeeEstimator};
 use ln_bridge::channel_monitor::ChannelMonitor;
 use ln_bridge::channel_manager::RestoreArgs as RestoreManagerArgs;
@@ -54,6 +54,7 @@ use ln_bridge::rpc_client::RPCClient;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;
+
 use log::{info};
 
 use executor::Larva;
@@ -70,6 +71,8 @@ pub struct LnManager {
     pub keys: Arc<KeysManager>,
     pub settings: Settings,
 }
+
+impl_command!(LnManager);
 
 impl LnManager {
     pub fn new(settings: Settings, larva: impl Larva) -> Self {
@@ -97,21 +100,21 @@ impl LnManager {
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
         let (import_key_1, import_key_2) =
             bip32::ExtendedPrivKey::new_master(network, &our_node_seed)
-                .map(|extpriv| {
-                    (
-                        extpriv
-                            .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap())
-                            .unwrap()
-                            .private_key
-                            .key,
-                        extpriv
-                            .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap())
-                            .unwrap()
-                            .private_key
-                            .key,
-                    )
-                })
-                .unwrap();
+            .map(|extpriv| {
+                (
+                    extpriv
+                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap())
+                        .unwrap()
+                        .private_key
+                        .key,
+                    extpriv
+                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap())
+                        .unwrap()
+                        .private_key
+                        .key,
+                )
+            })
+            .unwrap();
 
         /* ==> For debug */
         let pub_key_1 = bitcoin::util::key::PrivateKey {
@@ -147,13 +150,13 @@ impl LnManager {
                     "importprivkey",
                     &[
                         &("\"".to_string()
-                            + &bitcoin::util::key::PrivateKey {
-                                key: import_key_1,
-                                compressed: true,
-                                network,
-                            }
-                            .to_wif()
-                            + "\""),
+                          + &bitcoin::util::key::PrivateKey {
+                              key: import_key_1,
+                              compressed: true,
+                              network,
+                          }
+                          .to_wif()
+                          + "\""),
                         "\"rust-lightning ChannelMonitor claim\"",
                         "false",
                     ],
@@ -168,13 +171,13 @@ impl LnManager {
                     "importprivkey",
                     &[
                         &("\"".to_string()
-                            + &bitcoin::util::key::PrivateKey {
-                                key: import_key_2,
-                                compressed: true,
-                                network,
-                            }
-                            .to_wif()
-                            + "\""),
+                          + &bitcoin::util::key::PrivateKey {
+                              key: import_key_2,
+                              compressed: true,
+                              network,
+                          }
+                          .to_wif()
+                          + "\""),
                         "\"rust-lightning cooperative close\"",
                         "false",
                     ],
@@ -239,11 +242,11 @@ impl LnManager {
 
         let listener =
             tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
-                .unwrap();
-
+            .unwrap();
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
-        let _ = larva.spawn_task(
+        let setup_larva = larva.clone();
+        let _ = larva.clone().spawn_task(
             listener
                 .incoming()
                 .for_each(move |sock| {
@@ -252,6 +255,7 @@ impl LnManager {
                         peer_manager_listener.clone(),
                         event_listener.clone(),
                         sock,
+                        &setup_larva,
                     );
                     Ok(())
                 })

@@ -10,7 +10,7 @@ pub fn task(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
     };
 
 
-    let ln_manager = LnManager::new(ln_conf.unwrap().clone(), exec.clone());
+    // let ln_manager = LnManager::new(ln_conf.unwrap().clone(), exec.clone());
 
     // exit here
     // FIXME: Unreachable

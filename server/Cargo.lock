@@ -287,6 +287,7 @@ name = "futures-util-preview"
 version = "0.3.0-alpha.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-channel-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-io-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -482,7 +483,6 @@ dependencies = [
  "hyper 0.12.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "lightning 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "lightning-invoice 0.2.0 (git+https://github.com/rust-bitcoin/rust-lightning-invoice.git)",
- "lightning-net-tokio 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-derive 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
