@@ -1,13 +1,14 @@
 use lightning::ln::peer_handler::PeerManager;
-use lightning_net_tokio::{Connection, SocketDescriptor};
+use ln_bridge::connection::{Connection, SocketDescriptor};
 use ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
 
 use std::sync::Arc;
 use std::time::Duration;
 use futures::sync::mpsc;
+use executor::Larva;
 
 pub trait PeerC {
-    fn connect(&self, node: String);
+    fn connect(&self, node: String, larva: &impl Larva);
     fn list(&self);
 }
 
@@ -16,6 +17,7 @@ pub fn connect(
     node: String,
     peer_manager: &Arc<PeerManager<SocketDescriptor>>,
     event_notify: mpsc::Sender<()>,
+    larva: &impl Larva,
 ) {
     // TODO: hard code split offset
     match hex_to_compressed_pubkey(node.split_at(0).1) {
@@ -37,7 +39,8 @@ pub fn connect(
                                     stream,
                                     &tokio::reactor::Handle::default(),
                                 )
-                                .unwrap(),
+                                    .unwrap(),
+                                larva,
                             );
                         }
                         Err(e) => {

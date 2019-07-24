@@ -1,5 +1,6 @@
 pub mod key;
 pub mod rpc_client;
+pub mod connection;
 pub mod chain_monitor;
 pub mod channel_manager;
 pub mod channel_monitor;

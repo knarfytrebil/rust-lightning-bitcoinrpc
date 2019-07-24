@@ -29,8 +29,8 @@ macro_rules! impl_command {
             }
         }
         impl peer::PeerC for $item {
-            fn connect(&self, node: String) {
-                peer::connect(node, &self.peer_manager, self.event_notify.clone())
+            fn connect(&self, node: String, larva: &impl Larva) {
+                peer::connect(node, &self.peer_manager, self.event_notify.clone(), larva)
             }
             fn list(&self) {
                 peer::list(&self.peer_manager)

@@ -19,7 +19,7 @@ use lightning::ln::peer_handler;
 use lightning::util::events::{Event, EventsProvider};
 use lightning::util::ser::Writeable;
 
-use lightning_net_tokio::SocketDescriptor;
+use super::connection::SocketDescriptor;
 
 use ln_bridge::utils::{hex_to_vec, hex_str};
 use super::rpc_client::RPCClient;
