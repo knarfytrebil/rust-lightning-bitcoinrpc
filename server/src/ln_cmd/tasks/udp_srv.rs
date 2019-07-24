@@ -5,7 +5,7 @@ use ln_node::settings::Settings as NodeSettings;
 use std::net::UdpSocket;
 use std::thread;
 
-pub fn task(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
+pub fn task(arg: Vec<Arg>, _exec: Probe) -> Result<(), String> {
     let node_conf: Option<&NodeSettings> = match &arg[0] {
         Arg::NodeConf(conf) => Some(conf),
         _ => None,
@@ -32,7 +32,7 @@ pub fn task(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
 
     // exit here
     // FIXME: Unreachable
-    Ok(())
+    // Ok(())
 }
 
 pub fn gen() -> Box<TaskFn> {
