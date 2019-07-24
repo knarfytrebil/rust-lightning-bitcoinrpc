@@ -1,8 +1,5 @@
 use ln_cmd::tasks::{udp_srv, ln_mgr};
-use ln_cmd::tasks::{Action, Arg, ProbeT, Probe, TaskFn};
-use futures::future::Future;
-use futures::channel::mpsc;
-use ln_cmd::executor::Larva;
+use ln_cmd::tasks::{Action, Arg, Probe, TaskFn};
 
 // TODO: Make argument more readable
 // arg.0 = ln_conf
@@ -11,11 +8,11 @@ fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
 
     // run udp server
     let udp_srv: Action = Action::new(udp_srv::gen, vec![arg[1].clone()], exec.clone());
-    let _ = udp_srv.spawn();
+    let _ = udp_srv.summon();
 
     // run ln manager
     let ln_mgr: Action = Action::new(ln_mgr::gen, vec![arg[0].clone()], exec.clone());
-    let _ = ln_mgr.spawn();
+    let _ = ln_mgr.summon();
 
     Ok(())
 }

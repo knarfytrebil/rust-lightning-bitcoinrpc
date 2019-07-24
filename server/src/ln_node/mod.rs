@@ -3,7 +3,6 @@ pub mod settings;
 use futures::channel::mpsc;
 use futures::executor::LocalPool;
 use futures::future::Future;
-use ln_cmd::executor::Larva;
 use ln_cmd::tasks::node;
 use ln_cmd::tasks::{Action, Arg, Probe, ProbeT};
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
@@ -21,7 +20,7 @@ pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {
         runner,
     );
 
-    let _ = init_node.spawn();
+    let _ = init_node.summon();
 
     let mut pool = LocalPool::new();
 
