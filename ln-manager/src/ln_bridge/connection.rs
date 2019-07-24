@@ -41,7 +41,7 @@ impl Connection {
 		    let us_ref = us.clone();
 		    let us_close_ref = us.clone();
 		    let peer_manager_ref = peer_manager.clone();
-		    larva.spawn_task(reader.for_each(move |b| {
+		    let _ = larva.spawn_task(reader.for_each(move |b| {
 			      let pending_read = b.to_vec();
 			      {
 				        let mut lock = us_ref.lock().unwrap();
@@ -90,7 +90,7 @@ impl Connection {
 	  fn new(event_notify: mpsc::Sender<()>, stream: TcpStream, larva: &impl Larva) -> (futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, Arc<Mutex<Self>>) {
 		    let (writer, reader) = tokio_codec::Framed::new(stream, tokio_codec::BytesCodec::new()).split();
 		    let (send_sink, send_stream) = mpsc::channel(3);
-		    larva.spawn_task(writer.send_all(send_stream.map_err(|_| -> std::io::Error {
+		    let _ = larva.spawn_task(writer.send_all(send_stream.map_err(|_| -> std::io::Error {
 			      unreachable!();
 		    })).then(|_| {
 			      future::result(Ok(()))
@@ -142,7 +142,7 @@ impl Connection {
 			      future::err(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
 		    });
         // TODO: consider lifetime
-		    larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
+		    let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
 			                   .and_then(move |stream| {
 				                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, &larva);
 				                     future::ok(())
