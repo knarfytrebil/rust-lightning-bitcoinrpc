@@ -3,11 +3,12 @@ pub mod node;
 pub mod udp_srv;
 
 use futures::channel::mpsc;
+use futures::executor::ThreadPool;
 use futures::future::Future;
 use futures::task::{Context, Poll};
 use ln_cmd::executor::SpawnHandler;
-use futures::executor::{ThreadPool};
 
+use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
 
@@ -44,7 +45,7 @@ impl Action {
     }
 
     pub fn summon(self) -> Result<(), futures::task::SpawnError> {
-        self.exec.clone().spawn_task(self)
+        self.exec.clone().summon_task(self)
     }
 }
 
@@ -76,8 +77,9 @@ impl Probe {
         }
     }
 }
+
 impl SpawnHandler for Probe {
-    fn spawn_task(
+    fn summon_task(
         &self,
         task: impl Future<Output = ()> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
@@ -93,3 +95,13 @@ impl SpawnHandler for Probe {
         }
     }
 }
+
+// impl Larva for Probe {
+//     fn spawn_task(
+//         &self,
+//         task: impl Future<Item = (), Error = ()> + Send + 'static,
+//     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>> {
+//
+//     }
+//
+// }
