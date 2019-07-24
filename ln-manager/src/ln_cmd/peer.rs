@@ -7,17 +7,17 @@ use std::time::Duration;
 use futures::sync::mpsc;
 use executor::Larva;
 
-pub trait PeerC {
-    fn connect(&self, node: String, larva: &impl Larva);
+pub trait PeerC<T> {
+    fn connect(&self, node: String, larva: T);
     fn list(&self);
 }
 
 // connect peer
-pub fn connect(
+pub fn connect<T: Larva>(
     node: String,
-    peer_manager: &Arc<PeerManager<SocketDescriptor>>,
+    peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>,
     event_notify: mpsc::Sender<()>,
-    larva: &impl Larva,
+    larva: T,
 ) {
     // TODO: hard code split offset
     match hex_to_compressed_pubkey(node.split_at(0).1) {
@@ -59,7 +59,7 @@ pub fn connect(
 }
 
 
-pub fn list(peer_manager: &Arc<PeerManager<SocketDescriptor>>) {
+pub fn list<T: Larva>(peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>) {
     let mut nodes = String::new();
     for node_id in peer_manager.get_peer_node_ids() {
         nodes += &format!("{}, ", hex_str(&node_id.serialize()));

@@ -59,23 +59,24 @@ use log::{info};
 
 use executor::Larva;
 
-pub struct LnManager {
+pub struct LnManager<T: Larva> {
     pub rpc_client: Arc<RPCClient>,
     pub network: constants::Network,
     pub router: Arc<router::Router>,
     pub event_notify: mpsc::Sender<()>,
     pub channel_manager: Arc<ChannelManager>,
-    pub peer_manager: Arc<PeerManager<SocketDescriptor>>,
+    pub peer_manager: Arc<PeerManager<SocketDescriptor<T>>>,
     pub payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
     pub secp_ctx: Secp256k1<All>,
     pub keys: Arc<KeysManager>,
     pub settings: Settings,
+    pub larva: T,
 }
 
 impl_command!(LnManager);
 
-impl LnManager {
-    pub fn new(settings: Settings, larva: impl Larva) -> Self {
+impl<T: Larva> LnManager<T> {
+    pub fn new(settings: Settings, larva: T) -> Self {
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.bitcoind.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
@@ -83,7 +84,7 @@ impl LnManager {
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
-            LnManager::get_network(&rpc_client, &larva).unwrap();
+            LnManager::<T>::get_network(&rpc_client, &larva).unwrap();
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -228,7 +229,7 @@ impl LnManager {
         let payment_preimages = Arc::new(Mutex::new(HashMap::new()));
 
         // clone for move (handle receiver)
-        let event_notify = EventHandler::setup(
+        let event_notify = EventHandler::<T>::setup(
             network,
             data_path,
             rpc_client.clone(),
@@ -255,7 +256,7 @@ impl LnManager {
                         peer_manager_listener.clone(),
                         event_listener.clone(),
                         sock,
-                        &setup_larva,
+                        setup_larva.clone(),
                     );
                     Ok(())
                 })
@@ -292,6 +293,7 @@ impl LnManager {
             secp_ctx,
             keys,
             settings,
+            larva,
         }
     }
 

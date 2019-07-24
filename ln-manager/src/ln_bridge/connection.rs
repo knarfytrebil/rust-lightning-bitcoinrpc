@@ -37,11 +37,12 @@ pub struct Connection {
 	  id: u64,
 }
 impl Connection {
-	  fn schedule_read(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>, us: Arc<Mutex<Self>>, reader: futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, larva: &impl Larva) {
+	  fn schedule_read<T: Larva>(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>, us: Arc<Mutex<Self>>, reader: futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, larva: T) {
 		    let us_ref = us.clone();
 		    let us_close_ref = us.clone();
 		    let peer_manager_ref = peer_manager.clone();
-		    let _ = larva.spawn_task(reader.for_each(move |b| {
+        let larva_ref = larva.clone();
+		    let _ = larva.clone().spawn_task(reader.for_each(move |b| {
 			      let pending_read = b.to_vec();
 			      {
 				        let mut lock = us_ref.lock().unwrap();
@@ -56,7 +57,7 @@ impl Connection {
 			      //TODO: There's a race where we don't meet the requirements of disconnect_socket if its
 			      //called right here, after we release the us_ref lock in the scope above, but before we
 			      //call read_event!
-			      match peer_manager.read_event(&mut SocketDescriptor::new(us_ref.clone(), peer_manager.clone()), pending_read) {
+			      match peer_manager.read_event(&mut SocketDescriptor::new(us_ref.clone(), peer_manager.clone(), larva.clone()), pending_read) {
 				        Ok(pause_read) => {
 					          if pause_read {
 						            let mut lock = us_ref.lock().unwrap();
@@ -78,7 +79,7 @@ impl Connection {
 			      future::Either::B(future::result(Ok(())))
 		    }).then(move |_| {
 			      if us_close_ref.lock().unwrap().need_disconnect {
-				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone()));
+				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone(), larva_ref.clone()));
 				        println!("Peer disconnected!");
 			      } else {
 				        println!("We disconnected peer!");
@@ -105,10 +106,10 @@ impl Connection {
 	  ///
 	  /// You should poll the Receive end of event_notify and call get_and_clear_pending_events() on
 	  /// ChannelManager and ChannelMonitor objects.
-	  pub fn setup_inbound(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>, event_notify: mpsc::Sender<()>, stream: TcpStream, larva: &impl Larva) {
-		    let (reader, us) = Self::new(event_notify, stream, larva);
+	  pub fn setup_inbound<T: Larva>(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>, event_notify: mpsc::Sender<()>, stream: TcpStream, larva: T) {
+		    let (reader, us) = Self::new(event_notify, stream, &larva);
 
-		    if let Ok(_) = peer_manager.new_inbound_connection(SocketDescriptor::new(us.clone(), peer_manager.clone())) {
+		    if let Ok(_) = peer_manager.new_inbound_connection(SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone())) {
 			      Self::schedule_read(peer_manager, us, reader, larva);
 		    }
 	  }
@@ -119,11 +120,11 @@ impl Connection {
 	  ///
 	  /// You should poll the Receive end of event_notify and call get_and_clear_pending_events() on
 	  /// ChannelManager and ChannelMonitor objects.
-	  pub fn setup_outbound(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>, event_notify: mpsc::Sender<()>, their_node_id: PublicKey, stream: TcpStream, larva: &impl Larva) {
-		    let (reader, us) = Self::new(event_notify, stream, larva);
+	  pub fn setup_outbound<T: Larva>(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>, event_notify: mpsc::Sender<()>, their_node_id: PublicKey, stream: TcpStream, larva: T) {
+		    let (reader, us) = Self::new(event_notify, stream, &larva);
 
-		    if let Ok(initial_send) = peer_manager.new_outbound_connection(their_node_id, SocketDescriptor::new(us.clone(), peer_manager.clone())) {
-			      if SocketDescriptor::new(us.clone(), peer_manager.clone()).send_data(&initial_send, 0, true) == initial_send.len() {
+		    if let Ok(initial_send) = peer_manager.new_outbound_connection(their_node_id, SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone())) {
+			      if SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone()).send_data(&initial_send, 0, true) == initial_send.len() {
 				        Self::schedule_read(peer_manager, us, reader, larva);
 			      } else {
 				        println!("Failed to write first full message to socket!");
@@ -137,14 +138,14 @@ impl Connection {
 	  ///
 	  /// You should poll the Receive end of event_notify and call get_and_clear_pending_events() on
 	  /// ChannelManager and ChannelMonitor objects.
-	  pub fn connect_outbound(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>, event_notify: mpsc::Sender<()>, their_node_id: PublicKey, addr: SocketAddr, larva: impl Larva) {
+	  pub fn connect_outbound<T: Larva>(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>, event_notify: mpsc::Sender<()>, their_node_id: PublicKey, addr: SocketAddr, larva: T) {
 		    let connect_timeout = Delay::new(Instant::now() + Duration::from_secs(10)).then(|_| {
 			      future::err(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
 		    });
         // TODO: consider lifetime
 		    let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
 			                                   .and_then(move |stream| {
-				                                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, &larva);
+				                                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, larva);
 				                                     future::ok(())
 			                                   }).or_else(|_| {
 				                                     //TODO: return errors somehow
@@ -154,21 +155,26 @@ impl Connection {
 }
 
 #[derive(Clone)]
-pub struct SocketDescriptor {
+pub struct SocketDescriptor<T: Larva> {
 	  conn: Arc<Mutex<Connection>>,
 	  id: u64,
-	  peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+	  peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
+    larva: T,
 }
-impl SocketDescriptor {
-	  fn new(conn: Arc<Mutex<Connection>>, peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>) -> Self {
+impl<T: Larva> SocketDescriptor<T> {
+	  fn new(
+        conn: Arc<Mutex<Connection>>,
+        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
+        larva: T,
+    ) -> Self {
 		    let id = conn.lock().unwrap().id;
-		    Self { conn, id, peer_manager }
+		    Self { conn, id, peer_manager, larva }
 	  }
 }
 
 macro_rules! schedule_read {
 		($us_ref: expr) => {
-				tokio::spawn(future::lazy(move || -> Result<(), ()> {
+				let _ = $us_ref.clone().larva.spawn_task(future::lazy(move || -> Result<(), ()> {
 					  let mut read_data = Vec::new();
 					  {
 						    let mut us = $us_ref.conn.lock().unwrap();
@@ -201,7 +207,7 @@ macro_rules! schedule_read {
 		}
 }
 
-impl peer_handler::SocketDescriptor for SocketDescriptor {
+impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 	  fn send_data(&mut self, data: &Vec<u8>, write_offset: usize, resume_read: bool) -> usize {
 		    let mut us = self.conn.lock().unwrap();
 		    if resume_read {
@@ -226,7 +232,7 @@ impl peer_handler::SocketDescriptor for SocketDescriptor {
 					          AsyncSink::NotReady(_) => {
 						            us.read_paused = true;
 						            let us_ref = self.clone();
-						            tokio::spawn(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
+						            let _ = self.larva.spawn_task(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
 							              if let Ok(writer) = writer_res {
 								                {
 									                  let mut us = us_ref.conn.lock().unwrap();
@@ -253,13 +259,13 @@ impl peer_handler::SocketDescriptor for SocketDescriptor {
 		    us.read_paused = true;
 	  }
 }
-impl Eq for SocketDescriptor {}
-impl PartialEq for SocketDescriptor {
+impl<T: Larva> Eq for SocketDescriptor<T> {}
+impl<T: Larva> PartialEq for SocketDescriptor<T> {
 	  fn eq(&self, o: &Self) -> bool {
 		    self.id == o.id
 	  }
 }
-impl Hash for SocketDescriptor {
+impl<T: Larva> Hash for SocketDescriptor<T> {
 	  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
 		    self.id.hash(state);
 	  }

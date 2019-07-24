@@ -6,7 +6,7 @@ pub mod peer;
 macro_rules! impl_command {
     ($item:tt) => (
         use ln_cmd::{channel, invoice, peer};
-        impl channel::ChannelC for $item {
+        impl<T: Larva> channel::ChannelC for $item<T> {
             fn fund_channel(&self, line: String) {
                 channel::fund_channel(line, &self.channel_manager, self.event_notify.clone())
             }
@@ -20,7 +20,7 @@ macro_rules! impl_command {
                 channel::list(&self.channel_manager)
             }
         }
-        impl invoice::InvoiceC for $item {
+        impl<T: Larva> invoice::InvoiceC for $item<T> {
             fn send(&self, line: String) -> std::result::Result<(), String> {
                 invoice::send(line, &self.channel_manager, self.event_notify.clone(), &self.network, &self.router)
             }
@@ -28,8 +28,8 @@ macro_rules! impl_command {
                 invoice::pay(line, &self.payment_preimages, &self.network, &self.secp_ctx, &self.keys)
             }
         }
-        impl peer::PeerC for $item {
-            fn connect(&self, node: String, larva: &impl Larva) {
+        impl<T: Larva> peer::PeerC<T> for $item<T> {
+            fn connect(&self, node: String, larva: T) {
                 peer::connect(node, &self.peer_manager, self.event_notify.clone(), larva)
             }
             fn list(&self) {

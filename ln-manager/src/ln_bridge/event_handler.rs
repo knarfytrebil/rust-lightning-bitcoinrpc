@@ -26,9 +26,9 @@ use super::rpc_client::RPCClient;
 use executor::Larva;
 use log::{info};
 
-pub fn divide_rest_event(
+pub fn divide_rest_event<T: Larva>(
     event: Event,
-    us: &Arc<EventHandler>,
+    us: &Arc<EventHandler<T>>,
     mut sender: mpsc::Sender<()>,
     larva: &impl Larva,
 ) {
@@ -89,10 +89,10 @@ pub fn divide_rest_event(
     }
 }
 
-fn handle_fund_tx(
+fn handle_fund_tx<T: Larva>(
     mut self_sender: mpsc::Sender<()>,
     &temporary_channel_id: &[u8; 32],
-    us: Arc<EventHandler>,
+    us: Arc<EventHandler<T>>,
     value: &[&str; 2]
 ) -> impl Future<Item = (), Error = ()> {
     us.rpc_client.make_rpc_call(
@@ -129,8 +129,8 @@ fn handle_fund_tx(
 		})
 }
 
-fn handle_receiver(
-    us: &Arc<EventHandler>,
+fn handle_receiver<T: Larva>(
+    us: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
 ) -> impl Future<Item = (), Error = ()> {
@@ -179,11 +179,11 @@ fn handle_receiver(
 		future::Either::B(future::result(Ok(())))
 }
 
-pub struct EventHandler {
+pub struct EventHandler<T: Larva> {
     network: constants::Network,
     file_prefix: String,
     rpc_client: Arc<RPCClient>,
-    peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+    peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
     channel_manager: Arc<channelmanager::ChannelManager>,
     monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
@@ -191,12 +191,12 @@ pub struct EventHandler {
     Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
 }
-impl EventHandler {
+impl<T: Larva> EventHandler<T> {
     pub fn setup(
         network: constants::Network,
         file_prefix: String,
         rpc_client: Arc<RPCClient>,
-        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
         channel_manager: Arc<channelmanager::ChannelManager>,
         broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
