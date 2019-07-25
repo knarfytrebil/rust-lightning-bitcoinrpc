@@ -18,6 +18,7 @@ fn req_rep(sock: std::net::UdpSocket, req: protocol::RequestFuncs) -> protocol::
     let (len, _src) = sock
         .recv_from(&mut buf)
         .expect("Could not read into buffer");
+
     let buf = &mut buf[..len]; // resize buffer
 
     let resp = protocol::deserialize_message(buf.to_vec());
@@ -38,6 +39,7 @@ fn main() {
         .expect("Could not connect to server");
 
     let mut i = 0;
+
     loop {
         let fmt = format!("Hello Iteration {}", i);
         let resp = req_rep(
