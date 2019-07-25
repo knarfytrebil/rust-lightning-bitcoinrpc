@@ -176,7 +176,7 @@ fn handle_receiver<T: Larva>(
 		}
 		fs::rename(&tmp_filename, &filename).unwrap();
 
-		future::Either::B(future::result(Ok(())))
+		future::Either::B(future::ok(()))
 }
 
 pub struct EventHandler<T: Larva> {

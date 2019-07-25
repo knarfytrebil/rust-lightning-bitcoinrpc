@@ -66,7 +66,7 @@ impl Connection {
 				        },
 				        Err(e) => {
 					          us_ref.lock().unwrap().need_disconnect = false;
-					          return future::Either::B(future::result(Err(std::io::Error::new(std::io::ErrorKind::InvalidData, e))));
+					          return future::Either::B(future::err(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
 				        }
 			      }
 
@@ -76,7 +76,7 @@ impl Connection {
 				        assert!(e.is_full());
 			      }
 
-			      future::Either::B(future::result(Ok(())))
+			      future::Either::B(future::ok(()))
 		    }).then(move |_| {
 			      if us_close_ref.lock().unwrap().need_disconnect {
 				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone(), larva_ref.clone()));
@@ -94,7 +94,7 @@ impl Connection {
 		    let _ = larva.spawn_task(writer.send_all(send_stream.map_err(|_| -> std::io::Error {
 			      unreachable!();
 		    })).then(|_| {
-			      future::result(Ok(()))
+			      future::ok(())
 		    }));
 		    let us = Arc::new(Mutex::new(Self { writer: Some(send_sink), event_notify, pending_read: Vec::new(), read_blocker: None, read_paused: false, need_disconnect: true, id: ID_COUNTER.fetch_add(1, Ordering::AcqRel) }));
 

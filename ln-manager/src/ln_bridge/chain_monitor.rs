@@ -212,7 +212,7 @@ fn find_fork_step(
                         )
                     } else {
                         // Caller droped the receiver, we should give up now
-                        future::Either::B(future::result(Ok(())))
+                        future::Either::B(future::ok(()))
                     }
                 }),
         );
@@ -295,7 +295,7 @@ fn find_fork_step(
                                                 )
                                             } else {
                                                 // Caller droped the receiver, we should give up now
-                                                future::Either::B(future::result(Ok(())))
+                                                future::Either::B(future::ok(()))
                                             }
                                         }),
                                 ))
@@ -303,7 +303,7 @@ fn find_fork_step(
                         )
                     } else {
                         // Caller droped the receiver, we should give up now
-                        future::Either::B(future::result(Ok(())))
+                        future::Either::B(future::ok(()))
                     }
                 }),
         );
@@ -341,7 +341,7 @@ fn find_fork(
                     if current_header.previousblockhash == target_hash || current_header.height == 1
                     {
                         // Fastpath one-new-block-connected or reached block 1
-                        future::Either::A(future::result(Ok(())))
+                        future::Either::A(future::ok(()))
                     } else {
                         future::Either::B(rpc_client.get_header(&target_hash).then(
                             move |target_resp| {
@@ -402,12 +402,12 @@ pub fn spawn_chain_monitor(
                         let new_block = v["bestblockhash"].as_str().unwrap().to_string();
                         let old_block = cur_block.lock().unwrap().clone();
                         if new_block == old_block {
-                            return future::Either::A(future::result(Ok(())));
+                            return future::Either::A(future::ok(()));
                         }
 
                         *cur_block.lock().unwrap() = new_block.clone();
                         if old_block == "" {
-                            return future::Either::A(future::result(Ok(())));
+                            return future::Either::A(future::ok(()));
                         }
 
                         let (events_tx, events_rx) = mpsc::channel(1);

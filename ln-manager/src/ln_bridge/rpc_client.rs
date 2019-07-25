@@ -132,7 +132,7 @@ impl RPCClient {
                                     return future::err(());
                                 }
                                 if let Some(res) = v_obj.get("result") {
-                                    future::result(Ok((*res).clone()))
+                                    future::ok((*res).clone())
                                 } else {
                                     println!("Failed to parse RPC server response! 5k");
                                     return future::err(());
@@ -165,7 +165,7 @@ impl RPCClient {
                                     return future::err(());
                                 }
                                 if let Some(res) = v_obj.get("result") {
-                                    future::result(Ok((*res).clone()))
+                                    future::ok((*res).clone())
                                 } else {
                                     info!("Failed to parse RPC server response!");
                                     return future::err(());
