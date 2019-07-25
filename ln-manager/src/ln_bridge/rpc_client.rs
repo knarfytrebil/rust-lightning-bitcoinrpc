@@ -104,10 +104,10 @@ impl RPCClient {
                 if res.status() != hyper::StatusCode::OK {
                     if !may_fail {
                         println!("RPC request failed");
-                        println!("{:?}", &res.body()); 
+                        println!("{:?}", &res.body());
                         // info!("Failed to get RPC server response (probably bad auth)!");
                     }
-                    future::Either::A(
+                    future::Either::Left(
                          res.into_body()
                             .concat2()
                             .map_err(|_| {
@@ -141,7 +141,7 @@ impl RPCClient {
                         })
                     )
                 } else {
-                    future::Either::B(
+                    future::Either::Right(
                         res.into_body()
                             .concat2()
                             .map_err(|_| {

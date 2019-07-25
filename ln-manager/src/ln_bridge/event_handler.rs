@@ -146,7 +146,7 @@ fn handle_receiver<T: Larva>(
 							      constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
 						    }
 						    ).expect("LN funding tx should always be to a SegWit output").to_address();
-                return future::Either::A(
+                return future::Either::Left(
                     handle_fund_tx(
                         self_sender.clone(),
                         &temporary_channel_id,
@@ -176,7 +176,7 @@ fn handle_receiver<T: Larva>(
 		}
 		fs::rename(&tmp_filename, &filename).unwrap();
 
-		future::Either::B(future::ok(()))
+		future::Either::Right(future::ok(()))
 }
 
 pub struct EventHandler<T: Larva> {

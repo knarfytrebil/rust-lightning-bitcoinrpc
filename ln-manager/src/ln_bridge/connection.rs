@@ -51,7 +51,7 @@ impl Connection {
 					          lock.pending_read = pending_read;
 					          let (sender, blocker) = futures::channel::oneshot::channel();
 					          lock.read_blocker = Some(sender);
-					          return future::Either::A(blocker.then(|_| { Ok(()) }));
+					          return future::Either::Left(blocker.then(|_| { Ok(()) }));
 				        }
 			      }
 			      //TODO: There's a race where we don't meet the requirements of disconnect_socket if its
@@ -66,7 +66,7 @@ impl Connection {
 				        },
 				        Err(e) => {
 					          us_ref.lock().unwrap().need_disconnect = false;
-					          return future::Either::B(future::err(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
+					          return future::Either::Right(future::err(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
 				        }
 			      }
 
@@ -76,7 +76,7 @@ impl Connection {
 				        assert!(e.is_full());
 			      }
 
-			      future::Either::B(future::ok(()))
+			      future::Either::Right(future::ok(()))
 		    }).then(move |_| {
 			      if us_close_ref.lock().unwrap().need_disconnect {
 				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone(), larva_ref.clone()));
