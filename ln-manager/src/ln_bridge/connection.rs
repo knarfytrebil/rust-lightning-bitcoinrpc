@@ -3,6 +3,7 @@ use bytes::BufMut;
 use futures::future;
 use futures::future::Future;
 use futures::{AsyncSink, Stream, Sink};
+// use futures::task::Poll;
 use futures::channel::mpsc;
 
 use secp256k1::key::PublicKey;

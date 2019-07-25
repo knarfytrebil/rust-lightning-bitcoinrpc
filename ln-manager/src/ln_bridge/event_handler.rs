@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use future;
 use futures::channel::mpsc;
-use futures::{Future, Stream};
+use futures::{Future, Stream, StreamExt};
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;

@@ -1,6 +1,6 @@
 use base64;
 use hyper;
-use hyper::rt::Future as futureH;
+// use hyper::rt::{Future as FutureH, Stream as StreamH};
 use serde_json;
 
 use bitcoin_hashes::hex::FromHex;
@@ -9,6 +9,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin::blockdata::block::BlockHeader;
 
 use futures::{future, Future, Stream};
+use futures::future::FutureObj;
 
 use log::{info};
 use std::sync::atomic::{AtomicUsize, Ordering};
