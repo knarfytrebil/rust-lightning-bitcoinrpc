@@ -55,10 +55,4 @@ fn main() {
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
 
     ln_node::run(ln_conf, node_conf);
-
-    // let ln_manager = LnManager::new(settings, probe.clone(), exit.clone());
-
-    // command_handler::run_command_board(ln_manager, executor);
-
-    // rt.shutdown_on_idle().wait().unwrap();
 }
