@@ -1,0 +1,8 @@
+[package]
+name = "client"
+version = "0.1.0"
+authors = ["Maarten Tamboer <maartentamboer@msn.com>"]
+edition = "2018"
+
+[dependencies]
+protocol = { path="../protocol" }
