@@ -1,0 +1,33 @@
+name: rlncli 
+version: "0.0.1"
+author: Gunther Arcanus <gunther.arcanus@gmail.com>
+about: cli interface of rln - Rust Lightning 
+args:
+    - info:
+        short: i
+        long: info 
+        takes_value: false 
+        help: Display <node-id> and <port> binded 
+    - connect:
+        short: c
+        long: connect
+        takes_value: true
+        value_name: PEER_INFO
+        help: Connect to <node-id>@<host>:<port>
+    - list:
+        short: l
+        long: list
+        takes_value: true
+        value_name: LIST_ITEM
+        help: List connected <peers> or connected <channels>
+        
+
+subcommands:
+    - server:
+        about: controls the server instance 
+        version: "0.0.1"
+        author: Gunther Arcanus <gunther.arcanus@gmail.com>
+        args:
+            - config:
+                short: c 
+                help: path to the configuration files 

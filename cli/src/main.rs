@@ -1,6 +1,10 @@
+#[macro_use]
+extern crate clap;
+
 use std::net::UdpSocket;
-use std::str;
 use std::{thread, time};
+
+use clap::App;
 
 use protocol;
 
@@ -25,6 +29,9 @@ fn req_rep(sock: std::net::UdpSocket, req: protocol::RequestFuncs) -> protocol::
 }
 
 fn main() {
+    let yaml = load_yaml!("conf/en_US.yml");
+    let matches = App::from_yaml(yaml).get_matches();
+  
     let socket = UdpSocket::bind("127.0.0.1:5000").expect("Could not bind client socket");
     socket
         .connect("127.0.0.1:8123")

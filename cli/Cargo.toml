@@ -5,4 +5,5 @@ authors = ["Maarten Tamboer <maartentamboer@msn.com>"]
 edition = "2018"
 
 [dependencies]
-protocol = { path="../protocol" }
+protocol = { path = "../protocol" }
+clap = { version = "~2.33.0", features = [ "yaml" ] }
