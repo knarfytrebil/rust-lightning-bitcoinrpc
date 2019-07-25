@@ -4,7 +4,6 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate bytes;
 extern crate config;
-extern crate exit_future;
 extern crate futures;
 extern crate hyper;
 extern crate lightning;
@@ -31,7 +30,6 @@ use std::mem;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
-// use ln_manager::LnManager;
 
 #[allow(dead_code, unreachable_code)]
 fn _check_usize_is_64() {
