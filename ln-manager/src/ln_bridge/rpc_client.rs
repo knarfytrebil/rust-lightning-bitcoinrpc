@@ -1,6 +1,6 @@
 use base64;
 use hyper;
-// use hyper::rt::{Future as FutureH, Stream as StreamH};
+use hyper::rt::{Future as FutureH, Stream as StreamH};
 use serde_json;
 
 use bitcoin_hashes::hex::FromHex;
@@ -8,7 +8,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use bitcoin::blockdata::block::BlockHeader;
 
-use futures::{future, Future, Stream};
+use futures::{future, Future, Stream, StreamExt, FutureExt, TryFutureExt, TryStreamExt};
 use futures::future::FutureObj;
 
 use log::{info};
@@ -96,85 +96,85 @@ impl RPCClient {
                     ))
                     .unwrap(),
             )
-            .map_err(|e| {
-                println!("Failed to connect to RPC server! {:?}", e);
-                // info!("Failed to connect to RPC server!");
-                ()
-            })
-            .and_then(move |res| {
-                if res.status() != hyper::StatusCode::OK {
+        // .map_err(|e| {
+        //     println!("Failed to connect to RPC server! {:?}", e);
+        //     // info!("Failed to connect to RPC server!");
+        //     ()
+        // })
+            .map_ok(move |res| {
+                // let res = res.unwrap();
+                // if res.status() != hyper::StatusCode::OK {
                     if !may_fail {
                         println!("RPC request failed");
                         println!("{:?}", &res.body());
                         // info!("Failed to get RPC server response (probably bad auth)!");
                     }
-                    future::Either::Left(
-                         res.into_body()
-                            .concat2()
-                            .map_err(|_| {
-                                println!("Failed to load RPC server response! 1");
-                                ()
-                            })
-                            .and_then(|body| {
-                                let v: serde_json::Value = match serde_json::from_slice(&body) {
-                                    Ok(v) => v,
-                                    Err(_) => {
-                                        println!("Failed to parse RPC server response! 2");
-                                        return future::err(());
-                                    }
-                                };
-                                if !v.is_object() {
-                                    println!("Failed to parse RPC server response! 3");
+                    // future::Either::Left(
+                    let ok = res.into_body()
+                        // .map_err(|_| {
+                        //     println!("Err");
+                        //     ()
+                        // })
+                        .map_ok(|body| {
+                            let v: serde_json::Value = match serde_json::from_slice(&body) {
+                                Ok(v) => v,
+                                Err(_) => {
+                                    println!("Failed to parse RPC server response! 2");
                                     return future::err(());
                                 }
-                                let v_obj = v.as_object().unwrap();
-                                if v_obj.get("error") != Some(&serde_json::Value::Null) {
-                                    println!("Failed to parse RPC server response! 4");
-                                    println!("{:?}", &v_obj);
-                                    return future::err(());
-                                }
-                                if let Some(res) = v_obj.get("result") {
-                                    future::ok((*res).clone())
-                                } else {
-                                    println!("Failed to parse RPC server response! 5k");
-                                    return future::err(());
-                                }
-                        })
-                    )
-                } else {
-                    future::Either::Right(
-                        res.into_body()
-                            .concat2()
-                            .map_err(|_| {
-                                info!("Failed to load RPC server response!");
-                                ()
-                            })
-                            .and_then(|body| {
-                                let v: serde_json::Value = match serde_json::from_slice(&body) {
-                                    Ok(v) => v,
-                                    Err(_) => {
-                                        info!("Failed to parse RPC server response!");
-                                        return future::err(());
-                                    }
-                                };
-                                if !v.is_object() {
-                                    info!("Failed to parse RPC server response!");
-                                    return future::err(());
-                                }
-                                let v_obj = v.as_object().unwrap();
-                                if v_obj.get("error") != Some(&serde_json::Value::Null) {
-                                    info!("Failed to parse RPC server response!");
-                                    return future::err(());
-                                }
-                                if let Some(res) = v_obj.get("result") {
-                                    future::ok((*res).clone())
-                                } else {
-                                    info!("Failed to parse RPC server response!");
-                                    return future::err(());
-                                }
-                            })
-                    )
-                }
+                            };
+                            if !v.is_object() {
+                                println!("Failed to parse RPC server response! 3");
+                                return future::err(());
+                            }
+                            let v_obj = v.as_object().unwrap();
+                            if v_obj.get("error") != Some(&serde_json::Value::Null) {
+                                println!("Failed to parse RPC server response! 4");
+                                println!("{:?}", &v_obj);
+                                return future::err(());
+                            }
+                            if let Some(res) = v_obj.get("result") {
+                                future::ok((*res).clone())
+                            } else {
+                                println!("Failed to parse RPC server response! 5k");
+                                return future::err(());
+                            }
+                        });
+                    return ok;
+                    // return future::Either::Left(ok);
+                    // )
+                // } else {
+                //     // future::Either::Right(
+                //     let err = res.into_body()
+                //         // .map_err(|_| {})
+                //         .map_ok(|body| {
+                //             let v: serde_json::Value = match serde_json::from_slice(&body) {
+                //                 Ok(v) => v,
+                //                 Err(_) => {
+                //                     info!("Failed to parse RPC server response!");
+                //                     return future::err(());
+                //                 }
+                //             };
+                //             if !v.is_object() {
+                //                 info!("Failed to parse RPC server response!");
+                //                 return future::err(());
+                //             }
+                //             let v_obj = v.as_object().unwrap();
+                //             if v_obj.get("error") != Some(&serde_json::Value::Null) {
+                //                 info!("Failed to parse RPC server response!");
+                //                 return future::err(());
+                //             }
+                //             if let Some(res) = v_obj.get("result") {
+                //                 future::ok((*res).clone())
+                //             } else {
+                //                 info!("Failed to parse RPC server response!");
+                //                 return future::err(());
+                //             }
+                //         });
+                //     // )
+                //     return err;
+                //     // return future::Either::Right(err);
+                // }
             })
     }
 
