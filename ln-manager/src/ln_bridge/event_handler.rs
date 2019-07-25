@@ -3,8 +3,8 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 
 use future;
-use futures::sync::mpsc;
-use futures::{Future, Stream};
+use futures::channel::mpsc;
+use futures::{Future, Stream, StreamExt};
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -26,9 +26,9 @@ use super::rpc_client::RPCClient;
 use executor::Larva;
 use log::{info};
 
-pub fn divide_rest_event(
+pub fn divide_rest_event<T: Larva>(
     event: Event,
-    us: &Arc<EventHandler>,
+    us: &Arc<EventHandler<T>>,
     mut sender: mpsc::Sender<()>,
     larva: &impl Larva,
 ) {
@@ -89,12 +89,12 @@ pub fn divide_rest_event(
     }
 }
 
-fn handle_fund_tx(
+fn handle_fund_tx<T: Larva>(
     mut self_sender: mpsc::Sender<()>,
     &temporary_channel_id: &[u8; 32],
-    us: Arc<EventHandler>,
+    us: Arc<EventHandler<T>>,
     value: &[&str; 2]
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Output = Result<(), ()>> {
     us.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
@@ -129,11 +129,11 @@ fn handle_fund_tx(
 		})
 }
 
-fn handle_receiver(
-    us: &Arc<EventHandler>,
+fn handle_receiver<T: Larva>(
+    us: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
-) -> impl Future<Item = (), Error = ()> {
+) -> impl Future<Output = Result<(), ()>> {
     us.peer_manager.process_events();
 		let mut events = us.channel_manager.get_and_clear_pending_events();
 		events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -146,7 +146,7 @@ fn handle_receiver(
 							      constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
 						    }
 						    ).expect("LN funding tx should always be to a SegWit output").to_address();
-                return future::Either::A(
+                return future::Either::Left(
                     handle_fund_tx(
                         self_sender.clone(),
                         &temporary_channel_id,
@@ -176,14 +176,14 @@ fn handle_receiver(
 		}
 		fs::rename(&tmp_filename, &filename).unwrap();
 
-		future::Either::B(future::result(Ok(())))
+		future::Either::Right(future::ok(()))
 }
 
-pub struct EventHandler {
+pub struct EventHandler<T: Larva> {
     network: constants::Network,
     file_prefix: String,
     rpc_client: Arc<RPCClient>,
-    peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+    peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
     channel_manager: Arc<channelmanager::ChannelManager>,
     monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
@@ -191,12 +191,12 @@ pub struct EventHandler {
     Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
 }
-impl EventHandler {
+impl<T: Larva> EventHandler<T> {
     pub fn setup(
         network: constants::Network,
         file_prefix: String,
         rpc_client: Arc<RPCClient>,
-        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor>>,
+        peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
         channel_manager: Arc<channelmanager::ChannelManager>,
         broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,

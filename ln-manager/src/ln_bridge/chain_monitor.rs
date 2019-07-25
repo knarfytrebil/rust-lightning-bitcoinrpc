@@ -11,7 +11,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use futures::future;
 use futures::future::Future;
-use futures::sync::mpsc;
+use futures::channel::mpsc;
 use futures::{Sink, Stream};
 
 use lightning::chain::chaininterface;
@@ -44,8 +44,8 @@ impl FeeEstimator {
             high_prio_est: AtomicUsize::new(0),
         }
     }
-    fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Item = (), Error = ()> {
-        let mut reqs: Vec<Box<Future<Item = (), Error = ()> + Send>> = Vec::with_capacity(3);
+    fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
+        let mut reqs: Vec<Box<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
         {
             let us = us.clone();
             reqs.push(Box::new(
@@ -196,7 +196,7 @@ fn find_fork_step(
                 )))
                 .then(move |send_res| {
                     if let Ok(steps_tx) = send_res {
-                        future::Either::A(
+                        future::Either::Left(
                             rpc_client
                                 .get_header(&current_header.previousblockhash)
                                 .then(move |new_cur_header| {
@@ -212,7 +212,7 @@ fn find_fork_step(
                         )
                     } else {
                         // Caller droped the receiver, we should give up now
-                        future::Either::B(future::result(Ok(())))
+                        future::Either::Right(future::ok(()))
                     }
                 }),
         );
@@ -224,10 +224,10 @@ fn find_fork_step(
                 .send(ForkStep::DisconnectBlock(target_header.to_block_header()))
                 .then(move |send_res| {
                     if let Ok(steps_tx) = send_res {
-                        future::Either::A(
+                        future::Either::Left(
                             if target_header.previousblockhash == current_header.previousblockhash {
                                 // Found the fork, also connect current and finish!
-                                future::Either::A(future::Either::A(
+                                future::Either::Left(future::Either::Left(
                                     steps_tx
                                         .send(ForkStep::ConnectBlock((
                                             current_header.previousblockhash.clone(),
@@ -237,7 +237,7 @@ fn find_fork_step(
                                 ))
                             } else if target_header.height > current_header.height {
                                 // Target is higher, walk it back and recurse
-                                future::Either::B(
+                                future::Either::Right(
                                     rpc_client
                                         .get_header(&target_header.previousblockhash)
                                         .then(move |new_target_header| {
@@ -257,7 +257,7 @@ fn find_fork_step(
                             } else {
                                 // Target and current are at the same height, but we're not at fork yet, walk
                                 // both back and recurse
-                                future::Either::A(future::Either::B(
+                                future::Either::Left(future::Either::Right(
                                     steps_tx
                                         .send(ForkStep::ConnectBlock((
                                             current_header.previousblockhash.clone(),
@@ -265,7 +265,7 @@ fn find_fork_step(
                                         )))
                                         .then(move |send_res| {
                                             if let Ok(steps_tx) = send_res {
-                                                future::Either::A(
+                                                future::Either::Left(
                                                     rpc_client
                                                         .get_header(
                                                             &current_header.previousblockhash,
@@ -295,7 +295,7 @@ fn find_fork_step(
                                                 )
                                             } else {
                                                 // Caller droped the receiver, we should give up now
-                                                future::Either::B(future::result(Ok(())))
+                                                future::Either::Right(future::ok(()))
                                             }
                                         }),
                                 ))
@@ -303,7 +303,7 @@ fn find_fork_step(
                         )
                     } else {
                         // Caller droped the receiver, we should give up now
-                        future::Either::B(future::result(Ok(())))
+                        future::Either::Right(future::ok(()))
                     }
                 }),
         );
@@ -341,9 +341,9 @@ fn find_fork(
                     if current_header.previousblockhash == target_hash || current_header.height == 1
                     {
                         // Fastpath one-new-block-connected or reached block 1
-                        future::Either::A(future::result(Ok(())))
+                        future::Either::Left(future::ok(()))
                     } else {
-                        future::Either::B(rpc_client.get_header(&target_hash).then(
+                        future::Either::Right(rpc_client.get_header(&target_hash).then(
                             move |target_resp| {
                                 match target_resp {
                                     Ok(target_header) => find_fork_step(
@@ -402,12 +402,12 @@ pub fn spawn_chain_monitor(
                         let new_block = v["bestblockhash"].as_str().unwrap().to_string();
                         let old_block = cur_block.lock().unwrap().clone();
                         if new_block == old_block {
-                            return future::Either::A(future::result(Ok(())));
+                            return future::Either::Left(future::ok(()));
                         }
 
                         *cur_block.lock().unwrap() = new_block.clone();
                         if old_block == "" {
-                            return future::Either::A(future::result(Ok(())));
+                            return future::Either::Left(future::ok(()));
                         }
 
                         let (events_tx, events_rx) = mpsc::channel(1);
@@ -419,7 +419,7 @@ pub fn spawn_chain_monitor(
                             larva.clone(),
                         );
                         info!("NEW BEST BLOCK!");
-                        future::Either::B(events_rx.collect().then(move |events_res| {
+                        future::Either::Right(events_rx.collect().then(move |events_res| {
                             let events = events_res.unwrap();
                             for event in events.iter().rev() {
                                 if let &ForkStep::DisconnectBlock(ref header) = &event {

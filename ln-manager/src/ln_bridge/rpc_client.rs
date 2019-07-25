@@ -1,5 +1,6 @@
 use base64;
 use hyper;
+// use hyper::rt::{Future as FutureH, Stream as StreamH};
 use serde_json;
 
 use bitcoin_hashes::hex::FromHex;
@@ -8,6 +9,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin::blockdata::block::BlockHeader;
 
 use futures::{future, Future, Stream};
+use futures::future::FutureObj;
 
 use log::{info};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -68,7 +70,7 @@ impl RPCClient {
         method: &str,
         params: &[&str],
         may_fail: bool,
-    ) -> impl Future<Item = serde_json::Value, Error = ()> {
+    ) -> impl Future<Output = Result<serde_json::Value, ()>> {
         let mut request = hyper::Request::post(&self.uri);
         let auth: &str = &self.basic_auth;
         request.header("Authorization", auth);
@@ -103,10 +105,10 @@ impl RPCClient {
                 if res.status() != hyper::StatusCode::OK {
                     if !may_fail {
                         println!("RPC request failed");
-                        println!("{:?}", &res.body()); 
+                        println!("{:?}", &res.body());
                         // info!("Failed to get RPC server response (probably bad auth)!");
                     }
-                    future::Either::A(
+                    future::Either::Left(
                          res.into_body()
                             .concat2()
                             .map_err(|_| {
@@ -132,7 +134,7 @@ impl RPCClient {
                                     return future::err(());
                                 }
                                 if let Some(res) = v_obj.get("result") {
-                                    future::result(Ok((*res).clone()))
+                                    future::ok((*res).clone())
                                 } else {
                                     println!("Failed to parse RPC server response! 5k");
                                     return future::err(());
@@ -140,7 +142,7 @@ impl RPCClient {
                         })
                     )
                 } else {
-                    future::Either::B(
+                    future::Either::Right(
                         res.into_body()
                             .concat2()
                             .map_err(|_| {
@@ -165,7 +167,7 @@ impl RPCClient {
                                     return future::err(());
                                 }
                                 if let Some(res) = v_obj.get("result") {
-                                    future::result(Ok((*res).clone()))
+                                    future::ok((*res).clone())
                                 } else {
                                     info!("Failed to parse RPC server response!");
                                     return future::err(());
@@ -179,7 +181,7 @@ impl RPCClient {
     pub fn get_header(
         &self,
         header_hash: &str,
-    ) -> impl Future<Item = GetHeaderResponse, Error = ()> {
+    ) -> impl Future<Output = Result<GetHeaderResponse, ()>> {
         let param = "\"".to_string() + header_hash + "\"";
         self.make_rpc_call("getblockheader", &[&param], false)
             .and_then(|mut v| {
