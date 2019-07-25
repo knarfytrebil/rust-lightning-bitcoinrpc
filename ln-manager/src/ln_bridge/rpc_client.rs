@@ -1,5 +1,6 @@
 use base64;
 use hyper;
+use hyper::rt::Future as futureH;
 use serde_json;
 
 use bitcoin_hashes::hex::FromHex;
