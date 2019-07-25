@@ -1,5 +1,6 @@
 use protocol;
 use ln_cmd::tasks::{Arg, TaskFn, Probe};
+use ln_cmd::help;
 use ln_node::settings::Settings as NodeSettings;
 
 use std::net::UdpSocket;
@@ -58,6 +59,9 @@ fn handle_msg(
             }
             protocol::RequestFuncs::GetRandomNumber => {
                 protocol::ResponseFuncs::GetRandomNumber(rand::random())
+            }
+            protocol::RequestFuncs::DisplayHelp => {
+                protocol::ResponseFuncs::DisplayHelp(help::get())
             }
         }
     }

@@ -3,12 +3,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum RequestFuncs {
+    DisplayHelp,
     PrintSomething(String),
     GetRandomNumber,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ResponseFuncs {
+    DisplayHelp(String),
     PrintSomething,
     GetRandomNumber(i32),
     Error(String),
