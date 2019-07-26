@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use future;
 use futures::channel::mpsc;
-use futures::{Future, Stream, StreamExt};
+use futures::{Future, Stream, StreamExt, FutureExt, TryFutureExt};
+use futures::executor::block_on;
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -95,23 +96,26 @@ fn handle_fund_tx<T: Larva>(
     us: Arc<EventHandler<T>>,
     value: &[&str; 2]
 ) -> impl Future<Output = Result<(), ()>> {
-    us.rpc_client.make_rpc_call(
+    block_on(us.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
         false
-    ).and_then(move |tx_hex| {
+    ).map(move |tx_hex| {
+        let tx_hex = tx_hex.unwrap();
 				us.rpc_client.make_rpc_call(
             "fundrawtransaction",
             &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
             false
-        ).and_then(move |funded_tx| {
+        ).map(move |funded_tx| {
+            let funded_tx = funded_tx.unwrap();
 						let changepos = funded_tx["changepos"].as_i64().unwrap();
 						assert!(changepos == 0 || changepos == 1);
 						us.rpc_client.make_rpc_call(
                 "signrawtransactionwithwallet",
                 &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
                 false
-            ).and_then(move |signed_tx| {
+            ).map(move |signed_tx| {
+                let signed_tx = signed_tx.unwrap();
 								assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
 								let tx: blockdata::transaction::Transaction =
                     encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
@@ -123,10 +127,10 @@ fn handle_fund_tx<T: Larva>(
 								us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
 								let _ = self_sender.try_send(());
 								info!("Generated funding tx!");
-								Ok(())
 						})
 				})
-		})
+		}));
+    future::ok(())
 }
 
 fn handle_receiver<T: Larva>(

@@ -13,15 +13,16 @@ lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invo
 secp256k1 = "0.12"
 # hyper = "0.12"
 hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
-tokio-io = "0.1"
-tokio-fs = "0.1"
-tokio-codec = "0.1"
+tokio-io = { git = "https://github.com/tokio-rs/tokio.git" }
+tokio-fs = { git = "https://github.com/tokio-rs/tokio.git" }
+tokio-codec = { git = "https://github.com/tokio-rs/tokio.git" }
 futures = { package = "futures-preview", version = "0.3.0-alpha.17" }
 serde = "1"
 serde_json = "1"
 serde_derive = "1"
 rand = "0.4"
-tokio = "0.1"
+tokio = { git = "https://github.com/tokio-rs/tokio.git" }
+tokio-tcp = { git = "https://github.com/tokio-rs/tokio.git" }
 bytes = "0.4"
 base64 = "0.9"
 num-derive = "0.2"

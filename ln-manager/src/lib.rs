@@ -17,6 +17,7 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
+extern crate tokio_tcp;
 
 #[macro_use]
 extern crate serde_derive;
@@ -34,6 +35,7 @@ use futures::future;
 use futures::future::Future;
 use futures::channel::mpsc;
 use futures::Stream;
+use futures::{FutureExt, StreamExt};
 
 use bitcoin::network::constants;
 use bitcoin::util::address::Address;
@@ -163,7 +165,7 @@ impl<T: Larva> LnManager<T> {
                     ],
                     false,
                 )
-                .then(|_| Ok(()))
+                .map(|_| Ok(()))
         );
 
         let _ = larva.clone().spawn_task(
@@ -184,7 +186,7 @@ impl<T: Larva> LnManager<T> {
                     ],
                     false,
                 )
-                .then(|_| Ok(()))
+                .map(|_| Ok(()))
         );
 
         let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
@@ -242,7 +244,7 @@ impl<T: Larva> LnManager<T> {
         );
 
         let listener =
-            tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
+            tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
             .unwrap();
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
@@ -255,12 +257,13 @@ impl<T: Larva> LnManager<T> {
                     Connection::setup_inbound(
                         peer_manager_listener.clone(),
                         event_listener.clone(),
-                        sock,
+                        sock.unwrap(),
                         setup_larva.clone(),
                     );
-                    Ok(())
+                    // for_each expect ()
+                    future::ready(())
                 })
-                .then(|_| Ok(())),
+                .map(|_| Ok(())),
         );
 
         spawn_chain_monitor(
@@ -272,14 +275,15 @@ impl<T: Larva> LnManager<T> {
             larva.clone(),
         );
 
-        let _ = larva.clone().spawn_task(Box::new(
-            tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0))
-                .for_each(move |_| {
-                    //TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
-                    Ok(())
-                })
-                .map_err(|_| ())
-        ));
+        // TODO see below
+        // let _ = larva.clone().spawn_task(Box::new(
+        //     tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0))
+        //         .for_each(move |_| {
+        //             //TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
+        //             future::ready(())
+        //         })
+        //         .map_err(|_| ())
+        // ));
 
         Self {
             rpc_client,

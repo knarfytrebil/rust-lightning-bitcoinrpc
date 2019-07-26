@@ -2,14 +2,15 @@ use bytes::BufMut;
 
 use futures::future;
 use futures::future::Future;
-use futures::{AsyncSink, Stream, Sink};
+use futures::{Stream, Sink};
+use futures::{FutureExt, StreamExt};
 // use futures::task::Poll;
 use futures::channel::mpsc;
 
 use secp256k1::key::PublicKey;
 
 use tokio::timer::Delay;
-use tokio::net::TcpStream;
+use tokio_tcp::TcpStream;
 
 use lightning::ln::peer_handler;
 use lightning::ln::peer_handler::SocketDescriptor as LnSocketTrait;
@@ -44,17 +45,16 @@ impl Connection {
 		    let peer_manager_ref = peer_manager.clone();
         let larva_ref = larva.clone();
 		    let _ = larva.clone().spawn_task(reader.for_each(move |b| {
+            let b = b.unwrap();
 			      let pending_read = b.to_vec();
-			      {
-				        let mut lock = us_ref.lock().unwrap();
-				        assert!(lock.pending_read.is_empty());
-				        if lock.read_paused {
-					          lock.pending_read = pending_read;
-					          let (sender, blocker) = futures::channel::oneshot::channel();
-					          lock.read_blocker = Some(sender);
-					          return future::Either::Left(blocker.then(|_| { Ok(()) }));
-				        }
-			      }
+				    let mut lock = us_ref.lock().unwrap();
+				    assert!(lock.pending_read.is_empty());
+				    if lock.read_paused {
+					      lock.pending_read = pending_read;
+					      let (sender, blocker) = futures::channel::oneshot::channel();
+					      lock.read_blocker = Some(sender);
+					      return future::Either::Left(blocker.then(|_| { future::ready(()) }));
+				    }
 			      //TODO: There's a race where we don't meet the requirements of disconnect_socket if its
 			      //called right here, after we release the us_ref lock in the scope above, but before we
 			      //call read_event!
@@ -67,7 +67,7 @@ impl Connection {
 				        },
 				        Err(e) => {
 					          us_ref.lock().unwrap().need_disconnect = false;
-					          return future::Either::Right(future::err(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
+					          return future::Either::Right(future::ready(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
 				        }
 			      }
 
@@ -77,7 +77,7 @@ impl Connection {
 				        assert!(e.is_full());
 			      }
 
-			      future::Either::Right(future::ok(()))
+			      future::Either::Right(future::ready(()))
 		    }).then(move |_| {
 			      if us_close_ref.lock().unwrap().need_disconnect {
 				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone(), larva_ref.clone()));
@@ -85,7 +85,7 @@ impl Connection {
 			      } else {
 				        println!("We disconnected peer!");
 			      }
-			      Ok(())
+            future::ok(())
 		    }));
 	  }
 
@@ -223,14 +223,15 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 
 		    let mut bytes = bytes::BytesMut::with_capacity(data.len() - write_offset);
 		    bytes.put(&data[write_offset..]);
-		    let write_res = us.writer.as_mut().unwrap().start_send(bytes.freeze());
+        // TODO AsyncSink
+		    let write_res = us.writer.unwrap().start_send(bytes.freeze());
 		    match write_res {
 			      Ok(res) => {
 				        match res {
-					          AsyncSink::Ready => {
+					          Sink::Ready => {
 						            data.len() - write_offset
 					          },
-					          AsyncSink::NotReady(_) => {
+					          Sink::NotReady(_) => {
 						            us.read_paused = true;
 						            let us_ref = self.clone();
 						            let _ = self.larva.spawn_task(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
@@ -263,8 +264,8 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 impl<T: Larva> Eq for SocketDescriptor<T> {}
 impl<T: Larva> PartialEq for SocketDescriptor<T> {
 	  fn eq(&self, o: &Self) -> bool {
-		    self.id == o.id
-	  }
+		self.id == o.id
+}
 }
 impl<T: Larva> Hash for SocketDescriptor<T> {
 	  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
