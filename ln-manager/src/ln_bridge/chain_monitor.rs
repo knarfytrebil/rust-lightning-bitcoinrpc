@@ -49,7 +49,7 @@ impl FeeEstimator {
     }
     // TODO test Pin works
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
-        let mut reqs: Vec<Pin<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
+        let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
         {
             let us = us.clone();
             reqs.push(Box::pin(
