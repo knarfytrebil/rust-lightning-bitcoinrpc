@@ -11,7 +11,8 @@ bitcoin_hashes = "0.3"
 lightning = "0.0.9"
 lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invoice.git", branch = "master" }
 secp256k1 = "0.12"
-hyper = "0.12"
+# hyper = "0.12"
+hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
 tokio-io = "0.1"
 tokio-fs = "0.1"
 tokio-codec = "0.1"
