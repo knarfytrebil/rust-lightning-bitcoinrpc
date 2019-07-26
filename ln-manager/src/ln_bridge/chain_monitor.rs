@@ -13,6 +13,8 @@ use futures::future;
 use futures::future::Future;
 use futures::channel::mpsc;
 use futures::{Sink, Stream};
+use futures::{TryFutureExt};
+use futures::executor::block_on;
 
 use lightning::chain::chaininterface;
 pub use lightning::chain::chaininterface::{ChainWatchInterface, ChainWatchInterfaceUtil};
@@ -25,11 +27,12 @@ use executor::Larva;
 use log::info;
 use std::cmp;
 use std::collections::HashMap;
-use std::marker::Sync;
+use std::marker::{Sync, Sized};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::vec::Vec;
+use std::pin::Pin;
 
 pub struct FeeEstimator {
     background_est: AtomicUsize,
@@ -44,14 +47,15 @@ impl FeeEstimator {
             high_prio_est: AtomicUsize::new(0),
         }
     }
+    // TODO test Pin works
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
-        let mut reqs: Vec<Box<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
+        let mut reqs: Vec<Pin<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
         {
             let us = us.clone();
-            reqs.push(Box::new(
+            reqs.push(Box::pin(
                 rpc_client
                     .make_rpc_call("estimatesmartfee", &vec!["6", "\"CONSERVATIVE\""], false)
-                    .and_then(move |v| {
+                    .map_ok(move |v| {
                         if let Some(serde_json::Value::Number(hp_btc_per_kb)) = v.get("feerate") {
                             us.high_prio_est.store(
                                 (hp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
@@ -59,16 +63,15 @@ impl FeeEstimator {
                                 Ordering::Release,
                             );
                         }
-                        Ok(())
                     }),
             ));
         }
         {
             let us = us.clone();
-            reqs.push(Box::new(
+            reqs.push(Box::pin(
                 rpc_client
                     .make_rpc_call("estimatesmartfee", &vec!["18", "\"ECONOMICAL\""], false)
-                    .and_then(move |v| {
+                    .map_ok(move |v| {
                         if let Some(serde_json::Value::Number(np_btc_per_kb)) = v.get("feerate") {
                             us.normal_est.store(
                                 (np_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
@@ -76,16 +79,15 @@ impl FeeEstimator {
                                 Ordering::Release,
                             );
                         }
-                        Ok(())
                     }),
             ));
         }
         {
             let us = us.clone();
-            reqs.push(Box::new(
+            reqs.push(Box::pin(
                 rpc_client
                     .make_rpc_call("estimatesmartfee", &vec!["144", "\"ECONOMICAL\""], false)
-                    .and_then(move |v| {
+                    .map_ok(move |v| {
                         if let Some(serde_json::Value::Number(bp_btc_per_kb)) = v.get("feerate") {
                             us.background_est.store(
                                 (bp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
@@ -93,11 +95,11 @@ impl FeeEstimator {
                                 Ordering::Release,
                             );
                         }
-                        Ok(())
                     }),
             ));
         }
-        future::join_all(reqs).then(|_| Ok(()))
+        block_on(future::join_all(reqs));
+        future::ok(())
     }
 }
 impl chaininterface::FeeEstimator for FeeEstimator {
@@ -143,11 +145,12 @@ impl<T> ChainBroadcaster<T> {
                 send_futures.push(
                     self.rpc_client
                         .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
-                        .then(|_| -> Result<(), ()> { Ok(()) }),
+                        .map_ok(|_| -> Result<(), ()> { Ok(()) }),
                 );
             }
         }
-        future::join_all(send_futures).then(|_| -> Result<(), ()> { Ok(()) })
+        block_on(future::join_all(send_futures));
+        future::ok(())
     }
 }
 
