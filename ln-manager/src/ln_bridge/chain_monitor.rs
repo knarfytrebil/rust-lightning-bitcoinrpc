@@ -13,7 +13,7 @@ use futures::future;
 use futures::future::Future;
 use futures::channel::mpsc;
 use futures::{Sink, Stream};
-use futures::{TryFutureExt};
+use futures::{FutureExt, TryFutureExt, SinkExt};
 use futures::executor::block_on;
 
 use lightning::chain::chaininterface;
@@ -49,7 +49,7 @@ impl FeeEstimator {
     }
     // TODO test Pin works
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
-        let mut reqs: Vec<Pin<Future<Output = Result<(), ()>> + Send>> = Vec::with_capacity(3);
+        let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
         {
             let us = us.clone();
             reqs.push(Box::pin(
@@ -138,7 +138,6 @@ impl<T> ChainBroadcaster<T> {
 
     fn rebroadcast_txn(&self) -> impl Future {
         let mut send_futures = Vec::new();
-        {
             let txn = self.txn_to_broadcast.lock().unwrap();
             for (_, tx) in txn.iter() {
                 let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
@@ -148,9 +147,8 @@ impl<T> ChainBroadcaster<T> {
                         .map_ok(|_| -> Result<(), ()> { Ok(()) }),
                 );
             }
-        }
         block_on(future::join_all(send_futures));
-        future::ok(())
+        future::ready(())
     }
 }
 
@@ -164,7 +162,7 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
         let _ = self.larva.spawn_task(
             self.rpc_client
                 .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
-                .then(|_| Ok(())),
+                .map_ok(|_| Ok(())),
         );
     }
 }
@@ -202,7 +200,7 @@ fn find_fork_step(
                         future::Either::Left(
                             rpc_client
                                 .get_header(&current_header.previousblockhash)
-                                .then(move |new_cur_header| {
+                                .map(move |new_cur_header| {
                                     find_fork_step(
                                         steps_tx,
                                         new_cur_header.unwrap(),
