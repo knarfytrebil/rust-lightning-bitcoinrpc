@@ -1,11 +1,11 @@
 use lightning::ln::peer_handler::PeerManager;
-use ln_bridge::connection::{Connection, SocketDescriptor};
-use ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
+use crate::ln_bridge::connection::{Connection, SocketDescriptor};
+use crate::ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
 
 use std::sync::Arc;
 use std::time::Duration;
 use futures::channel::mpsc;
-use executor::Larva;
+use crate::executor::Larva;
 
 pub trait PeerC<T> {
     fn connect(&self, node: String, larva: T);

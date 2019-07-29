@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
 
-use future;
+use crate::future;
 use futures::channel::mpsc;
 use futures::{Future, Stream, StreamExt, FutureExt, TryFutureExt};
 use futures::executor::block_on;
@@ -22,9 +22,9 @@ use lightning::util::ser::Writeable;
 
 use super::connection::SocketDescriptor;
 
-use ln_bridge::utils::{hex_to_vec, hex_str};
+use super::utils::{hex_to_vec, hex_str};
 use super::rpc_client::RPCClient;
-use executor::Larva;
+use crate::executor::Larva;
 use log::{info};
 
 pub fn divide_rest_event<T: Larva>(

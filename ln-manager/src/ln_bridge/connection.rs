@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use std::vec::Vec;
 use std::hash::Hash;
 
-use executor::Larva;
+use crate::executor::Larva;
 
 static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
