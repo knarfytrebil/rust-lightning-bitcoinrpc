@@ -54,7 +54,7 @@ pub fn divide_rest_event<T: Larva>(
 						let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
 							  us.channel_manager.process_pending_htlc_forwards();
 							  let _ = sender.try_send(());
-							  Ok(())
+                future::ok(())
 						})));
 				},
         Event::FundingBroadcastSafe { funding_txo, .. } => {
@@ -221,13 +221,14 @@ impl<T: Larva> EventHandler<T> {
         let (sender, receiver) = mpsc::channel(2);
         let self_sender = sender.clone();
         let _ = larva.clone().spawn_task(
-            receiver.for_each(move |_| {
-			          handle_receiver(
+            receiver.for_each(|_| {
+			          let _ = handle_receiver(
                     &us,
                     &self_sender,
                     &larva
-                )
-		        })
+                );
+                future::ready(())
+		        }).map(|_| Ok(()))
         );
         sender
     }
