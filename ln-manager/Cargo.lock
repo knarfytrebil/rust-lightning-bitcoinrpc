@@ -481,6 +481,7 @@ dependencies = [
  "tokio-fs 0.2.0 (git+https://github.com/tokio-rs/tokio.git)",
  "tokio-io 0.2.0 (git+https://github.com/tokio-rs/tokio.git)",
  "tokio-tcp 0.2.0 (git+https://github.com/tokio-rs/tokio.git)",
+ "tokio-timer 0.3.0 (git+https://github.com/tokio-rs/tokio.git)",
 ]
 
 [[package]]

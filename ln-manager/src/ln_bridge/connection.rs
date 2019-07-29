@@ -2,8 +2,8 @@ use bytes::BufMut;
 
 use futures::future;
 use futures::future::Future;
-use futures::{Stream, Sink};
-use futures::{FutureExt, StreamExt};
+use futures::{Stream, Sink, Poll};
+use futures::{FutureExt, StreamExt, SinkExt, TryStreamExt};
 // use futures::task::Poll;
 use futures::channel::mpsc;
 
@@ -67,7 +67,9 @@ impl Connection {
 				        },
 				        Err(e) => {
 					          us_ref.lock().unwrap().need_disconnect = false;
-					          return future::Either::Right(future::ready(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
+					          // return future::Either::Right(future::ok(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
+                    // TODO: should discuss Err
+                    return future::Either::Right(future::ready(()));
 				        }
 			      }
 
@@ -77,7 +79,8 @@ impl Connection {
 				        assert!(e.is_full());
 			      }
 
-			      future::Either::Right(future::ready(()))
+            // TODO: FYI, this part should be rewrote
+            return future::Either::Right(future::ready(()));
 		    }).then(move |_| {
 			      if us_close_ref.lock().unwrap().need_disconnect {
 				        peer_manager_ref.disconnect_event(&SocketDescriptor::new(us_close_ref, peer_manager_ref.clone(), larva_ref.clone()));
@@ -92,11 +95,18 @@ impl Connection {
 	  fn new(event_notify: mpsc::Sender<()>, stream: TcpStream, larva: &impl Larva) -> (futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, Arc<Mutex<Self>>) {
 		    let (writer, reader) = tokio_codec::Framed::new(stream, tokio_codec::BytesCodec::new()).split();
 		    let (send_sink, send_stream) = mpsc::channel(3);
-		    let _ = larva.spawn_task(writer.send_all(send_stream.map_err(|_| -> std::io::Error {
-			      unreachable!();
-		    })).then(|_| {
-			      future::ok(())
-		    }));
+        // TODO: discuss it
+		    // let _ = larva.spawn_task(
+        //     writer.send_all(
+        //         &mut send_stream.map_err(|e| -> std::io::Error {
+			  //             unreachable!();
+        //             // std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+        //             // std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+		    //         })
+        //     ).then(|_| {
+			  //         future::ok(())
+		    //     })
+        // );
 		    let us = Arc::new(Mutex::new(Self { writer: Some(send_sink), event_notify, pending_read: Vec::new(), read_blocker: None, read_paused: false, need_disconnect: true, id: ID_COUNTER.fetch_add(1, Ordering::AcqRel) }));
 
 		    (reader, us)
@@ -140,18 +150,19 @@ impl Connection {
 	  /// You should poll the Receive end of event_notify and call get_and_clear_pending_events() on
 	  /// ChannelManager and ChannelMonitor objects.
 	  pub fn connect_outbound<T: Larva>(peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>, event_notify: mpsc::Sender<()>, their_node_id: PublicKey, addr: SocketAddr, larva: T) {
-		    let connect_timeout = Delay::new(Instant::now() + Duration::from_secs(10)).then(|_| {
-			      future::err(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
-		    });
+        // TODO: discuss
+        // let connect_timeout = Delay::new(Instant::now() + Duration::from_secs(10)).then(|_| {
+			  //     future::err(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
+		    // });
         // TODO: consider lifetime
-		    let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
-			                                   .and_then(move |stream| {
-				                                     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, larva);
-				                                     future::ok(())
-			                                   }).or_else(|_| {
-				                                     //TODO: return errors somehow
-				                                     future::ok(())
-			                                   }));
+		    // let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
+			  //                                  .and_then(move |stream| {
+				//                                      Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, larva);
+				//                                      future::ok(())
+			  //                                  }).or_else(|_| {
+				//                                      //TODO: return errors somehow
+				//                                      future::ok(())
+			  //                                  }));
 	  }
 }
 
@@ -170,12 +181,12 @@ impl<T: Larva> SocketDescriptor<T> {
     ) -> Self {
 		    let id = conn.lock().unwrap().id;
 		    Self { conn, id, peer_manager, larva }
-	  }
+    }
 }
 
 macro_rules! schedule_read {
 		($us_ref: expr) => {
-				let _ = $us_ref.clone().larva.spawn_task(future::lazy(move || -> Result<(), ()> {
+				let _ = $us_ref.clone().larva.spawn_task(future::lazy(move |_| -> Result<(), ()> {
 					  let mut read_data = Vec::new();
 					  {
 						    let mut us = $us_ref.conn.lock().unwrap();
@@ -227,26 +238,28 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 		    let write_res = us.writer.unwrap().start_send(bytes.freeze());
 		    match write_res {
 			      Ok(res) => {
-				        match res {
-					          Sink::Ready => {
-						            data.len() - write_offset
-					          },
-					          Sink::NotReady(_) => {
-						            us.read_paused = true;
-						            let us_ref = self.clone();
-						            let _ = self.larva.spawn_task(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
-							              if let Ok(writer) = writer_res {
-								                {
-									                  let mut us = us_ref.conn.lock().unwrap();
-									                  us.writer = Some(writer);
-								                }
-								                schedule_read!(us_ref);
-							              } // we'll fire the disconnect event on the socket reader end
-							              Ok(())
-						            }));
-						            0
-					          }
-				        }
+                // TODO: wtf
+				        // match res {
+					      //     Poll::Pending => {
+						    //         data.len() - write_offset
+				        //     },
+				        //     Poll::Ready(_) => {
+				        //         us.read_paused = true;
+				        //         let us_ref = self.clone();
+				        //         let _ = self.larva.spawn_task(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
+						    //             if let Ok(writer) = writer_res {
+								//                 {
+								// 	                  let mut us = us_ref.conn.lock().unwrap();
+								// 	                  us.writer = Some(writer);
+								//                 }
+								//                 schedule_read!(us_ref);
+						    //             } // we'll fire the disconnect event on the socket reader end
+						    //             Ok(())
+				        //         }));
+		            //         0
+                //     }
+				        // }
+                data.len() - write_offset
 			      },
 			      Err(_) => {
 				        // We'll fire the disconnected event on the socket reader end
