@@ -66,7 +66,7 @@ impl RPCClient {
 
     /// params entries must be pre-quoted if appropriate
     /// may_fail is only used to change logging
-    pub fn make_rpc_call(
+    pub async fn make_rpc_call(
         &self,
         method: &str,
         params: &[&str],
