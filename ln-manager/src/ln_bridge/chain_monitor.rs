@@ -332,20 +332,20 @@ fn find_fork(
                 .get_header(&current_hash)
                 .map(move |current_resp| {
                     let current_header = current_resp.unwrap();
-                    assert!(steps_tx
+                    // TODO assert!(is_ready()) => unwrap Error handle
+                    steps_tx
                         .start_send(ForkStep::ConnectBlock((
                             current_hash,
                             current_header.height
                         )))
-                        .unwrap()
-                        .is_ready());
+                        .unwrap();
 
                     if current_header.previousblockhash == target_hash || current_header.height == 1
                     {
                         // Fastpath one-new-block-connected or reached block 1
-                        future::Either::Left(future::ok(()))
+                        future::Either::Left(future::ready(()))
                     } else {
-                        future::Either::Right(rpc_client.get_header(&target_hash).then(
+                        future::Either::Right(rpc_client.get_header(&target_hash).map(
                             move |target_resp| {
                                 match target_resp {
                                     Ok(target_header) => find_fork_step(
