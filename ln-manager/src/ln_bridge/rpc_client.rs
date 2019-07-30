@@ -4,10 +4,9 @@ use serde_json;
 
 use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
-
 use bitcoin::blockdata::block::BlockHeader;
 
-use futures::{future, Future, FutureExt, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use futures::executor::block_on;
 
 use log::{info, error};
@@ -26,8 +25,8 @@ pub struct GetHeaderResponse {
     pub previousblockhash: String,
 }
 
-impl GetHeaderResponse {
-    pub fn to_block_header(&self) -> BlockHeader {
+impl Into<BlockHeader> for GetHeaderResponse {
+    fn into(self) -> BlockHeader {
         BlockHeader {
             version: self.version,
             prev_blockhash: Sha256dHash::from_hex(&self.previousblockhash).unwrap(),
