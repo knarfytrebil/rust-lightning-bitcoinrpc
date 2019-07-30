@@ -7,7 +7,7 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use bitcoin::blockdata::block::BlockHeader;
 
-use futures::{Future, FutureExt, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{future, Future, FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use futures::executor::block_on;
 
 use log::{info, error};
@@ -62,6 +62,13 @@ impl RPCClient {
         }
     }
 
+    pub fn sync_rpc_call(
+        &self,
+        method: &str, params: &[&str], may_fail: bool,
+    ) -> Result<serde_json::Value, ()> {
+        block_on(self.make_rpc_call(method, params, may_fail))
+    }
+
     /// params entries must be pre-quoted if appropriate
     /// may_fail is only used to change logging
     pub async fn make_rpc_call(
@@ -69,7 +76,7 @@ impl RPCClient {
         method: &str,
         params: &[&str],
         may_fail: bool,
-    ) -> impl Future<Output = Result<serde_json::Value, ()>> {
+    ) -> Result<serde_json::Value, ()> {
         let mut request = hyper::Request::post(&self.uri);
         let auth: &str = &self.basic_auth;
         request.header("Authorization", auth);
@@ -80,85 +87,79 @@ impl RPCClient {
                 param_str += ",";
             }
         }
-        self.client
-            .request(
-                request
-                    .body(hyper::Body::from(
-                        "{\"method\":\"".to_string()
-                            + method
-                            + "\",\"params\":["
-                            + &param_str
-                            + "],\"id\":"
-                            + &self.id.fetch_add(1, Ordering::AcqRel).to_string()
-                            + "}",
-                    ))
-                    .unwrap(),
-            )
-            .map(move |res| {
-                let res = res.unwrap();
-                if res.status() != hyper::StatusCode::OK {
-                    if !may_fail {
-                        println!("RPC request failed");
-                        println!("{:?}", &res.body());
-                        // info!("Failed to get RPC server response (probably bad auth)!");
+        let res = self.client.request(
+            request
+                .body(hyper::Body::from(
+                    "{\"method\":\"".to_string()
+                        + method
+                        + "\",\"params\":["
+                        + &param_str
+                        + "],\"id\":"
+                        + &self.id.fetch_add(1, Ordering::AcqRel).to_string()
+                        + "}",
+                )).unwrap()
+        ).await;
+        let res = res.unwrap();
+        if res.status() != hyper::StatusCode::OK {
+            if !may_fail {
+                println!("RPC request failed");
+                println!("{:?}", &res.body());
+                // info!("Failed to get RPC server response (probably bad auth)!");
+            }
+            Err(())
+        } else {
+            // return Ok(serde_json::Value::Null);
+            Ok(block_on(res.into_body().try_concat().map_ok(|body| {
+                let v: serde_json::Value = match serde_json::from_slice(&body) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        info!("Failed to parse RPC server response!");
+                        // FIXME define error return json value
+                        return serde_json::Value::Null;
                     }
-                    Err(())
-                } else {
-                    // return Ok(serde_json::Value::Null);
-                    Ok(block_on(res.into_body().try_concat().map_ok(|body| {
-                        let v: serde_json::Value = match serde_json::from_slice(&body) {
-                            Ok(v) => v,
-                            Err(_) => {
-                                info!("Failed to parse RPC server response!");
-                                // FIXME define error return json value
-                                return serde_json::Value::Null;
-                            }
-                        };
-                        if !v.is_object() {
-                            info!("Failed to parse RPC server response!");
-                            return serde_json::Value::Null;
-                        }
-                        let v_obj = v.as_object().unwrap();
-                        if v_obj.get("error") != Some(&serde_json::Value::Null) {
-                            info!("Failed to parse RPC server response!");
-                            return serde_json::Value::Null;
-                        }
-                        if let Some(res) = v_obj.get("result") {
-                            return (*res).clone();
-                        } else {
-                            info!("Failed to parse RPC server response!");
-                            return serde_json::Value::Null;
-                        }
-                    })).unwrap())
+                };
+                if !v.is_object() {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
                 }
-            })
+                let v_obj = v.as_object().unwrap();
+                if v_obj.get("error") != Some(&serde_json::Value::Null) {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
+                }
+                if let Some(res) = v_obj.get("result") {
+                    return (*res).clone();
+                } else {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
+                }
+            })).unwrap())
+        }
     }
 
     pub fn get_header(
         &self,
         header_hash: &str,
-    ) -> impl Future<Output = Result<GetHeaderResponse, ()>> {
+    ) -> Result<GetHeaderResponse, ()> {
         let param = "\"".to_string() + header_hash + "\"";
-        self.make_rpc_call("getblockheader", &[&param], false)
-            .map(|v| {
-                let v = v.unwrap();
-                if v.is_object() {
-                    if let None = v.get("previousblockhash") {
-                        // Got a request for genesis block, add a dummy previousblockhash
-                        v.as_object_mut().unwrap().insert(
-                            "previousblockhash".to_string(),
-                            serde_json::Value::String("".to_string()),
-                        );
-                    }
-                }
-                let deser_res: Result<GetHeaderResponse, _> = serde_json::from_value(v);
-                match deser_res {
-                    Ok(resp) => Ok(resp),
-                    Err(_) => {
-                        error!("Got invalid header message from RPC server!");
-                        Err(())
-                    }
-                }
-            })
+        let v = self.sync_rpc_call("getblockheader", &[&param], false);
+        let v = v.unwrap();
+        if v.is_object() {
+            if let None = v.get("previousblockhash") {
+                // Got a request for genesis block, add a dummy previousblockhash
+                v.as_object_mut().unwrap().insert(
+                    "previousblockhash".to_string(),
+                    serde_json::Value::String("".to_string()),
+                );
+            }
+        }
+        let deser_res: Result<GetHeaderResponse, _> = serde_json::from_value(v);
+        match deser_res {
+            Ok(resp) => Ok(resp),
+            Err(_) => {
+                error!("Got invalid header message from RPC server!");
+                Err(())
+            }
+        }
     }
 }
