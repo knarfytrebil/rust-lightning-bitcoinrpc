@@ -160,9 +160,9 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
             .insert(tx.txid(), tx.clone());
         let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
         let _ = self.larva.spawn_task(
-            self.rpc_client
-                .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
-                .map_ok(|_| ()),
+            self.rpc_client.clone().make_rpc_call(
+                "sendrawtransaction", &[&tx_ser], true
+            ).map_ok(|_| ())
         );
     }
 }
