@@ -23,12 +23,12 @@ pub struct RestoreArgs {
   data_path: String,
   monitors_loaded: Vec<(OutPoint, ChannelMonitor)>,
   network: Network,
-  fee_estimator: Arc<FeeEstimator>,
-  monitor: Arc<ManyChannelMonitor>,
-  chain_watcher: Arc<ChainWatchInterface>,
-  tx_broadcaster: Arc<BroadcasterInterface>,
-  logger: Arc<Logger>,
-  keys_manager: Arc<KeysInterface>,
+  fee_estimator: Arc<dyn FeeEstimator>,
+  monitor: Arc<dyn ManyChannelMonitor>,
+  chain_watcher: Arc<dyn ChainWatchInterface>,
+  tx_broadcaster: Arc<dyn BroadcasterInterface>,
+  logger: Arc<dyn Logger>,
+  keys_manager: Arc<dyn KeysInterface>,
 }
 
 impl RestoreArgs {
@@ -36,12 +36,12 @@ impl RestoreArgs {
     data_path: String,
     monitors_loaded: Vec<(OutPoint, ChannelMonitor)>,
     network: Network,
-    fee_estimator: Arc<FeeEstimator>,
-    monitor: Arc<ManyChannelMonitor>,
-    chain_watcher: Arc<ChainWatchInterface>,
-    tx_broadcaster: Arc<BroadcasterInterface>,
-    logger: Arc<Logger>,
-    keys_manager: Arc<KeysInterface>,
+    fee_estimator: Arc<dyn FeeEstimator>,
+    monitor: Arc<dyn ManyChannelMonitor>,
+    chain_watcher: Arc<dyn ChainWatchInterface>,
+    tx_broadcaster: Arc<dyn BroadcasterInterface>,
+    logger: Arc<dyn Logger>,
+    keys_manager: Arc<dyn KeysInterface>,
   ) -> Self {
     RestoreArgs {
       data_path, monitors_loaded, network, fee_estimator,
