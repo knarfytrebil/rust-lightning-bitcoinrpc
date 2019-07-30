@@ -199,7 +199,7 @@ fn find_fork_step(
                     current_header.height - 1,
                 )))
         );
-        if let Ok(steps_tx) = send_res {
+        if let Ok(_) = send_res {
             let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
             return find_fork_step(
                 steps_tx,
@@ -220,7 +220,7 @@ fn find_fork_step(
             steps_tx
                 .send(ForkStep::DisconnectBlock(target_header.into()))
         );
-        if let Ok(steps_tx) = send_res {
+        if let Ok(_) = send_res {
             // send err match
             if target_header.previousblockhash == current_header.previousblockhash {
                 // Found the fork, also connect current and finish!
@@ -256,7 +256,7 @@ fn find_fork_step(
                             current_header.height - 1,
                         )))
                 );
-                if let Ok(steps_tx) = send_res {
+                if let Ok(_) = send_res {
                     let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
                     let new_target_header = rpc_client.get_header(
                         &target_header
@@ -302,41 +302,36 @@ fn find_fork(
     }
     let current_resp = rpc_client.get_header(&current_hash);
     let current_header = current_resp.unwrap();
-    // TODO assert!(is_ready()) => unwrap Error handle
-    steps_tx
-        .start_send(ForkStep::ConnectBlock((
-            current_hash,
-            current_header.height
-        )))
-        .unwrap();
-
-    if current_header.previousblockhash == target_hash || current_header.height == 1
-    {
-        // Fastpath one-new-block-connected or reached block 1
-        return;
-    } else {
-        if let Ok(target_header) = rpc_client.get_header(&target_hash) {
-            // 1 2 3 4
-            find_fork_step(
-                steps_tx,
-                current_header,
-                Some((target_hash, target_header)),
-                rpc_client,
-                larva,
-            )
+    if let Ok(_) = steps_tx.start_send(ForkStep::ConnectBlock((
+        current_hash,
+        current_header.height
+    ))) {
+        if current_header.previousblockhash == target_hash || current_header.height == 1 {
+            // Fastpath one-new-block-connected or reached block 1
+            return;
         } else {
-            // fork
-            assert_eq!(target_hash, "");
-            find_fork_step(
-                steps_tx,
-                current_header,
-                None,
-                rpc_client,
-                larva,
-            )
+            if let Ok(target_header) = rpc_client.get_header(&target_hash) {
+                // 1 2 3 4
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    Some((target_hash, target_header)),
+                    rpc_client,
+                    larva,
+                )
+            } else {
+                // fork
+                assert_eq!(target_hash, "");
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    None,
+                    rpc_client,
+                    larva,
+                )
+            }
         }
     }
-    return;
 }
 
 pub fn spawn_chain_monitor(
