@@ -1,9 +1,8 @@
 use bytes::BufMut;
 
 use futures::future;
-use futures::future::Future;
-use futures::{Stream, Sink, Poll};
-use futures::{FutureExt, StreamExt, SinkExt, TryStreamExt};
+use futures::{Sink, Poll};
+use futures::{FutureExt, StreamExt, SinkExt};
 // use futures::task::Poll;
 use futures::channel::mpsc;
 

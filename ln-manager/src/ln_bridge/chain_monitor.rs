@@ -4,7 +4,6 @@ use super::utils::hex_to_vec;
 
 use bitcoin;
 use serde_json;
-use tokio;
 use tokio_timer;
 
 use bitcoin_hashes::hex::ToHex;
