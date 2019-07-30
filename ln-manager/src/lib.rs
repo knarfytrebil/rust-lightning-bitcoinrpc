@@ -18,7 +18,7 @@ extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
 extern crate tokio_tcp;
-extern crate tokio_timer;
+// extern crate tokio_timer;
 
 #[macro_use]
 extern crate serde_derive;
@@ -80,9 +80,13 @@ impl_command!(LnManager);
 
 impl<T: Larva> LnManager<T> {
     pub fn new(settings: Settings, larva: T) -> Self {
+
+        // Logger
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.bitcoind.rpc_url.clone()));
+
         let secp_ctx = Secp256k1::new();
+
         let fee_estimator = Arc::new(FeeEstimator::new());
 
         info!("Checking validity of RPC URL to bitcoind...");
@@ -94,12 +98,14 @@ impl<T: Larva> LnManager<T> {
             panic!("LOL, you're insane");
         }
 
+        // Data Storage
         let data_path = settings.lightning.lndata.clone();
         if !fs::metadata(&data_path).unwrap().is_dir() {
             panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
         }
         let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
+        // Key Seed
         let our_node_seed = ln_bridge::key::get_key_seed(data_path.clone());
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
         let (import_key_1, import_key_2) =
@@ -127,6 +133,7 @@ impl<T: Larva> LnManager<T> {
             network,
         }
         .public_key(&secp_ctx);
+
         let pub_key_2 = bitcoin::util::key::PrivateKey {
             key: import_key_2,
             compressed: true,
@@ -138,14 +145,15 @@ impl<T: Larva> LnManager<T> {
             "Address - ChannelMonitor Claim: {:?}",
             &Address::p2pkh(&pub_key_1, constants::Network::Regtest)
         );
+
         println!(
             "Address - Cooperative Close: {:?}",
             &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
         );
         /* <== For debug */
 
-        // let (import_key_1, import_key_2) = ln_bridge::key::extprivkey(network, &our_node_seed, &secp_ctx);
         let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(network, logger.clone()));
+
         let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
         let _ = larva.clone().spawn_task(
@@ -158,8 +166,7 @@ impl<T: Larva> LnManager<T> {
                               key: import_key_1,
                               compressed: true,
                               network,
-                          }
-                          .to_wif()
+                          }.to_wif()
                           + "\""),
                         "\"rust-lightning ChannelMonitor claim\"",
                         "false",
@@ -179,8 +186,7 @@ impl<T: Larva> LnManager<T> {
                               key: import_key_2,
                               compressed: true,
                               network,
-                          }
-                          .to_wif()
+                          }.to_wif()
                           + "\""),
                         "\"rust-lightning cooperative close\"",
                         "false",
@@ -244,28 +250,31 @@ impl<T: Larva> LnManager<T> {
             larva.clone(),
         );
 
-        let listener =
-            tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
-            .unwrap();
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
-        let setup_larva = larva.clone();
-        let _ = larva.clone().spawn_task(
-            listener
-                .incoming()
-                .for_each(move |sock| {
-                    info!("Got new inbound connection, waiting on them to start handshake...");
-                    Connection::setup_inbound(
-                        peer_manager_listener.clone(),
-                        event_listener.clone(),
-                        sock.unwrap(),
-                        setup_larva.clone(),
-                    );
-                    // for_each expect ()
-                    future::ready(())
-                })
-                .map(|_| Ok(())),
-        );
+
+        // let setup_larva = larva.clone();
+        // let listener =
+        //     tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
+        //     .unwrap();
+
+
+        // let _ = larva.clone().spawn_task(
+        //     listener
+        //         .incoming()
+        //         .for_each(move |sock| {
+        //             info!("Got new inbound connection, waiting on them to start handshake...");
+        //             Connection::setup_inbound(
+        //                 peer_manager_listener.clone(),
+        //                 event_listener.clone(),
+        //                 sock.unwrap(),
+        //                 setup_larva.clone(),
+        //             );
+        //             // for_each expect ()
+        //             future::ready(())
+        //         })
+        //         .map(|_| Ok(())),
+        // );
 
         spawn_chain_monitor(
             fee_estimator,
@@ -281,6 +290,7 @@ impl<T: Larva> LnManager<T> {
         //     tokio::timer::Interval::new(Instant::now(), Duration::new(1, 0))
         //         .for_each(move |_| {
         //             //TODO: Regularly poll chain_monitor.txn_to_broadcast and send them out
+        //
         //             future::ready(())
         //         })
         //         .map_err(|_| ())
