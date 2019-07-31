@@ -62,20 +62,18 @@ impl Larva for Probe {
     }
 }
 
-// #[runtime::main(runtime_tokio::Tokio)]
-#[runtime::main]
+// #[runtime::main]
+#[runtime::main(runtime_tokio::Tokio)]
 async fn main() {
     let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
     let h_client = Arc::new(Client::new());
 
-    runtime::spawn(async move {
+    let r = runtime::spawn(async move {
         // Interval::new(Duration::from_secs(1))
-        // .for_each(|()|{
-        //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
-        //     future::ready(println!("run task"))
-        // }).await;
-        // Ok(())
-        
+        //     .for_each(|()|{
+        //         // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
+        //         future::ready(println!("run task"))
+        //     }).await;
         
         // let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
         // println!("{}", &v.unwrap()); 
@@ -87,10 +85,11 @@ async fn main() {
         // try to parse as json with serde_json
         let users: Vec<User> = serde_json::from_slice(&body)?;
 
-        println!("======");
-        println!("{:#?}", users);
-           
-        Ok::<(), failure::Error>(())
-        // Ok(users)
+        // println!("======");
+        // println!("{:#?}", users);
+        
+        Ok::<Vec<User>, failure::Error>(users)
     }).await;
+    
+    println!("{:#?}", r);
 }
