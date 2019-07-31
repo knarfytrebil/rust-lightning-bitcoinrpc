@@ -62,13 +62,13 @@ impl Larva for Probe {
     }
 }
 
-// #[runtime::main(runtime_tokio::Tokio)]
-#[runtime::main]
+// #[runtime::main]
+#[runtime::main(runtime_tokio::Tokio)]
 async fn main() {
     let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
     let h_client = Arc::new(Client::new());
 
-    runtime::spawn(async move {
+    let r = runtime::spawn(async move {
         // Interval::new(Duration::from_secs(1))
         // .for_each(|()|{
         //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
@@ -82,15 +82,17 @@ async fn main() {
         
         let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
         let res = h_client.get(url).await?;
-        // asynchronously concatenate chunks of the body
+        // // asynchronously concatenate chunks of the body
         let body = res.into_body().try_concat().await?;
-        // try to parse as json with serde_json
+        // // try to parse as json with serde_json
         let users: Vec<User> = serde_json::from_slice(&body)?;
 
-        println!("======");
-        println!("{:#?}", users);
+        // println!("======");
+        // println!("{:#?}", users);
            
-        Ok::<(), failure::Error>(())
+        Ok::<Vec<User>, failure::Error>(users)
         // Ok(users)
     }).await;
+
+    println!("{:#?}", r);
 }
