@@ -52,7 +52,15 @@ impl FeeEstimator {
     }
     // TODO test Pin works
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
-        let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
+        // let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
+        let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["6", "\"CONSERVATIVE\""], false).unwrap();
+        if let Some(serde_json::Value::Number(hp_btc_per_kb)) = v.get("feerate") {
+            us.high_prio_est.store(
+                (hp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                    + 3,
+                Ordering::Release,
+            );
+        }
         // {
         //     let us = us.clone();
         //     reqs.push(Box::pin(
@@ -69,6 +77,14 @@ impl FeeEstimator {
         //             }),
         //     ));
         // }
+        let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["18", "\"ECONOMICAL\""], false).unwrap();
+        if let Some(serde_json::Value::Number(np_btc_per_kb)) = v.get("feerate") {
+            us.normal_est.store(
+                (np_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                    + 3,
+                Ordering::Release,
+            );
+        }
         // {
         //     let us = us.clone();
         //     reqs.push(Box::pin(
@@ -85,6 +101,14 @@ impl FeeEstimator {
         //             }),
         //     ));
         // }
+        let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["144", "\"ECONOMICAL\""], false).unwrap();
+        if let Some(serde_json::Value::Number(bp_btc_per_kb)) = v.get("feerate") {
+            us.background_est.store(
+                (bp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                    + 3,
+                Ordering::Release,
+            );
+        }
         // {
         //     let us = us.clone();
         //     reqs.push(Box::pin(
@@ -101,7 +125,7 @@ impl FeeEstimator {
         //             }),
         //     ));
         // }
-        block_on(future::join_all(reqs));
+        // block_on(future::join_all(reqs));
         future::ok(())
     }
 }
@@ -357,9 +381,10 @@ fn find_fork_step(
         // is_some == True 1 2 3 4
         let target_header = target_header_opt.unwrap().1;
         // Everything below needs to disconnect target, so go ahead and do that now
+        let c_header = target_header.clone();
         let send_res = block_on(
             steps_tx
-                .send(ForkStep::DisconnectBlock(target_header.into()))
+                .send(ForkStep::DisconnectBlock(c_header.into()))
         );
         // if let Ok(_) = send_res {
         //     // send err match

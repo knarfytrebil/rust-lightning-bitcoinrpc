@@ -12,7 +12,7 @@ use futures::executor::block_on;
 use log::{info, error};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct GetHeaderResponse {
     pub hash: String,
     pub confirmations: u64,
