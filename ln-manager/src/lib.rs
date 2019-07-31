@@ -155,6 +155,7 @@ impl<T: Larva> LnManager<T> {
         /* <== For debug */
 
         let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(network, logger.clone()));
+        let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
         let async_client = rpc_client.clone();
         larva.clone().spawn_task(async move {
