@@ -18,9 +18,9 @@ tokio-fs = { git = "https://github.com/tokio-rs/tokio.git" }
 tokio-codec = { git = "https://github.com/tokio-rs/tokio.git" }
 futures-timer = { git = "https://github.com/rustasync/futures-timer.git" }
 futures = { package = "futures-preview", version = "0.3.0-alpha.17" }
-serde = "1"
-serde_json = "1"
-serde_derive = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_derive = "1.0"
 rand = "0.4"
 tokio = { git = "https://github.com/tokio-rs/tokio.git" }
 tokio-tcp = { git = "https://github.com/tokio-rs/tokio.git" }
@@ -31,6 +31,7 @@ num-traits = "0.2"
 config = "0.9.2"
 log = "0.4"
 runtime = "0.3.0-alpha.6"
+runtime-tokio = "0.3.0-alpha.5"
 
 [build-dependencies]
 cc = "1.0"

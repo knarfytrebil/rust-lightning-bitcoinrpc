@@ -14,7 +14,22 @@ use std::sync::Arc;
 use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::rpc_client::{RPCClient};
 
+use hyper::Client;
+use hyper::Uri;
+
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
+use serde::{Serialize, Deserialize};
+
 pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = Result<(), ()>> + Send>>>;
+
+#[derive(Deserialize, Debug)]
+struct User {
+    id: i32,
+    name: String,
+}
 
 #[derive(Clone)]
 pub struct Probe {
@@ -45,31 +60,34 @@ impl Larva for Probe {
     }
 }
 
-fn main() {
-    let (pool_tx, mut pool_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<(), ()>> + Send>>>();
-    let runner = Probe::new(pool_tx);
+// #[runtime::main]
+#[runtime::main(runtime_tokio::Tokio)]
+async fn main() {
     let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
+    let h_client = Arc::new(Client::new());
 
-    runner.spawn_task(async move {
+    runtime::spawn(async move {
         // Interval::new(Duration::from_secs(1))
         // .for_each(|()|{
         //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
         //     future::ready(println!("run task"))
         // }).await;
-        let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
-        println!("{}", &v.unwrap()); 
-        Ok(())
-    });
-   
-    let mut pool = LocalPool::new();
+        // Ok(())
+        
+        
+        // let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
+        // println!("{}", &v.unwrap()); 
+        
+        let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
+        let res = h_client.get(url).await.unwrap();
+        // asynchronously concatenate chunks of the body
+        let body = res.into_body().try_concat().await.unwrap();
+        // try to parse as json with serde_json
+        let users: Vec<User> = serde_json::from_slice(&body).unwrap();
 
-    loop {
-        match pool_rx.try_next() {
-            Ok(task) => {
-                let _ = pool.run_until(task.unwrap());
-            }
-            _ => {}
-        }
-    }
-
+        println!("{:#?}", users);
+           
+        Ok::<(), std::io::Error>(())
+        // Ok(users)
+    }).await;
 }
