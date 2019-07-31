@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
 
-use future;
+use crate::future;
 use futures::channel::mpsc;
 use futures::{Future, Stream, StreamExt, FutureExt, TryFutureExt};
 use futures::executor::block_on;
@@ -22,9 +22,9 @@ use lightning::util::ser::Writeable;
 
 use super::connection::SocketDescriptor;
 
-use ln_bridge::utils::{hex_to_vec, hex_str};
+use super::utils::{hex_to_vec, hex_str};
 use super::rpc_client::RPCClient;
-use executor::Larva;
+use crate::executor::Larva;
 use log::{info};
 
 pub fn divide_rest_event<T: Larva>(
@@ -96,40 +96,34 @@ fn handle_fund_tx<T: Larva>(
     us: Arc<EventHandler<T>>,
     value: &[&str; 2]
 ) -> impl Future<Output = Result<(), ()>> {
-    block_on(us.rpc_client.make_rpc_call(
+    let tx_hex = us.rpc_client.sync_rpc_call(
         "createrawtransaction",
         value,
         false
-    ).map(move |tx_hex| {
-        let tx_hex = tx_hex.unwrap();
-				us.rpc_client.make_rpc_call(
-            "fundrawtransaction",
-            &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
-            false
-        ).map(move |funded_tx| {
-            let funded_tx = funded_tx.unwrap();
-						let changepos = funded_tx["changepos"].as_i64().unwrap();
-						assert!(changepos == 0 || changepos == 1);
-						us.rpc_client.make_rpc_call(
-                "signrawtransactionwithwallet",
-                &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
-                false
-            ).map(move |signed_tx| {
-                let signed_tx = signed_tx.unwrap();
-								assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
-								let tx: blockdata::transaction::Transaction =
-                    encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
-								let outpoint = chain::transaction::OutPoint {
-										txid: tx.txid(),
-										index: if changepos == 0 { 1 } else { 0 },
-								};
-								us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
-								us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
-								let _ = self_sender.try_send(());
-								info!("Generated funding tx!");
-						})
-				})
-		}));
+    ).unwrap();
+		let funded_tx = us.rpc_client.sync_rpc_call(
+        "fundrawtransaction",
+        &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
+        false
+    ).unwrap();
+		let changepos = funded_tx["changepos"].as_i64().unwrap();
+		assert!(changepos == 0 || changepos == 1);
+		let signed_tx = us.rpc_client.sync_rpc_call(
+        "signrawtransactionwithwallet",
+        &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
+        false
+    ).unwrap();
+		assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
+		let tx: blockdata::transaction::Transaction =
+        encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
+		let outpoint = chain::transaction::OutPoint {
+				txid: tx.txid(),
+				index: if changepos == 0 { 1 } else { 0 },
+		};
+		us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
+		us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
+		let _ = self_sender.try_send(());
+		info!("Generated funding tx!");
     future::ok(())
 }
 
@@ -207,29 +201,29 @@ impl<T: Larva> EventHandler<T> {
         payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
         larva: impl Larva,
     ) -> mpsc::Sender<()> {
-        let us = Arc::new(Self {
-            network,
-            file_prefix,
-            rpc_client,
-            peer_manager,
-            channel_manager,
-            monitor,
-            broadcaster,
-            txn_to_broadcast: Mutex::new(HashMap::new()),
-            payment_preimages,
-        });
-        let (sender, receiver) = mpsc::channel(2);
-        let self_sender = sender.clone();
-        let _ = larva.clone().spawn_task(
-            receiver.for_each(|_| {
-			          let _ = handle_receiver(
-                    &us,
-                    &self_sender,
-                    &larva
-                );
-                future::ready(())
-		        }).map(|_| Ok(()))
-        );
-        sender
-    }
+    let us = Arc::new(Self {
+        network,
+        file_prefix,
+        rpc_client,
+        peer_manager,
+        channel_manager,
+        monitor,
+        broadcaster,
+        txn_to_broadcast: Mutex::new(HashMap::new()),
+        payment_preimages,
+    });
+    let (sender, receiver) = mpsc::channel(2);
+    let self_sender = sender.clone();
+    let _ = larva.clone().spawn_task(
+        receiver.for_each(|_| {
+			      let _ = handle_receiver(
+                &us,
+                &self_sender,
+                &larva
+            );
+            future::ready(())
+		    }).map(|_| Ok(()))
+    );
+    sender
+}
 }

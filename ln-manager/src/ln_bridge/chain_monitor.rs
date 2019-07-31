@@ -1,11 +1,10 @@
 use super::rpc_client::{GetHeaderResponse, RPCClient};
 
-use ln_bridge::utils::hex_to_vec;
+use super::utils::hex_to_vec;
 
 use bitcoin;
 use serde_json;
-// use tokio;
-// use tokio_timer;
+use tokio_timer;
 
 use bitcoin_hashes::hex::ToHex;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
@@ -24,7 +23,7 @@ use bitcoin::blockdata::block::Block;
 use bitcoin::consensus::encode;
 use bitcoin::util::hash::BitcoinHash;
 
-use executor::Larva;
+use crate::executor::Larva;
 use log::info;
 use std::cmp;
 use std::collections::HashMap;
@@ -140,15 +139,15 @@ impl<T> ChainBroadcaster<T> {
 
     fn rebroadcast_txn(&self) -> impl Future {
         let mut send_futures = Vec::new();
-            let txn = self.txn_to_broadcast.lock().unwrap();
-            for (_, tx) in txn.iter() {
-                let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-                send_futures.push(
-                    self.rpc_client
-                        .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
-                        .map_ok(|_| -> Result<(), ()> { Ok(()) }),
-                );
-            }
+        let txn = self.txn_to_broadcast.lock().unwrap();
+        for (_, tx) in txn.iter() {
+            let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
+            send_futures.push(
+                self.rpc_client
+                    .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
+                    .map_ok(|_| -> Result<(), ()> { Ok(()) }),
+            );
+        }
         block_on(future::join_all(send_futures));
         future::ready(())
     }
@@ -161,10 +160,10 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
             .unwrap()
             .insert(tx.txid(), tx.clone());
         let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-        let _ = self.larva.spawn_task(
-            self.rpc_client
-                .make_rpc_call("sendrawtransaction", &[&tx_ser], true)
-                .map_ok(|_| ()),
+        let _ = self.larva.clone().spawn_task(
+            self.rpc_client.clone().make_rpc_call(
+                "sendrawtransaction", &[&tx_ser], true
+            ).map(|_| Ok(()))
         );
     }
 }
@@ -312,68 +311,167 @@ enum ForkStep {
 //         );
 //     }
 // }
+fn find_fork_step(
+    steps_tx: mpsc::Sender<ForkStep>,
+    current_header: GetHeaderResponse,
+    target_header_opt: Option<(String, GetHeaderResponse)>,
+    rpc_client: Arc<RPCClient>,
+    larva: impl Larva,
+) {
+    if target_header_opt.is_some()
+        && target_header_opt.as_ref().unwrap().0 == current_header.previousblockhash
+    {
+        // Target is the parent of current, we're done!
+        return;
+    }
+    if current_header.height == 1 {
+        return;
+    }
+    if target_header_opt.is_none()
+        || target_header_opt.as_ref().unwrap().1.height < current_header.height
+    {
+        // currentheader--
+        let send_res = block_on(
+            steps_tx
+                .send(ForkStep::ConnectBlock((
+                    current_header.previousblockhash.clone(),
+                    current_header.height - 1,
+                )))
+        );
+        if let Ok(_) = send_res {
+            let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
+            return find_fork_step(
+                steps_tx,
+                new_cur_header.unwrap(),
+                target_header_opt,
+                rpc_client,
+                larva,
+            );
+        } else {
+            // Caller droped the receiver, we should give up now
+            return;
+        }
+    } else {
+        // is_some == True 1 2 3 4
+        let target_header = target_header_opt.unwrap().1;
+        // Everything below needs to disconnect target, so go ahead and do that now
+        let send_res = block_on(
+            steps_tx
+                .send(ForkStep::DisconnectBlock(target_header.into()))
+        );
+        if let Ok(_) = send_res {
+            // send err match
+            if target_header.previousblockhash == current_header.previousblockhash {
+                // Found the fork, also connect current and finish!
+                block_on(
+                    steps_tx
+                        .send(ForkStep::ConnectBlock((
+                            current_header.previousblockhash.clone(),
+                            current_header.height - 1,
+                        )))
+                );
+                return;
+            } else if target_header.height > current_header.height {
+                // Target is higher, walk it back and recurse
+                let new_target_header = rpc_client.get_header(&target_header.previousblockhash);
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    Some((
+                        target_header.previousblockhash,
+                        new_target_header.unwrap(),
+                    )),
+                    rpc_client,
+                    larva,
+                );
+                return;
+            } else {
+                // Target and current are at the same height, but we're not at fork yet, walk
+                // both back and recurse
+                let send_res = block_on(
+                    steps_tx
+                        .send(ForkStep::ConnectBlock((
+                            current_header.previousblockhash.clone(),
+                            current_header.height - 1,
+                        )))
+                );
+                if let Ok(_) = send_res {
+                    let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
+                    let new_target_header = rpc_client.get_header(
+                        &target_header
+                            .previousblockhash,
+                    );
+                    find_fork_step(
+                        steps_tx,
+                        new_cur_header.unwrap(),
+                        Some((
+                            target_header
+                                .previousblockhash,
+                            new_target_header
+                                .unwrap(),
+                        )),
+                        rpc_client,
+                        larva,
+                    );
+                    return;
+                } else {
+                    // Caller droped the receiver, we should give up now
+                    return;
+                }
+            }
+        } else {
+            // Caller droped the receiver, we should give up now
+            return;
+        }
+    }
+}
 /// Walks backwards from current_hash and target_hash finding the fork and sending ForkStep events
 /// into the steps_tx Sender. There is no ordering guarantee between different ForkStep types, but
 /// DisconnectBlock and ConnectBlock events are each in reverse, height-descending order.
 
-// fn find_fork(
-//     mut steps_tx: mpsc::Sender<ForkStep>,
-//     current_hash: String,
-//     target_hash: String,
-//     rpc_client: Arc<RPCClient>,
-//     larva: impl Larva,
-// ) {
-//     if current_hash == target_hash {
-//         return;
-//     }
-// 
-//     let _ =
-//         larva.clone().spawn_task(
-//             rpc_client
-//                 .get_header(&current_hash)
-//                 .map(move |current_resp| {
-//                     let current_header = current_resp.unwrap();
-//                     assert!(steps_tx
-//                         .start_send(ForkStep::ConnectBlock((
-//                             current_hash,
-//                             current_header.height
-//                         )))
-//                         .unwrap()
-//                         .is_ready());
-// 
-//                     if current_header.previousblockhash == target_hash || current_header.height == 1
-//                     {
-//                         // Fastpath one-new-block-connected or reached block 1
-//                         future::Either::Left(future::ok(()))
-//                     } else {
-//                         future::Either::Right(rpc_client.get_header(&target_hash).then(
-//                             move |target_resp| {
-//                                 match target_resp {
-//                                     Ok(target_header) => find_fork_step(
-//                                         steps_tx,
-//                                         current_header,
-//                                         Some((target_hash, target_header)),
-//                                         rpc_client,
-//                                         larva,
-//                                     ),
-//                                     Err(_) => {
-//                                         assert_eq!(target_hash, "");
-//                                         find_fork_step(
-//                                             steps_tx,
-//                                             current_header,
-//                                             None,
-//                                             rpc_client,
-//                                             larva,
-//                                         )
-//                                     }
-//                                 }
-//                                 Ok(())
-//                             },
-//                         ))
-//                     }
-//                 }),
-//         );
-// }
+fn find_fork(
+    mut steps_tx: mpsc::Sender<ForkStep>,
+    current_hash: String,
+    target_hash: String,
+    rpc_client: Arc<RPCClient>,
+    larva: impl Larva,
+) {
+    if current_hash == target_hash {
+        return;
+    }
+    let current_resp = rpc_client.get_header(&current_hash);
+    let current_header = current_resp.unwrap();
+    if let Ok(_) = steps_tx.start_send(ForkStep::ConnectBlock((
+        current_hash,
+        current_header.height
+    ))) {
+        if current_header.previousblockhash == target_hash || current_header.height == 1 {
+            // Fastpath one-new-block-connected or reached block 1
+            return;
+        } else {
+            if let Ok(target_header) = rpc_client.get_header(&target_hash) {
+                // 1 2 3 4
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    Some((target_hash, target_header)),
+                    rpc_client,
+                    larva,
+                )
+            } else {
+                // fork
+                assert_eq!(target_hash, "");
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    None,
+                    rpc_client,
+                    larva,
+                )
+            }
+        }
+    }
+}
 
 pub fn spawn_chain_monitor(
     fee_estimator: Arc<FeeEstimator>,
@@ -391,96 +489,98 @@ pub fn spawn_chain_monitor(
     let cur_block = Arc::new(Mutex::new(String::from("")));
     // let interval = tokio_timer::Interval::new(Instant::now(), Duration::from_secs(1));
     // TODO interval
-    // let _ = larva.clone().spawn_task(
-    //     tokio_timer::Interval::new(Instant::now(), Duration::from_secs(1))
-    //         .for_each(move |_| {
-    //             let cur_block = cur_block.clone();
-    //             let fee_estimator = fee_estimator.clone();
-    //             let rpc_client = rpc_client.clone();
-    //             let chain_watcher = chain_watcher.clone();
-    //             let chain_broadcaster = chain_broadcaster.clone();
-    //             let mut event_notify = event_notify.clone();
-    //             let larva = larva.clone();
-    //             rpc_client
-    //                 .make_rpc_call("getblockchaininfo", &[], false)
-    //                 .map_ok(move |v| {
-    //                     let new_block = v["bestblockhash"].as_str().unwrap().to_string();
-    //                     let old_block = cur_block.lock().unwrap().clone();
-    //                     if new_block == old_block {
-    //                         return future::Either::Left(future::ok(()));
-    //                     }
+    let _ = larva.clone().spawn_task(
+        tokio_timer::Interval::new(Instant::now(), Duration::from_secs(1))
+            .for_each(move |_| {
+                let cur_block = cur_block.clone();
+                let fee_estimator = fee_estimator.clone();
+                let rpc_client = rpc_client.clone();
+                let chain_watcher = chain_watcher.clone();
+                let chain_broadcaster = chain_broadcaster.clone();
+                let mut event_notify = event_notify.clone();
+                let larva = larva.clone();
+                rpc_client
+                    .make_rpc_call("getblockchaininfo", &[], false)
+                    .map_ok(move |v| {
+                        // check block height
+                        let new_block = v["bestblockhash"].as_str().unwrap().to_string();
+                        let old_block = cur_block.lock().unwrap().clone();
+                        if new_block == old_block {
+                            return future::Either::Left(future::ok(()));
+                        }
 
-    //                     *cur_block.lock().unwrap() = new_block.clone();
-    //                     if old_block == "" {
-    //                         return future::Either::Left(future::ok(()));
-    //                     }
+                        *cur_block.lock().unwrap() = new_block.clone();
+                        if old_block == "" {
+                            return future::Either::Left(future::ok(()));
+                        }
 
-    //                     let (events_tx, events_rx) = mpsc::channel(1);
-    //                     find_fork(
-    //                         events_tx,
-    //                         new_block,
-    //                         old_block,
-    //                         rpc_client.clone(),
-    //                         larva.clone(),
-    //                     );
-    //                     info!("NEW BEST BLOCK!");
-    //                     future::Either::Right(events_rx.collect().then(move |events_res| {
-    //                         let events = events_res.unwrap();
-    //                         for event in events.iter().rev() {
-    //                             if let &ForkStep::DisconnectBlock(ref header) = &event {
-    //                                 info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
-    //                                 chain_watcher.block_disconnected(header);
-    //                             }
-    //                         }
-    //                         let mut connect_futures = Vec::with_capacity(events.len());
-    //                         for event in events.iter().rev() {
-    //                             if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
-    //                                 let block_height = height;
-    //                                 let chain_watcher = chain_watcher.clone();
-    //                                 connect_futures.push(
-    //                                     rpc_client
-    //                                         .make_rpc_call(
-    //                                             "getblock",
-    //                                             &[&("\"".to_string() + hash + "\""), "0"],
-    //                                             false,
-    //                                         )
-    //                                         .map(move |blockhex| {
-    //                                             let block: Block = encode::deserialize(
-    //                                                 &hex_to_vec(
-    //                                                     blockhex.unwrap().as_str().unwrap(),
-    //                                                 )
-    //                                                 .unwrap(),
-    //                                             )
-    //                                             .unwrap();
-    //                                             info!(
-    //                                                 "Connecting block {}",
-    //                                                 block.bitcoin_hash().to_hex()
-    //                                             );
-    //                                             chain_watcher.block_connected_with_filtering(
-    //                                                 &block,
-    //                                                 block_height,
-    //                                             );
-    //                                             Ok(())
-    //                                         }),
-    //                                 );
-    //                             }
-    //                         }
-    //                         future::try_join_all(connect_futures)
-    //                             .then(move |_: Result<Vec<()>, ()>| {
-    //                                 FeeEstimator::update_values(fee_estimator, &rpc_client)
-    //                             })
-    //                             .then(move |_| {
-    //                                 let _ = event_notify.try_send(());
-    //                                 future::ok(())
-    //                             })
-    //                             .then(move |_: Result<(), ()>| {
-    //                                 chain_broadcaster.rebroadcast_txn();
-    //                                 future::ok(())
-    //                             })
-    //                     }))
-    //                 })
-    //                 .map(|_| Ok(()))
-    //         })
-    //         .then(|_| Ok(())),
-    // );
+                        //
+                        let (events_tx, events_rx) = mpsc::channel(1);
+                        find_fork(
+                            events_tx,
+                            new_block,
+                            old_block,
+                            rpc_client.clone(),
+                            larva.clone(),
+                        );
+                        info!("NEW BEST BLOCK!");
+                        future::Either::Right(events_rx.collect().then(move |events_res| {
+                            let events = events_res.unwrap();
+                            for event in events.iter().rev() {
+                                if let &ForkStep::DisconnectBlock(ref header) = &event {
+                                    info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
+                                    chain_watcher.block_disconnected(header);
+                                }
+                            }
+                            let mut connect_futures = Vec::with_capacity(events.len());
+                            for event in events.iter().rev() {
+                                if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
+                                    let block_height = height;
+                                    let chain_watcher = chain_watcher.clone();
+                                    connect_futures.push(
+                                        rpc_client
+                                            .make_rpc_call(
+                                                "getblock",
+                                                &[&("\"".to_string() + hash + "\""), "0"],
+                                                false,
+                                            )
+                                            .map(move |blockhex| {
+                                                let block: Block = encode::deserialize(
+                                                    &hex_to_vec(
+                                                        blockhex.unwrap().as_str().unwrap(),
+                                                    )
+                                                        .unwrap(),
+                                                )
+                                                    .unwrap();
+                                                info!(
+                                                    "Connecting block {}",
+                                                    block.bitcoin_hash().to_hex()
+                                                );
+                                                chain_watcher.block_connected_with_filtering(
+                                                    &block,
+                                                    block_height,
+                                                );
+                                                Ok(())
+                                            }),
+                                    );
+                                }
+                            }
+                            future::try_join_all(connect_futures)
+                                .then(move |_: Result<Vec<()>, ()>| {
+                                    FeeEstimator::update_values(fee_estimator, &rpc_client)
+                                })
+                                .then(move |_| {
+                                    let _ = event_notify.try_send(());
+                                    future::ok(())
+                                })
+                                .then(move |_: Result<(), ()>| {
+                                    chain_broadcaster.rebroadcast_txn();
+                                    future::ok(())
+                                })
+                        }))
+                    })
+                    .map(|_| Ok(()))
+            })
+            .then(|_| Ok(())),
+    );
 }

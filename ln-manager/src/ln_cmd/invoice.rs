@@ -7,7 +7,7 @@ use lightning::ln::router;
 use lightning_invoice::Currency;
 use lightning_invoice::Invoice;
 use lightning_invoice::MinFinalCltvExpiry;
-use ln_bridge::utils::{hex_str, slice_to_be64};
+use crate::ln_bridge::utils::{hex_str, slice_to_be64};
 use rand::{thread_rng, Rng};
 use std;
 use std::collections::HashMap;

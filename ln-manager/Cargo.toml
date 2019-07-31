@@ -3,6 +3,7 @@ name = "ln-manager"
 version = "0.0.1"
 authors = ["Matt Corallo <git@bluematt.me>"]
 build = "build.rs"
+edition = "2018"
 
 [dependencies]
 bitcoin = "0.18"
