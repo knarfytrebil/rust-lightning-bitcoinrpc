@@ -164,8 +164,9 @@ impl<T> ChainBroadcaster<T> {
     }
 
     fn rebroadcast_txn(&self) -> impl Future {
+        // async move {
         // let mut send_futures = Vec::new();
-        let txn = self.txn_to_broadcast.lock().unwrap();
+        // let txn = self.txn_to_broadcast.lock().unwrap();
         // for (_, tx) in txn.iter() {
         //     let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
         //     send_futures.push(
@@ -176,6 +177,7 @@ impl<T> ChainBroadcaster<T> {
         // }
         // block_on(future::join_all(send_futures));
         future::ready(())
+        // }
     }
 }
 

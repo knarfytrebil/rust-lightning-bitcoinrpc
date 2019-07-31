@@ -56,11 +56,11 @@ fn main() {
         //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
         //     future::ready(println!("run task"))
         // }).await;
-        let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
-        println!("{}", &v.unwrap()); 
+        let v = rpc_client.sync_rpc_call("getblockchaininfo", &[], false);
+        // println!("{}", &v.unwrap());
+        println!("12312");
         Ok(())
     });
-   
     let mut pool = LocalPool::new();
 
     loop {

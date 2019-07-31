@@ -158,29 +158,29 @@ impl<T: Larva> LnManager<T> {
         let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
         let async_client = rpc_client.clone();
-        larva.clone().spawn_task(async move {
-            async_client.sync_rpc_call(
+        // let async_network = network.clone();
+        let _ = larva.clone().spawn_task(async move {
+            let k = &[
+                &("\"".to_string()
+                  + &bitcoin::util::key::PrivateKey {
+                      key: import_key_1,
+                      compressed: true,
+                      network,
+                  }
+                  .to_wif()
+                  + "\""),
+                "\"rust-lightning ChannelMonitor claim\"",
+                "false",
+            ];
+            async_client.make_rpc_call(
                 "importprivkey",
-                &[
-                    &("\"".to_string()
-                      + &bitcoin::util::key::PrivateKey {
-                          key: import_key_1,
-                          compressed: true,
-                          network,
-                      }
-                      .to_wif()
-                      + "\""),
-                    "\"rust-lightning ChannelMonitor claim\"",
-                    "false",
-                ],
+                k,
                 false,
-            );
-            Ok(())
+            ).map(|_| Ok(())).await
         });
-
         let async_client = rpc_client.clone();
-        larva.clone().spawn_task(async move {
-            async_client.sync_rpc_call(
+        let _ = larva.clone().spawn_task(async move {
+            async_client.make_rpc_call(
                 "importprivkey",
                 &[
                     &("\"".to_string()
@@ -195,8 +195,7 @@ impl<T: Larva> LnManager<T> {
                     "false",
                 ],
                 false,
-            );
-            Ok(())
+            ).map(|_| Ok(())).await
         });
 
         let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
@@ -319,26 +318,26 @@ impl<T: Larva> LnManager<T> {
         _rpc_client: &Arc<RPCClient>,
         _larva: &impl Larva,
     ) -> Result<constants::Network, &'static str> {
-    let _thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-    // Blocked Here
-    // thread_rt.block_on(
-    //     rpc_client
-    //     .make_rpc_call("getblockchaininfo", &[], false)
-    //     .and_then(|v| {
-    //         println!("{:?}", &v);
-    //         assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
-    //         assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
-    //
-    //         Ok(Ok(constants::Network::Testnet))
-    //         // match v["chain"].as_str().unwrap() {
-    //         //     "main" => Ok(constants::Network::Bitcoin),
-    //         //     "test" => Ok(constants::Network::Testnet),
-    //         //     "regtest" => Ok(constants::Network::Regtest),
-    //         //     _ => panic!("Unknown Network"),
-    //         // }
-    //         // Ok(())
-    //     })
-    // ).unwrap()
-    Ok(constants::Network::Regtest)
-}
+        let _thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+        // Blocked Here
+        // thread_rt.block_on(
+        //     rpc_client
+        //     .make_rpc_call("getblockchaininfo", &[], false)
+        //     .and_then(|v| {
+        //         println!("{:?}", &v);
+        //         assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
+        //         assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
+        //
+        //         Ok(Ok(constants::Network::Testnet))
+        //         // match v["chain"].as_str().unwrap() {
+        //         //     "main" => Ok(constants::Network::Bitcoin),
+        //         //     "test" => Ok(constants::Network::Testnet),
+        //         //     "regtest" => Ok(constants::Network::Regtest),
+        //         //     _ => panic!("Unknown Network"),
+        //         // }
+        //         // Ok(())
+        //     })
+        // ).unwrap()
+        Ok(constants::Network::Regtest)
+    }
 }
