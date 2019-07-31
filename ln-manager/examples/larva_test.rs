@@ -87,6 +87,7 @@ async fn main() {
         // try to parse as json with serde_json
         let users: Vec<User> = serde_json::from_slice(&body)?;
 
+        println!("======");
         println!("{:#?}", users);
            
         Ok::<(), failure::Error>(())
