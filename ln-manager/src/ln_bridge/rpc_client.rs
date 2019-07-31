@@ -98,42 +98,43 @@ impl RPCClient {
                         + "}",
                 )).unwrap()
         ).await;
-        let res = res.unwrap();
-        if res.status() != hyper::StatusCode::OK {
-            if !may_fail {
-                println!("RPC request failed");
-                println!("{:?}", &res.body());
-                // info!("Failed to get RPC server response (probably bad auth)!");
-            }
-            Err(())
-        } else {
-            // return Ok(serde_json::Value::Null);
-            Ok(block_on(res.into_body().try_concat().map_ok(|body| {
-                let v: serde_json::Value = match serde_json::from_slice(&body) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        info!("Failed to parse RPC server response!");
-                        // FIXME define error return json value
-                        return serde_json::Value::Null;
-                    }
-                };
-                if !v.is_object() {
-                    info!("Failed to parse RPC server response!");
-                    return serde_json::Value::Null;
-                }
-                let v_obj = v.as_object().unwrap();
-                if v_obj.get("error") != Some(&serde_json::Value::Null) {
-                    info!("Failed to parse RPC server response!");
-                    return serde_json::Value::Null;
-                }
-                if let Some(res) = v_obj.get("result") {
-                    return (*res).clone();
-                } else {
-                    info!("Failed to parse RPC server response!");
-                    return serde_json::Value::Null;
-                }
-            })).unwrap())
-        }
+        // let res = res.unwrap();
+        Err(()) 
+        // if res.status() != hyper::StatusCode::OK {
+        //     if !may_fail {
+        //         println!("RPC request failed");
+        //         println!("{:?}", &res.body());
+        //         // info!("Failed to get RPC server response (probably bad auth)!");
+        //     }
+        //     Err(())
+        // } else {
+        //     // return Ok(serde_json::Value::Null);
+        //     Ok(block_on(res.into_body().try_concat().map_ok(|body| {
+        //         let v: serde_json::Value = match serde_json::from_slice(&body) {
+        //             Ok(v) => v,
+        //             Err(_) => {
+        //                 info!("Failed to parse RPC server response!");
+        //                 // FIXME define error return json value
+        //                 return serde_json::Value::Null;
+        //             }
+        //         };
+        //         if !v.is_object() {
+        //             info!("Failed to parse RPC server response!");
+        //             return serde_json::Value::Null;
+        //         }
+        //         let v_obj = v.as_object().unwrap();
+        //         if v_obj.get("error") != Some(&serde_json::Value::Null) {
+        //             info!("Failed to parse RPC server response!");
+        //             return serde_json::Value::Null;
+        //         }
+        //         if let Some(res) = v_obj.get("result") {
+        //             return (*res).clone();
+        //         } else {
+        //             info!("Failed to parse RPC server response!");
+        //             return serde_json::Value::Null;
+        //         }
+        //     })).unwrap())
+        // }
     }
 
     pub fn get_header(
@@ -142,7 +143,7 @@ impl RPCClient {
     ) -> Result<GetHeaderResponse, ()> {
         let param = "\"".to_string() + header_hash + "\"";
         let v = self.sync_rpc_call("getblockheader", &[&param], false);
-        let v = v.unwrap();
+        let mut v = v.unwrap();
         if v.is_object() {
             if let None = v.get("previousblockhash") {
                 // Got a request for genesis block, add a dummy previousblockhash

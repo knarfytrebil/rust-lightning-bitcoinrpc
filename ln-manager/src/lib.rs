@@ -19,7 +19,7 @@ extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
 extern crate tokio_tcp;
-// extern crate tokio_timer;
+extern crate futures_timer;
 
 #[macro_use]
 extern crate serde_derive;
@@ -157,45 +157,45 @@ impl<T: Larva> LnManager<T> {
 
         let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
-        let _ = larva.clone().spawn_task(
-            rpc_client
-                .make_rpc_call(
-                    "importprivkey",
-                    &[
-                        &("\"".to_string()
-                          + &bitcoin::util::key::PrivateKey {
-                              key: import_key_1,
-                              compressed: true,
-                              network,
-                          }.to_wif()
-                          + "\""),
-                        "\"rust-lightning ChannelMonitor claim\"",
-                        "false",
-                    ],
-                    false,
-                )
-                .map(|_| Ok(()))
-        );
+        // let _ = larva.clone().spawn_task(
+        //     rpc_client
+        //         .make_rpc_call(
+        //             "importprivkey",
+        //             &[
+        //                 &("\"".to_string()
+        //                   + &bitcoin::util::key::PrivateKey {
+        //                       key: import_key_1,
+        //                       compressed: true,
+        //                       network,
+        //                   }.to_wif()
+        //                   + "\""),
+        //                 "\"rust-lightning ChannelMonitor claim\"",
+        //                 "false",
+        //             ],
+        //             false,
+        //         )
+        //         .map(|_| Ok(()))
+        // );
 
-        let _ = larva.clone().spawn_task(
-            rpc_client
-                .make_rpc_call(
-                    "importprivkey",
-                    &[
-                        &("\"".to_string()
-                          + &bitcoin::util::key::PrivateKey {
-                              key: import_key_2,
-                              compressed: true,
-                              network,
-                          }.to_wif()
-                          + "\""),
-                        "\"rust-lightning cooperative close\"",
-                        "false",
-                    ],
-                    false,
-                )
-                .map(|_| Ok(()))
-        );
+        // let _ = larva.clone().spawn_task(
+        //     rpc_client
+        //         .make_rpc_call(
+        //             "importprivkey",
+        //             &[
+        //                 &("\"".to_string()
+        //                   + &bitcoin::util::key::PrivateKey {
+        //                       key: import_key_2,
+        //                       compressed: true,
+        //                       network,
+        //                   }.to_wif()
+        //                   + "\""),
+        //                 "\"rust-lightning cooperative close\"",
+        //                 "false",
+        //             ],
+        //             false,
+        //         )
+        //         .map(|_| Ok(()))
+        // );
 
         let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));
 

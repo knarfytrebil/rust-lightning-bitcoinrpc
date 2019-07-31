@@ -214,16 +214,16 @@ impl<T: Larva> EventHandler<T> {
     });
     let (sender, receiver) = mpsc::channel(2);
     let self_sender = sender.clone();
-    let _ = larva.clone().spawn_task(
-        receiver.for_each(|_| {
-			      let _ = handle_receiver(
-                &us,
-                &self_sender,
-                &larva
-            );
-            future::ready(())
-		    }).map(|_| Ok(()))
-    );
+    // let _ = larva.clone().spawn_task(
+    //     receiver.for_each(|_| {
+    //     		      let _ = handle_receiver(
+    //             &us,
+    //             &self_sender,
+    //             &larva
+    //         );
+    //         future::ready(())
+    //     	    }).map(|_| Ok(()))
+    // );
     sender
 }
 }
