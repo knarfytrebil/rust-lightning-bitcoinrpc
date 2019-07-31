@@ -17,6 +17,8 @@ use ln_manager::ln_bridge::rpc_client::{RPCClient};
 use hyper::Client;
 use hyper::Uri;
 
+#[macro_use] 
+extern crate failure;
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
@@ -60,8 +62,8 @@ impl Larva for Probe {
     }
 }
 
-// #[runtime::main]
-#[runtime::main(runtime_tokio::Tokio)]
+// #[runtime::main(runtime_tokio::Tokio)]
+#[runtime::main]
 async fn main() {
     let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
     let h_client = Arc::new(Client::new());
@@ -79,15 +81,15 @@ async fn main() {
         // println!("{}", &v.unwrap()); 
         
         let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
-        let res = h_client.get(url).await.unwrap();
+        let res = h_client.get(url).await?;
         // asynchronously concatenate chunks of the body
-        let body = res.into_body().try_concat().await.unwrap();
+        let body = res.into_body().try_concat().await?;
         // try to parse as json with serde_json
-        let users: Vec<User> = serde_json::from_slice(&body).unwrap();
+        let users: Vec<User> = serde_json::from_slice(&body)?;
 
         println!("{:#?}", users);
            
-        Ok::<(), std::io::Error>(())
+        Ok::<(), failure::Error>(())
         // Ok(users)
     }).await;
 }
