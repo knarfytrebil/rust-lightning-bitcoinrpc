@@ -158,7 +158,6 @@ impl<T: Larva> LnManager<T> {
         let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));
 
         let async_client = rpc_client.clone();
-        // let async_network = network.clone();
         let _ = larva.clone().spawn_task(async move {
             let k = &[
                 &("\"".to_string()
@@ -172,30 +171,23 @@ impl<T: Larva> LnManager<T> {
                 "\"rust-lightning ChannelMonitor claim\"",
                 "false",
             ];
-            async_client.make_rpc_call(
-                "importprivkey",
-                k,
-                false,
-            ).map(|_| Ok(())).await
+            async_client.make_rpc_call("importprivkey", k, false).map(|_| Ok(())).await
         });
         let async_client = rpc_client.clone();
         let _ = larva.clone().spawn_task(async move {
-            async_client.make_rpc_call(
-                "importprivkey",
-                &[
-                    &("\"".to_string()
-                      + &bitcoin::util::key::PrivateKey {
-                          key: import_key_2,
-                          compressed: true,
-                          network,
-                      }
-                      .to_wif()
-                      + "\""),
-                    "\"rust-lightning cooperative close\"",
-                    "false",
-                ],
-                false,
-            ).map(|_| Ok(())).await
+            let k = &[
+                &("\"".to_string()
+                  + &bitcoin::util::key::PrivateKey {
+                      key: import_key_2,
+                      compressed: true,
+                      network,
+                  }
+                  .to_wif()
+                  + "\""),
+                "\"rust-lightning cooperative close\"",
+                "false",
+            ];
+            async_client.make_rpc_call("importprivkey", k, false).map(|_| Ok(())).await
         });
 
         let monitors_loaded = ChannelMonitor::load_from_disk(&(data_path.clone() + "/monitors"));

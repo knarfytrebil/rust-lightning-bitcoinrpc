@@ -100,7 +100,7 @@ impl Connection {
                 if us_close_ref.lock().unwrap().need_disconnect {
                     peer_manager_ref.disconnect_event(
                         &SocketDescriptor::new(
-                            us_close_ref, peer_manager_ref.clone(), 
+                            us_close_ref, peer_manager_ref.clone(),
                             larva_ref.clone()
                         )
                     );
@@ -113,7 +113,7 @@ impl Connection {
         );
     }
 
-    fn new(event_notify: mpsc::Sender<()>, stream: TcpStream, larva: &impl Larva) -> 
+    fn new(event_notify: mpsc::Sender<()>, stream: TcpStream, larva: &impl Larva) ->
         (futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, Arc<Mutex<Self>>) {
         let (writer, reader) = tokio_codec::Framed::new(stream, tokio_codec::BytesCodec::new()).split();
         let (send_sink, send_stream) = mpsc::channel(3);
@@ -131,14 +131,14 @@ impl Connection {
         // );
         let us = Arc::new(
             Mutex::new(
-                Self { 
-                    writer: Some(send_sink), 
-                    event_notify, 
-                    pending_read: Vec::new(), 
-                    read_blocker: None, 
-                    read_paused: false, 
-                    need_disconnect: true, 
-                    id: ID_COUNTER.fetch_add(1, Ordering::AcqRel) 
+                Self {
+                    writer: Some(send_sink),
+                    event_notify,
+                    pending_read: Vec::new(),
+                    read_blocker: None,
+                    read_paused: false,
+                    need_disconnect: true,
+                    id: ID_COUNTER.fetch_add(1, Ordering::AcqRel)
                 }
             )
         );

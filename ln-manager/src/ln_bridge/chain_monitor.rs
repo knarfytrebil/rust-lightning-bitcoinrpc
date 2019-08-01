@@ -50,7 +50,7 @@ impl FeeEstimator {
             high_prio_est: AtomicUsize::new(0),
         }
     }
-    // TODO test Pin works
+    // TODO test Pin works & make it async send
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
         // let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
         let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["6", "\"CONSERVATIVE\""], false).unwrap();
@@ -164,7 +164,6 @@ impl<T> ChainBroadcaster<T> {
     }
 
     fn rebroadcast_txn(&self) -> impl Future {
-        // async move {
         // let mut send_futures = Vec::new();
         // let txn = self.txn_to_broadcast.lock().unwrap();
         // for (_, tx) in txn.iter() {
@@ -177,7 +176,6 @@ impl<T> ChainBroadcaster<T> {
         // }
         // block_on(future::join_all(send_futures));
         future::ready(())
-        // }
     }
 }
 
@@ -187,12 +185,14 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
             .lock()
             .unwrap()
             .insert(tx.txid(), tx.clone());
-        let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-        // let _ = self.larva.clone().spawn_task(
-        //     self.rpc_client.clone().make_rpc_call(
-        //         "sendrawtransaction", &[&tx_ser], true
-        //     ).map(|_| Ok(()))
-        // );
+        let tx_ser = format!("\"{}\"", &encode::serialize_hex(tx));
+        let async_client = self.rpc_client.clone();
+        let _ = self.larva.clone().spawn_task(async move {
+            let k = &[&tx_ser[..]];
+            async_client.make_rpc_call(
+                "sendrawtransaction", k, true
+            ).map(|_| Ok(())).await
+        });
     }
 }
 
@@ -201,144 +201,6 @@ enum ForkStep {
     ConnectBlock((String, u32)),
 }
 
-// fn find_fork_step(
-//     steps_tx: mpsc::Sender<ForkStep>,
-//     current_header: GetHeaderResponse,
-//     target_header_opt: Option<(String, GetHeaderResponse)>,
-//     rpc_client: Arc<RPCClient>,
-//     larva: impl Larva,
-// ) {
-//     if target_header_opt.is_some()
-//         && target_header_opt.as_ref().unwrap().0 == current_header.previousblockhash
-//     {
-//         // Target is the parent of current, we're done!
-//         return;
-//     } else if current_header.height == 1 {
-//         return;
-//     } else if target_header_opt.is_none()
-//         || target_header_opt.as_ref().unwrap().1.height < current_header.height
-//     {
-//         let _ = larva.clone().spawn_task(
-//             steps_tx
-//                 .send(ForkStep::ConnectBlock((
-//                     current_header.previousblockhash.clone(),
-//                     current_header.height - 1,
-//                 )))
-//                 .then(move |send_res| {
-//                     if let Ok(steps_tx) = send_res {
-//                         future::Either::Left(
-//                             rpc_client
-//                                 .get_header(&current_header.previousblockhash)
-//                                 .map(move |new_cur_header| {
-//                                     find_fork_step(
-//                                         steps_tx,
-//                                         new_cur_header.unwrap(),
-//                                         target_header_opt,
-//                                         rpc_client,
-//                                         larva,
-//                                     );
-//                                     Ok(())
-//                                 }),
-//                         )
-//                     } else {
-//                         // Caller droped the receiver, we should give up now
-//                         future::Either::Right(future::ok(()))
-//                     }
-//                 }),
-//         );
-//     } else {
-//         let target_header = target_header_opt.unwrap().1;
-//         // Everything below needs to disconnect target, so go ahead and do that now
-//         let _ = larva.clone().spawn_task(
-//             steps_tx
-//                 .send(ForkStep::DisconnectBlock(target_header.to_block_header()))
-//                 .then(move |send_res| {
-//                     if let Ok(steps_tx) = send_res {
-//                         future::Either::Left(
-//                             if target_header.previousblockhash == current_header.previousblockhash {
-//                                 // Found the fork, also connect current and finish!
-//                                 future::Either::Left(future::Either::Left(
-//                                     steps_tx
-//                                         .send(ForkStep::ConnectBlock((
-//                                             current_header.previousblockhash.clone(),
-//                                             current_header.height - 1,
-//                                         )))
-//                                         .then(|_| Ok(())),
-//                                 ))
-//                             } else if target_header.height > current_header.height {
-//                                 // Target is higher, walk it back and recurse
-//                                 future::Either::Right(
-//                                     rpc_client
-//                                         .get_header(&target_header.previousblockhash)
-//                                         .map(move |new_target_header| {
-//                                             find_fork_step(
-//                                                 steps_tx,
-//                                                 current_header,
-//                                                 Some((
-//                                                     target_header.previousblockhash,
-//                                                     new_target_header.unwrap(),
-//                                                 )),
-//                                                 rpc_client,
-//                                                 larva,
-//                                             );
-//                                             Ok(())
-//                                         }),
-//                                 )
-//                             } else {
-//                                 // Target and current are at the same height, but we're not at fork yet, walk
-//                                 // both back and recurse
-//                                 future::Either::Left(future::Either::Right(
-//                                     steps_tx
-//                                         .send(ForkStep::ConnectBlock((
-//                                             current_header.previousblockhash.clone(),
-//                                             current_header.height - 1,
-//                                         )))
-//                                         .then(move |send_res| {
-//                                             if let Ok(steps_tx) = send_res {
-//                                                 future::Either::Left(
-//                                                     rpc_client
-//                                                         .get_header(
-//                                                             &current_header.previousblockhash,
-//                                                         )
-//                                                         .then(move |new_cur_header| {
-//                                                             rpc_client
-//                                                                 .get_header(
-//                                                                     &target_header
-//                                                                         .previousblockhash,
-//                                                                 )
-//                                                                 .map(move |new_target_header| {
-//                                                                     find_fork_step(
-//                                                                         steps_tx,
-//                                                                         new_cur_header.unwrap(),
-//                                                                         Some((
-//                                                                             target_header
-//                                                                                 .previousblockhash,
-//                                                                             new_target_header
-//                                                                                 .unwrap(),
-//                                                                         )),
-//                                                                         rpc_client,
-//                                                                         larva,
-//                                                                     );
-//                                                                     Ok(())
-//                                                                 })
-//                                                         }),
-//                                                 )
-//                                             } else {
-//                                                 // Caller droped the receiver, we should give up now
-//                                                 future::Either::Right(future::ok(()))
-//                                             }
-//                                         }),
-//                                 ))
-//                             },
-//                         )
-//                     } else {
-//                         // Caller droped the receiver, we should give up now
-//                         future::Either::Right(future::ok(()))
-//                     }
-//                 }),
-//         );
-//     }
-// }
 fn find_fork_step(
     mut steps_tx: mpsc::Sender<ForkStep>,
     current_header: GetHeaderResponse,
@@ -388,70 +250,70 @@ fn find_fork_step(
             steps_tx
                 .send(ForkStep::DisconnectBlock(c_header.into()))
         );
-        // if let Ok(_) = send_res {
-        //     // send err match
-        //     if target_header.previousblockhash == current_header.previousblockhash {
-        //         // Found the fork, also connect current and finish!
-        //         block_on(
-        //             steps_tx
-        //                 .send(ForkStep::ConnectBlock((
-        //                     current_header.previousblockhash.clone(),
-        //                     current_header.height - 1,
-        //                 )))
-        //         );
-        //         return;
-        //     } else if target_header.height > current_header.height {
-        //         // Target is higher, walk it back and recurse
-        //         // let new_target_header = rpc_client.get_header(&target_header.previousblockhash);
-        //         // find_fork_step(
-        //         //     steps_tx,
-        //         //     current_header,
-        //         //     Some((
-        //         //         target_header.previousblockhash,
-        //         //         new_target_header.unwrap(),
-        //         //     )),
-        //         //     rpc_client,
-        //         //     larva,
-        //         // );
-        //         return;
-        //     } else {
-        //         // Target and current are at the same height, but we're not at fork yet, walk
-        //         // both back and recurse
-        //         let send_res = block_on(
-        //             steps_tx
-        //                 .send(ForkStep::ConnectBlock((
-        //                     current_header.previousblockhash.clone(),
-        //                     current_header.height - 1,
-        //                 )))
-        //         );
-        //         if let Ok(_) = send_res {
-        //             //let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
-        //             //let new_target_header = rpc_client.get_header(
-        //             //    &target_header
-        //             //        .previousblockhash,
-        //             //);
-        //             //find_fork_step(
-        //             //    steps_tx,
-        //             //    new_cur_header.unwrap(),
-        //             //    Some((
-        //             //        target_header
-        //             //            .previousblockhash,
-        //             //        new_target_header
-        //             //            .unwrap(),
-        //             //    )),
-        //             //    rpc_client,
-        //             //    larva,
-        //             //);
-        //             return;
-        //         } else {
-        //             // Caller droped the receiver, we should give up now
-        //             return;
-        //         }
-        //     }
-        // } else {
-        //     // Caller droped the receiver, we should give up now
-        //     return;
-        // }
+        if let Ok(_) = send_res {
+            // send err match
+            if target_header.previousblockhash == current_header.previousblockhash {
+                // Found the fork, also connect current and finish!
+                block_on(
+                    steps_tx
+                        .send(ForkStep::ConnectBlock((
+                            current_header.previousblockhash.clone(),
+                            current_header.height - 1,
+                        )))
+                );
+                return;
+            } else if target_header.height > current_header.height {
+                // Target is higher, walk it back and recurse
+                let new_target_header = rpc_client.get_header(&target_header.previousblockhash);
+                find_fork_step(
+                    steps_tx,
+                    current_header,
+                    Some((
+                        target_header.previousblockhash,
+                        new_target_header.unwrap(),
+                    )),
+                    rpc_client,
+                    larva,
+                );
+                return;
+            } else {
+                // Target and current are at the same height, but we're not at fork yet, walk
+                // both back and recurse
+                let send_res = block_on(
+                    steps_tx
+                        .send(ForkStep::ConnectBlock((
+                            current_header.previousblockhash.clone(),
+                            current_header.height - 1,
+                        )))
+                );
+                if let Ok(_) = send_res {
+                    let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
+                    let new_target_header = rpc_client.get_header(
+                       &target_header
+                           .previousblockhash,
+                    );
+                    find_fork_step(
+                       steps_tx,
+                       new_cur_header.unwrap(),
+                       Some((
+                           target_header
+                               .previousblockhash,
+                           new_target_header
+                               .unwrap(),
+                       )),
+                       rpc_client,
+                       larva,
+                    );
+                    return;
+                } else {
+                    // Caller droped the receiver, we should give up now
+                    return;
+                }
+            }
+        } else {
+            // Caller droped the receiver, we should give up now
+            return;
+        }
     }
 }
 /// Walks backwards from current_hash and target_hash finding the fork and sending ForkStep events
