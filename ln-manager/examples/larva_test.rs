@@ -1,21 +1,21 @@
 #![feature(async_await)]
 use futures::future;
+use futures::future::Future;
 use futures::prelude::*;
 use futures::channel::mpsc;
 use futures_timer::Interval;
-use futures::executor::ThreadPool;
-use futures::executor::LocalPool;
+use futures::executor::{ ThreadPool, LocalPool };
+use futures::task::{ LocalSpawn };
 
 use std::time::{Duration};
 use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use ln_manager::executor::Larva;
-use ln_manager::ln_bridge::rpc_client::{RPCClient};
+// use ln_manager::executor::Larva;
+use ln_manager::ln_bridge::rpc_client::{ RPCClient };
 
-use hyper::Client;
-use hyper::Uri;
+use hyper::{ Client, Uri };
 
 #[macro_use] 
 extern crate failure;
@@ -24,8 +24,7 @@ extern crate serde;
 extern crate serde_json;
 
 use serde::{Serialize, Deserialize};
-
-pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = Result<(), ()>> + Send>>>;
+pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>;
 
 #[derive(Deserialize, Debug)]
 struct User {
@@ -37,6 +36,14 @@ struct User {
 pub struct Probe {
     sender: UnboundedSender,
     thread_pool: ThreadPool,
+}
+
+
+pub trait Larva: Clone + Sized + Send + Sync + 'static {
+    fn spawn_task(
+        &self,
+        task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
+    ) -> Result<(), futures::task::SpawnError>;
 }
 
 impl Probe {
@@ -51,7 +58,7 @@ impl Probe {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        task: impl Future<Output = Result<(), ()>> + Send + 'static,
+        task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
         if let Err(err) = self.sender.unbounded_send(Box::pin(task)) {
             println!("{}", err);
@@ -62,37 +69,67 @@ impl Larva for Probe {
     }
 }
 
-// #[runtime::main]
-#[runtime::main(runtime_tokio::Tokio)]
-async fn main() {
-    let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
+// let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
+// let r = runtime::spawn(async move {
+// }).await;
+
+// Interval::new(Duration::from_secs(1))
+//     .for_each(|()|{
+//         // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
+//         future::ready(println!("run task"))
+//     }).await;
+    
+// let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
+// println!("{}", &v.unwrap()); 
+
+async fn h_get_json() -> Result<Vec<User>, failure::Error> {
+    // Interval::new(Duration::from_secs(1))
+    //     .for_each(|()|{
+    //         // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
+    //         future::ready(println!("run task"))
+    //     }).await;
+    // let users = vec![ User { id: 1, name: String::from("Frank") }];
+
     let h_client = Arc::new(Client::new());
+    let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
+    let res = h_client.get(url).await?;
+    // // asynchronously concatenate chunks of the body
+    let body = res.into_body().try_concat().await?;
+    // // try to parse as json with serde_json
+    let users: Vec<User> = serde_json::from_slice(&body)?;
+    println!("{:#?}", &users);
+    Ok::<Vec<User>, failure::Error>(users)
+}
 
-    let r = runtime::spawn(async move {
-        // Interval::new(Duration::from_secs(1))
-        // .for_each(|()|{
-        //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
-        //     future::ready(println!("run task"))
-        // }).await;
-        // Ok(())
-        
-        
-        // let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
-        // println!("{}", &v.unwrap()); 
-        
-        let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
-        let res = h_client.get(url).await?;
-        // // asynchronously concatenate chunks of the body
-        let body = res.into_body().try_concat().await?;
-        // // try to parse as json with serde_json
-        let users: Vec<User> = serde_json::from_slice(&body)?;
+// fn main() -> Result<(), failure::Error> {
+//     let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
+//     let exec = Probe::new(rt_tx); 
+//     
+//     exec.spawn_task(h_get_json());
+// 
+//     let mut pool = LocalPool::new();
+// 
+//     loop {
+//         match rt_rx.try_next() {
+//             Ok(task) => {
+//                 let rt_r = runtime::raw::enter(runtime::native::Native, async { task.unwrap().await });
+//                 println!("{:#?}", rt_r);
+// 
+//                 // let r = pool.run_until(async { task.unwrap().await });
+//                 // println!("{:#?}", r);
+//             }
+//             _ => { }
+//         }
+//     }
+//     Ok(())
+// }
 
-        // println!("======");
-        // println!("{:#?}", users);
-           
-        Ok::<Vec<User>, failure::Error>(users)
-        // Ok(users)
-    }).await;
+// #[runtime::main]
+// #[runtime::main(runtime_tokio::Tokio)]
+#[tokio::main]
+async fn main() -> Result<(), failure::Error> {
+    let users = h_get_json().await?;
+    println!("{:#?}", users);
+    Ok(())
 
-    println!("{:#?}", r);
 }
