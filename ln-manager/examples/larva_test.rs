@@ -98,7 +98,7 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     // // try to parse as json with serde_json
     let users: Vec<User> = serde_json::from_slice(&body)?;
     println!("{}", i);
-    println!("{:#?}", users);
+    // println!("{:#?}", users);
     Ok::<Vec<User>, failure::Error>(users)
 }
 
@@ -106,10 +106,13 @@ fn main() -> Result<(), failure::Error> {
     let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
     let exec = Probe::new(rt_tx); 
     
-    let _ = exec.clone().spawn_task(h_get_json(0));
-    let _ = exec.clone().spawn_task(h_get_json(1));
-    let _ = exec.clone().spawn_task(h_get_json(2));
-    let _ = exec.clone().spawn_task(h_get_json(3));
+    let _ = exec.clone().spawn_task(async { h_get_json(0).await });
+    // let _ = exec.clone().spawn_task(async { h_get_json(1).await });
+    // let _ = exec.clone().spawn_task(async { h_get_json(2).await });
+    // let _ = exec.clone().spawn_task(async { h_get_json(3).await });
+    // let _ = exec.clone().spawn_task(h_get_json(1));
+    // let _ = exec.clone().spawn_task(h_get_json(2));
+    let _ = exec.clone().spawn_task(async { h_get_json(0).await });
 
     // let mut pool = LocalPool::new();
     let mut tokio_rt = tokio::runtime::Runtime::new().unwrap();
