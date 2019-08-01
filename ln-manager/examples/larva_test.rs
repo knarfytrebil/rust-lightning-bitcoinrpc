@@ -98,6 +98,7 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     // // try to parse as json with serde_json
     let users: Vec<User> = serde_json::from_slice(&body)?;
     println!("{}", i);
+    println!("{:#?}", users);
     Ok::<Vec<User>, failure::Error>(users)
 }
 
@@ -105,10 +106,10 @@ fn main() -> Result<(), failure::Error> {
     let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
     let exec = Probe::new(rt_tx); 
     
-    // let _ = exec.clone().spawn_task(h_get_json(0));
-    // let _ = exec.clone().spawn_task(h_get_json(1));
-    // let _ = exec.clone().spawn_task(h_get_json(2));
-    // let _ = exec.clone().spawn_task(h_get_json(3));
+    let _ = exec.clone().spawn_task(h_get_json(0));
+    let _ = exec.clone().spawn_task(h_get_json(1));
+    let _ = exec.clone().spawn_task(h_get_json(2));
+    let _ = exec.clone().spawn_task(h_get_json(3));
 
     // let mut pool = LocalPool::new();
     let mut tokio_rt = tokio::runtime::Runtime::new().unwrap();
@@ -117,17 +118,21 @@ fn main() -> Result<(), failure::Error> {
         match rt_rx.try_next() {
             Ok(task) => {
                 
-                let r = tokio_rt.block_on(async { task.unwrap().await });
+                // let r = tokio_rt.block_on(async { task.unwrap().await });
+                // let r = tokio_rt.block_on(task.unwrap());
                 // let r = tokio_rt.spawn(async { task.unwrap().await; });
+                tokio_rt.spawn(
+                    task.unwrap().map(|_|{()})
+                );
 
                 // let r = runtime::raw::enter(runtime::native::Native, async { task.unwrap().await });
                 // let r = runtime::raw::enter(runtime_tokio::Tokio, async { task.unwrap().await });
                 // let r = pool.run_until(async { task.unwrap().await });
-                println!("{:#?}", r);
             }
             _ => { }
         }
     }
+
     Ok(())
 }
 
