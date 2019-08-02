@@ -12,7 +12,7 @@ use futures::executor::block_on;
 use log::{info, error};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct GetHeaderResponse {
     pub hash: String,
     pub confirmations: u64,
@@ -99,6 +99,7 @@ impl RPCClient {
                         + "}",
                 )).unwrap()
         ).await;
+<<<<<<< HEAD
 
         let res = match raw_res {
             Ok(res) => {
@@ -145,6 +146,43 @@ impl RPCClient {
             }
         };
         res
+=======
+        let res = res.unwrap();
+        if res.status() != hyper::StatusCode::OK {
+            if !may_fail {
+                println!("RPC request failed");
+                println!("{:?}", &res.body());
+                // info!("Failed to get RPC server response (probably bad auth)!");
+            }
+            Err(())
+        } else {
+            Ok(block_on(res.into_body().try_concat().map_ok(|body| {
+                let v: serde_json::Value = match serde_json::from_slice(&body) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        info!("Failed to parse RPC server response!");
+                        // FIXME define error return json value
+                        return serde_json::Value::Null;
+                    }
+                };
+                if !v.is_object() {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
+                }
+                let v_obj = v.as_object().unwrap();
+                if v_obj.get("error") != Some(&serde_json::Value::Null) {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
+                }
+                if let Some(res) = v_obj.get("result") {
+                    return (*res).clone();
+                } else {
+                    info!("Failed to parse RPC server response!");
+                    return serde_json::Value::Null;
+                }
+            })).unwrap())
+        }
+>>>>>>> f0755a9e513508f9dc3c822845ea9be4db56ae3a
     }
 
     pub fn get_header(
