@@ -162,10 +162,12 @@ fn main() -> Result<(), failure::Error> {
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     let exec = Probe::new(rt.executor()); 
     exec.clone().spawn_task( async { h_get_json(1).await } );
+
     let n = exec.clone();
     thread::spawn(move || {
         n.clone().spawn_task( async { h_get_json(2).await } );
     });
+
     exec.clone().spawn_task( async { h_get_json(3).await } );
 
     rt.block_on(run_forever())
