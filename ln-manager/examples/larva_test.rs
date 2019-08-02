@@ -26,6 +26,7 @@ extern crate serde_json;
 
 use serde::{Serialize, Deserialize};
 pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>;
+pub type Executor = tokio::runtime::TaskExecutor;
 
 #[derive(Deserialize, Debug)]
 pub struct User {
@@ -35,10 +36,8 @@ pub struct User {
 
 #[derive(Clone)]
 pub struct Probe {
-    sender: UnboundedSender,
-    thread_pool: ThreadPool,
+    exec: Executor,
 }
-
 
 pub trait Larva: Clone + Sized + Send + Sync + 'static {
     fn spawn_task(
@@ -48,10 +47,9 @@ pub trait Larva: Clone + Sized + Send + Sync + 'static {
 }
 
 impl Probe {
-    pub fn new(sender: UnboundedSender) -> Self {
+    pub fn new(exec: Executor) -> Self {
         Probe {
-            sender: sender,
-            thread_pool: ThreadPool::new().unwrap(),
+            exec: exec,
         }
     }
 }
@@ -61,14 +59,25 @@ impl Larva for Probe {
         &self,
         task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
-        if let Err(err) = self.sender.unbounded_send(Box::pin(task)) {
-            println!("{}", err);
-            Err(futures::task::SpawnError::shutdown())
-        } else {
-            Ok(())
-        }
+        self.exec.spawn(async { task.await }.map(|_| ()));
+        Ok(())
     }
 }
+
+// impl Larva for Probe {
+//     fn spawn_task(
+//         &self,
+//         task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
+//     ) -> Result<(), futures::task::SpawnError> {
+//         if let Err(err) = self.sender.start_send(Box::pin(task)) {
+//             println!("{}", err);
+//             Err(futures::task::SpawnError::shutdown())
+//         } else {
+//             Ok(())
+//         }
+//     }
+// }
+
 
 // let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
 // let r = runtime::spawn(async move {
@@ -102,43 +111,6 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     Ok::<Vec<User>, failure::Error>(users)
 }
 
-fn main() -> Result<(), failure::Error> {
-    let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
-    let exec = Probe::new(rt_tx); 
-    
-    let _ = exec.clone().spawn_task(async { h_get_json(0).await });
-    // let _ = exec.clone().spawn_task(async { h_get_json(1).await });
-    // let _ = exec.clone().spawn_task(async { h_get_json(2).await });
-    // let _ = exec.clone().spawn_task(async { h_get_json(3).await });
-    // let _ = exec.clone().spawn_task(h_get_json(1));
-    // let _ = exec.clone().spawn_task(h_get_json(2));
-    let _ = exec.clone().spawn_task(async { h_get_json(0).await });
-
-    // let mut pool = LocalPool::new();
-    let mut tokio_rt = tokio::runtime::Runtime::new().unwrap();
-
-    loop {
-        match rt_rx.try_next() {
-            Ok(task) => {
-                
-                // let r = tokio_rt.block_on(async { task.unwrap().await });
-                // let r = tokio_rt.block_on(task.unwrap());
-                // let r = tokio_rt.spawn(async { task.unwrap().await; });
-                tokio_rt.spawn(
-                    task.unwrap().map(|_|{()})
-                );
-
-                // let r = runtime::raw::enter(runtime::native::Native, async { task.unwrap().await });
-                // let r = runtime::raw::enter(runtime_tokio::Tokio, async { task.unwrap().await });
-                // let r = pool.run_until(async { task.unwrap().await });
-            }
-            _ => { }
-        }
-    }
-
-    Ok(())
-}
-
 // #[runtime::main]
 // #[runtime::main(runtime_tokio::Tokio)]
 // #[tokio::main]
@@ -147,3 +119,54 @@ fn main() -> Result<(), failure::Error> {
 //     println!("{:#?}", users);
 //     Ok(())
 // }
+
+async fn run_forever() -> Result<(), failure::Error> {
+    loop { }
+}
+
+fn main() -> Result<(), failure::Error> {
+    // runtime::raw::set_runtime(&runtime::native::Native);
+    // let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
+    // let exec = Probe::new(rt_tx); 
+    // let _ = exec.clone().spawn_task(async { h_get_json(1).await });
+    // let _ = exec.clone().spawn_task(async { h_get_json(2).await });
+    // let _ = exec.clone().spawn_task(async { h_get_json(3).await });
+    // thread::spawn(move || {
+    //     let _ = exec.clone().spawn_task(h_get_json(4));
+    // });
+    // let _ = exec.clone().spawn_task(async { h_get_json(0).await });
+    // let _ = exec.clone().spawn_task(h_get_json(2));
+    // let mut pool = LocalPool::new();
+    // loop {
+    //     match rt_rx.try_next() {
+    //         Ok(task) => {
+    //             match task {
+    //                 Some(t) => {
+    //                     tokio_rt.spawn( t.map(|_|{()}) );
+    //                 }
+    //                 None => {
+    //                     println!("we got none");
+    //                     break
+    //                 }
+    //             }
+    //             // let r = runtime::spawn(task.unwrap().map(|_|()));
+    //             // let r = runtime::raw::enter(runtime_tokio::Tokio, async { task.unwrap().await });
+    //             // let r = pool.run_until(async { task.unwrap().await });
+    //         }
+    //         Err(e) => {
+    //             // println!("{:#?}", e);
+    //         }
+    //     }
+    // }
+   
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    let exec = Probe::new(rt.executor()); 
+    exec.clone().spawn_task( async { h_get_json(1).await } );
+    let n = exec.clone();
+    thread::spawn(move || {
+        n.clone().spawn_task( async { h_get_json(2).await } );
+    });
+    exec.clone().spawn_task( async { h_get_json(3).await } );
+
+    rt.block_on(run_forever())
+}
