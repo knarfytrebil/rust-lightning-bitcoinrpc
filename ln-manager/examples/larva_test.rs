@@ -169,11 +169,15 @@ fn main() -> Result<(), failure::Error> {
    
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     let exec = Probe::new(rt.executor()); 
+
+    //test normal spawn
     exec.clone().spawn_task( async { h_get_json(1).await } );
 
+    // test spawn in thread
     let n = exec.clone();
     thread::spawn(move || {
         n.clone().spawn_task( async { h_get_json(2).await } );
+        n.clone().spawn_task( async { local_rpc().await } );
     });
 
     exec.clone().spawn_task( async { h_get_json(3).await } );
