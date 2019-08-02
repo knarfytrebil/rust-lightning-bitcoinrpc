@@ -106,9 +106,17 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     let body = res.into_body().try_concat().await?;
     // // try to parse as json with serde_json
     let users: Vec<User> = serde_json::from_slice(&body)?;
+
     println!("{}", i);
     // println!("{:#?}", users);
     Ok::<Vec<User>, failure::Error>(users)
+}
+
+async fn local_rpc() -> Result<Vec<User>, failure::Error> {
+    let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
+    let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
+    println!("{:#?}", r);
+    Ok::<Vec<User>, failure::Error>(vec![User{ id: 1, name: String::from("Frank") }])
 }
 
 // #[runtime::main]
@@ -169,6 +177,7 @@ fn main() -> Result<(), failure::Error> {
     });
 
     exec.clone().spawn_task( async { h_get_json(3).await } );
+    exec.clone().spawn_task( async { local_rpc().await } );
 
     rt.block_on(run_forever())
 }
