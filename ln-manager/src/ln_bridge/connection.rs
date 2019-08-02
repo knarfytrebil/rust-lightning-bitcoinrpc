@@ -299,7 +299,7 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
         bytes.put(&data[write_offset..]);
         // TODO AsyncSink
         let writer = us.writer.as_ref().unwrap();
-        // writer.clone().poll_ready(bytes.freeze());
+        // TODO check logic
         match writer.clone().try_send(bytes.freeze()) {
             Ok(res) => {
                 0
@@ -324,37 +324,6 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 				        0
             },
         }
-		    // let write_res = us.writer.unwrap().start_send(bytes.freeze());
-		    // match write_res {
-			  //     Ok(res) => {
-        //         // TODO: wtf
-				//         // match res {
-				// 	      //     Poll::Pending => {
-				// 		    //         data.len() - write_offset
-				//         //     },
-				//         //     Poll::Ready(_) => {
-				//         //         us.read_paused = true;
-				//         //         let us_ref = self.clone();
-				//         //         let _ = self.larva.spawn_task(us.writer.take().unwrap().flush().then(move |writer_res| -> Result<(), ()> {
-				// 		    //             if let Ok(writer) = writer_res {
-				// 				//                 {
-				// 				// 	                  let mut us = us_ref.conn.lock().unwrap();
-				// 				// 	                  us.writer = Some(writer);
-				// 				//                 }
-				// 				//                 schedule_read!(us_ref);
-				// 		    //             } // we'll fire the disconnect event on the socket reader end
-				// 		    //             Ok(())
-				//         //         }));
-		    //         //         0
-        //         //     }
-				//         // }
-        //         data.len() - write_offset
-			  //     },
-			  //     Err(_) => {
-				//         // We'll fire the disconnected event on the socket reader end
-				//         0
-			  //     },
-		    // };
 	  }
 
     fn disconnect_socket(&mut self) {
