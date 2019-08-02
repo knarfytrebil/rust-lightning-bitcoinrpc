@@ -64,7 +64,6 @@ impl Larva for Probe {
     }
 }
 
-<<<<<<< HEAD
 // impl Larva for Probe {
 //     fn spawn_task(
 //         &self,
@@ -170,34 +169,6 @@ fn main() -> Result<(), failure::Error> {
     });
 
     exec.clone().spawn_task( async { h_get_json(3).await } );
-=======
-fn main() {
-    let (pool_tx, mut pool_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<(), ()>> + Send>>>();
-    let runner = Probe::new(pool_tx);
-    let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
-
-    runner.spawn_task(async move {
-        // Interval::new(Duration::from_secs(1))
-        // .for_each(|()|{
-        //     // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
-        //     future::ready(println!("run task"))
-        // }).await;
-        let v = rpc_client.sync_rpc_call("getblockchaininfo", &[], false);
-        // println!("{}", &v.unwrap());
-        println!("12312");
-        Ok(())
-    });
-    let mut pool = LocalPool::new();
-
-    loop {
-        match pool_rx.try_next() {
-            Ok(task) => {
-                let _ = pool.run_until(task.unwrap());
-            }
-            _ => {}
-        }
-    }
->>>>>>> f0755a9e513508f9dc3c822845ea9be4db56ae3a
 
     rt.block_on(run_forever())
 }
