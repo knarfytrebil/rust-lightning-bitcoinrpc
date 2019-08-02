@@ -198,31 +198,31 @@ impl Connection {
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         event_notify: mpsc::Sender<()>,
         their_node_id: PublicKey,
-        addr: SocketAddr, larva: T) {
-        // TODO: discuss
-        let connect_timeout = tokio_timer::Delay::new(Instant::now() + Duration::from_secs(10)).then(|_| {
+        addr: SocketAddr, larva: T) where T: Unpin {
+        let connect_timeout = futures_timer::Delay::new(Duration::from_secs(10)).then(|_| {
             future::ready(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
         });
-        // larva.clone().spawn_task(futures::future::select(
-        //     TcpStream::connect(&addr).then(move |stream| {
-        //         // let stream = stream.unwrap();
-        //         // Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream, larva);
-        //         future::ok(())
-        //     }), connect_timeout).then(|either| {
-        //         // match either {
-        //         //     future::Either::Left(_) => future::ok(()),
-        //         //     future::Either::Right(_) => future::err(()),
-        //         // }
-        //     }));
-        // TODO: consider lifetime
-        // let _ = larva.clone().spawn_task(TcpStream::connect(&addr).select(connect_timeout)
-        // .and_then(move |stream| {
-        //     Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream.0, larva);
-        //     future::ok(())
-        // }).or_else(|_| {
-        //     //TODO: return errors somehow
-        //     future::ok(())
-        // }));
+        let _ = larva.clone().spawn_task(futures::future::select(
+            TcpStream::connect(&addr), connect_timeout).then(move |either| {
+                match either {
+                    future::Either::Left((x, _)) => {
+                        if let Ok(stream) = x {
+                            Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream, larva);
+                            return future::ok(());
+                        } else {
+                            // TODO show err
+                            return future::err(());
+                        }
+                    },
+                    future::Either::Right((_, left)) => {
+                        let _ = left.map(|stream| {
+                            let stream = stream.unwrap();
+                            let _ = stream.shutdown(std::net::Shutdown::Both);
+                        });
+                        future::err(())
+                    },
+                }
+            }));
     }
 }
 
@@ -298,6 +298,32 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
         let mut bytes = bytes::BytesMut::with_capacity(data.len() - write_offset);
         bytes.put(&data[write_offset..]);
         // TODO AsyncSink
+        let writer = us.writer.as_ref().unwrap();
+        // writer.clone().poll_ready(bytes.freeze());
+        match writer.clone().try_send(bytes.freeze()) {
+            Ok(res) => {
+                0
+            },
+            Err(e) => {
+                us.read_paused = true;
+				        let us_ref = self.clone();
+                let mut w = us.writer.take().unwrap();
+				        let _ = self.larva.spawn_task(async move {
+                    w.flush().then(move |writer_res| {
+				                if let Ok(_) = writer_res {
+				                    // {
+				                        //let mut us = us_ref.conn.lock().unwrap();
+				                       // us.writer = Some(writer);
+				                    // }
+				                    schedule_read!(us_ref);
+				                } // we'll fire the disconnect event on the socket reader end
+                        // Ok(())
+                        future::ok(())
+                    }).await
+                });
+				        0
+            },
+        }
 		    // let write_res = us.writer.unwrap().start_send(bytes.freeze());
 		    // match write_res {
 			  //     Ok(res) => {
@@ -328,8 +354,7 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 				//         // We'll fire the disconnected event on the socket reader end
 				//         0
 			  //     },
-		    // }
-        0
+		    // };
 	  }
 
     fn disconnect_socket(&mut self) {
@@ -342,8 +367,8 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
 impl<T: Larva> Eq for SocketDescriptor<T> {}
 impl<T: Larva> PartialEq for SocketDescriptor<T> {
     fn eq(&self, o: &Self) -> bool {
-    self.id == o.id
-}
+        self.id == o.id
+    }
 }
 
 impl<T: Larva> Hash for SocketDescriptor<T> {
