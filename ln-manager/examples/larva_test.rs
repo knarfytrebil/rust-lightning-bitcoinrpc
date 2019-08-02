@@ -115,7 +115,7 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
 async fn local_rpc() -> Result<Vec<User>, failure::Error> {
     let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
     let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
-    println!("{:#?}", r);
+    println!("{:?}", r);
     Ok::<Vec<User>, failure::Error>(vec![User{ id: 1, name: String::from("Frank") }])
 }
 
