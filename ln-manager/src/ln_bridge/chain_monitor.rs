@@ -166,17 +166,27 @@ impl<T> ChainBroadcaster<T> {
     fn rebroadcast_txn(&self) -> impl Future {
         let mut send_futures = Vec::new();
         let txn = self.txn_to_broadcast.lock().unwrap();
+        let x_client = self.rpc_client.clone();
+        // let c = txn.iter().map(|(_, tx)| {
+        //     let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
+        //     let y = &[&tx_ser[..]];
+        //     x_client.clone()
+        //         .make_rpc_call("sendrawtransaction", &*y, true)
+        //         .map_ok(|_| -> Result<(), ()> { Ok(()) })
+        // });
+
         for (_, tx) in txn.iter() {
-            let tx_ser = "\"".to_string() + &encode::serialize_hex(tx) + "\"";
-            let x: &str = &tx_ser[..];
-            let y = &[x];
+            let tx_ser = "\"".to_string() + &encode::serialize_hex(&tx.clone()) + "\"";
+            let tx_ser: &str = &tx_ser[..];
+            let tx_ser = [tx_ser];
+            let y = &tx_ser;
             send_futures.push(
                 self.rpc_client
                     .make_rpc_call("sendrawtransaction", y, true)
                     .map_ok(|_| -> Result<(), ()> { Ok(()) }),
             );
         }
-        block_on(future::join_all(send_futures));
+        // block_on(future::join_all(send_futures));
         future::ready(())
     }
 }
