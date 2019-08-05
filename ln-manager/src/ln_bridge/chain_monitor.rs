@@ -50,82 +50,56 @@ impl FeeEstimator {
             high_prio_est: AtomicUsize::new(0),
         }
     }
-    // TODO test Pin works & make it async send
+
     fn update_values(us: Arc<Self>, rpc_client: &RPCClient) -> impl Future<Output = Result<(), ()>> {
-        // let mut reqs: Vec<Pin<Box<Future<Output = Result<(), ()>> + Send>>> = Vec::with_capacity(3);
-        // let mut reqs = Vec::with_capacity(3);
-        let mut reqs = vec!["1", "2", "3"];
-        // let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["6", "\"CONSERVATIVE\""], false).unwrap();
-        // if let Some(serde_json::Value::Number(hp_btc_per_kb)) = v.get("feerate") {
-        //     us.high_prio_est.store(
-        //         (hp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //             + 3,
-        //         Ordering::Release,
-        //     );
-        // }
-        let async_us = us.clone();
-        let async_client = rpc_client.clone();
-        // reqs.push(async move {
-        //     let p = vec!["6", "\"CONSERVATIVE\""];
-        //     let v = async_client
-        //         .make_rpc_call("estimatesmartfee", &p, false).await;
-        //     let v = v.unwrap();
-        //     if let Some(serde_json::Value::Number(hp_btc_per_kb)) = v.get("feerate") {
-        //         async_us.high_prio_est.store(
-        //             (hp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //                 + 3,
-        //             Ordering::Release,
-        //         );
-        //     };
-        // });
-        // let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["18", "\"ECONOMICAL\""], false).unwrap();
-        // if let Some(serde_json::Value::Number(np_btc_per_kb)) = v.get("feerate") {
-        //     us.normal_est.store(
-        //         (np_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //             + 3,
-        //         Ordering::Release,
-        //     );
-        // }
-        // let async_us = us.clone();
-        // let async_client = rpc_client.clone();
-        // reqs.push(
-        //     async_client
-        //         .make_rpc_call("estimatesmartfee", &vec!["18", "\"ECONOMICAL\""], false)
-        //         .map_ok(move |v| {
-        //             if let Some(serde_json::Value::Number(np_btc_per_kb)) = v.get("feerate") {
-        //                 async_us.normal_est.store(
-        //                     (np_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //                         + 3,
-        //                     Ordering::Release,
-        //                 );
-        //             }
-        //         })
-        // );
-        // let v = rpc_client.sync_rpc_call("estimatesmartfee", &vec!["144", "\"ECONOMICAL\""], false).unwrap();
-        // if let Some(serde_json::Value::Number(bp_btc_per_kb)) = v.get("feerate") {
-        //     us.background_est.store(
-        //         (bp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //             + 3,
-        //         Ordering::Release,
-        //     );
-        // }
-        // {
-        // let us = us.clone();
-        // reqs.push(async move {
-        //     rpc_client
-        //         .make_rpc_call("estimatesmartfee", &vec!["144", "\"ECONOMICAL\""], false)
-        //         .map_ok(move |v| {
-        //             if let Some(serde_json::Value::Number(bp_btc_per_kb)) = v.get("feerate") {
-        //                 us.background_est.store(
-        //                     (bp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
-        //                         + 3,
-        //                     Ordering::Release,
-        //                 );
-        //             }
-        //         }).await
-        // });
-        // }
-        // block_on(future::join_all(reqs));
+        let values = vec![
+            ("6", "\"CONSERVATIVE\""),
+            ("18", "\"ECONOMICAL\""),
+            ("144", "\"ECONOMICAL\""),
+        ];
+        let reqs = values.into_iter().map(move |value| {
+            let value = value.clone();
+            let async_us = us.clone();
+            async move {
+                let async_client = rpc_client.clone();
+                let (a, b) = value.clone();
+                let p = vec![a, b];
+                let v = async_client
+                    .make_rpc_call("estimatesmartfee", &p, false).await;
+                let v = v.unwrap();
+                match value {
+                    ("6", _) => {
+                        if let Some(serde_json::Value::Number(hp_btc_per_kb)) = v.get("feerate") {
+                            async_us.high_prio_est.store(
+                                (hp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                                    + 3,
+                                Ordering::Release,
+                            );
+                        };
+                    },
+                    ("18", _) => {
+                        if let Some(serde_json::Value::Number(np_btc_per_kb)) = v.get("feerate") {
+                            async_us.normal_est.store(
+                                (np_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                                    + 3,
+                                Ordering::Release,
+                            );
+                        }
+                    },
+                    ("144", _) => {
+                        if let Some(serde_json::Value::Number(bp_btc_per_kb)) = v.get("feerate") {
+                            async_us.background_est.store(
+                                (bp_btc_per_kb.as_f64().unwrap() * 100_000_000.0 / 250.0) as usize
+                                    + 3,
+                                Ordering::Release,
+                            );
+                        }
+                    },
+                    _ => {},
+                }
+            }
+        });
+        block_on(future::join_all(reqs));
         future::ok(())
     }
 }
@@ -374,136 +348,136 @@ pub async fn spawn_chain_monitor(
     event_notify: mpsc::Sender<()>,
     larva: impl Larva,
 ) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let _ = larva.clone().spawn_task(FeeEstimator::update_values(
-        fee_estimator.clone(),
-        &rpc_client,
-    ));
+let _ = larva.clone().spawn_task(FeeEstimator::update_values(
+    fee_estimator.clone(),
+    &rpc_client,
+));
 
-    let cur_block = Arc::new(Mutex::new(String::from("")));
+let cur_block = Arc::new(Mutex::new(String::from("")));
 
-    Interval::new(Duration::from_secs(1))
-        .for_each(|_| { 
-            let cur_block = cur_block.clone();
-            let fee_estimator = fee_estimator.clone();
-            let rpc_client = rpc_client.clone();
-            let chain_watcher = chain_watcher.clone();
-            let chain_broadcaster = chain_broadcaster.clone();
-            let mut event_notify = event_notify.clone();
-            let larva = larva.clone();
-            // larva.spawn_task(async move {
-            //     let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await?;
+Interval::new(Duration::from_secs(1))
+    .for_each(|_| { 
+        let cur_block = cur_block.clone();
+        let fee_estimator = fee_estimator.clone();
+        let rpc_client = rpc_client.clone();
+        let chain_watcher = chain_watcher.clone();
+        let chain_broadcaster = chain_broadcaster.clone();
+        let mut event_notify = event_notify.clone();
+        let larva = larva.clone();
+        // larva.spawn_task(async move {
+        //     let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await?;
 
-            //     let new_block = v["bestblockhash"].as_str().unwrap().to_string();
-            //     let old_block = cur_block.lock().unwrap().clone();
-            //     if new_block == old_block {
-            //         return Ok(());
-            //     }
+        //     let new_block = v["bestblockhash"].as_str().unwrap().to_string();
+        //     let old_block = cur_block.lock().unwrap().clone();
+        //     if new_block == old_block {
+        //         return Ok(());
+        //     }
 
-            //     *cur_block.lock().unwrap() = new_block.clone();
-            //     if old_block == "" {
-            //         return Ok(()); 
-            //     }
+        //     *cur_block.lock().unwrap() = new_block.clone();
+        //     if old_block == "" {
+        //         return Ok(()); 
+        //     }
 
-            //     let (events_tx, events_rx): (mpsc::Sender<ForkStep>, mpsc::Receiver<ForkStep>) = mpsc::channel(1);
-            //     find_fork(
-            //         events_tx,
-            //         new_block,
-            //         old_block,
-            //         rpc_client.clone(),
-            //         larva.clone(),
-            //     );
-            //     info!("NEW BEST BLOCK!");
+        //     let (events_tx, events_rx): (mpsc::Sender<ForkStep>, mpsc::Receiver<ForkStep>) = mpsc::channel(1);
+        //     find_fork(
+        //         events_tx,
+        //         new_block,
+        //         old_block,
+        //         rpc_client.clone(),
+        //         larva.clone(),
+        //     );
+        //     info!("NEW BEST BLOCK!");
 
-            //     Ok(())
-            // });
-            future::ready(())
-        }).await;
+        //     Ok(())
+        // });
+        future::ready(())
+    }).await;
     Ok(())
 
-    //     Interval::new(Duration::from_secs(1))
-    //         .for_each(move |_| {
-    // rpc_client
-    //     .make_rpc_call("getblockchaininfo", &[], false)
-    //     .map_ok(move |v| {
-    //         // check block height
-    //         let new_block = v["bestblockhash"].as_str().unwrap().to_string();
-    //         let old_block = cur_block.lock().unwrap().clone();
-    //         if new_block == old_block {
-    //             return future::Either::Left(future::ok(()));
-    //         }
+//     Interval::new(Duration::from_secs(1))
+//         .for_each(move |_| {
+// rpc_client
+//     .make_rpc_call("getblockchaininfo", &[], false)
+//     .map_ok(move |v| {
+//         // check block height
+//         let new_block = v["bestblockhash"].as_str().unwrap().to_string();
+//         let old_block = cur_block.lock().unwrap().clone();
+//         if new_block == old_block {
+//             return future::Either::Left(future::ok(()));
+//         }
 
-    //         *cur_block.lock().unwrap() = new_block.clone();
-    //         if old_block == "" {
-    //             return future::Either::Left(future::ok(()));
-    //         }
+//         *cur_block.lock().unwrap() = new_block.clone();
+//         if old_block == "" {
+//             return future::Either::Left(future::ok(()));
+//         }
 
-    //         //
-    //         let (events_tx, events_rx) = mpsc::channel(1);
-    //         find_fork(
-    //             events_tx,
-    //             new_block,
-    //             old_block,
-    //             rpc_client.clone(),
-    //             larva.clone(),
-    //         );
-    //         info!("NEW BEST BLOCK!");
-    //         future::Either::Right(events_rx.collect().then(move |events_res| {
-    //             let events = events_res.unwrap();
-    //             for event in events.iter().rev() {
-    //                 if let &ForkStep::DisconnectBlock(ref header) = &event {
-    //                     info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
-    //                     chain_watcher.block_disconnected(header);
-    //                 }
-    //             }
-    //             let mut connect_futures = Vec::with_capacity(events.len());
-    //             for event in events.iter().rev() {
-    //                 if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
-    //                     let block_height = height;
-    //                     let chain_watcher = chain_watcher.clone();
-    //                     connect_futures.push(
-    //                         rpc_client
-    //                             .make_rpc_call(
-    //                                 "getblock",
-    //                                 &[&("\"".to_string() + hash + "\""), "0"],
-    //                                 false,
-    //                             )
-    //                             .map(move |blockhex| {
-    //                                 let block: Block = encode::deserialize(
-    //                                     &hex_to_vec(
-    //                                         blockhex.unwrap().as_str().unwrap(),
-    //                                     )
-    //                                         .unwrap(),
-    //                                 )
-    //                                     .unwrap();
-    //                                 info!(
-    //                                     "Connecting block {}",
-    //                                     block.bitcoin_hash().to_hex()
-    //                                 );
-    //                                 chain_watcher.block_connected_with_filtering(
-    //                                     &block,
-    //                                     block_height,
-    //                                 );
-    //                                 Ok(())
-    //                             }),
-    //                     );
-    //                 }
-    //             }
-    //             future::try_join_all(connect_futures)
-    //                 .then(move |_: Result<Vec<()>, ()>| {
-    //                     FeeEstimator::update_values(fee_estimator, &rpc_client)
-    //                 })
-    //                 .then(move |_| {
-    //                     let _ = event_notify.try_send(());
-    //                     future::ok(())
-    //                 })
-    //                 .then(move |_: Result<(), ()>| {
-    //                     chain_broadcaster.rebroadcast_txn();
-    //                     future::ok(())
-    //                 })
-    //         }))
-    //     })
-    //     .map(|_| Ok(()))
-    // })
+//         //
+//         let (events_tx, events_rx) = mpsc::channel(1);
+//         find_fork(
+//             events_tx,
+//             new_block,
+//             old_block,
+//             rpc_client.clone(),
+//             larva.clone(),
+//         );
+//         info!("NEW BEST BLOCK!");
+//         future::Either::Right(events_rx.collect().then(move |events_res| {
+//             let events = events_res.unwrap();
+//             for event in events.iter().rev() {
+//                 if let &ForkStep::DisconnectBlock(ref header) = &event {
+//                     info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
+//                     chain_watcher.block_disconnected(header);
+//                 }
+//             }
+//             let mut connect_futures = Vec::with_capacity(events.len());
+//             for event in events.iter().rev() {
+//                 if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
+//                     let block_height = height;
+//                     let chain_watcher = chain_watcher.clone();
+//                     connect_futures.push(
+//                         rpc_client
+//                             .make_rpc_call(
+//                                 "getblock",
+//                                 &[&("\"".to_string() + hash + "\""), "0"],
+//                                 false,
+//                             )
+//                             .map(move |blockhex| {
+//                                 let block: Block = encode::deserialize(
+//                                     &hex_to_vec(
+//                                         blockhex.unwrap().as_str().unwrap(),
+//                                     )
+//                                         .unwrap(),
+//                                 )
+//                                     .unwrap();
+//                                 info!(
+//                                     "Connecting block {}",
+//                                     block.bitcoin_hash().to_hex()
+//                                 );
+//                                 chain_watcher.block_connected_with_filtering(
+//                                     &block,
+//                                     block_height,
+//                                 );
+//                                 Ok(())
+//                             }),
+//                     );
+//                 }
+//             }
+//             future::try_join_all(connect_futures)
+//                 .then(move |_: Result<Vec<()>, ()>| {
+//                     FeeEstimator::update_values(fee_estimator, &rpc_client)
+//                 })
+//                 .then(move |_| {
+//                     let _ = event_notify.try_send(());
+//                     future::ok(())
+//                 })
+//                 .then(move |_: Result<(), ()>| {
+//                     chain_broadcaster.rebroadcast_txn();
+//                     future::ok(())
+//                 })
+//         }))
+//     })
+//     .map(|_| Ok(()))
+// })
 }
 
 async fn chain_poll() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {

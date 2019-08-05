@@ -18,7 +18,7 @@ use ln_manager::ln_bridge::rpc_client::{ RPCClient };
 
 use hyper::{ Client, Uri };
 
-#[macro_use] 
+#[macro_use]
 extern crate failure;
 extern crate serde_derive;
 extern crate serde;
@@ -88,9 +88,9 @@ impl Larva for Probe {
 //         // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
 //         future::ready(println!("run task"))
 //     }).await;
-    
+
 // let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
-// println!("{}", &v.unwrap()); 
+// println!("{}", &v.unwrap());
 
 async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     // Interval::new(Duration::from_secs(1))
@@ -113,7 +113,7 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
 }
 
 async fn local_rpc() -> Result<Vec<User>, failure::Error> {
-    let rpc_client = Arc::new(RPCClient::new(String::from("admin2:123@127.0.0.1:19011")));
+    let rpc_client = Arc::new(RPCClient::new(String::from("user:pwd@10.146.15.222:18332")));
     let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
     println!("{:?}", r);
     Ok::<Vec<User>, failure::Error>(vec![User{ id: 1, name: String::from("Frank") }])
@@ -135,7 +135,7 @@ async fn run_forever() -> Result<(), failure::Error> {
 fn main() -> Result<(), failure::Error> {
     // runtime::raw::set_runtime(&runtime::native::Native);
     // let (rt_tx, mut rt_rx) = mpsc::unbounded::<Pin<Box<dyn Future<Output = Result<Vec<User>, failure::Error>> + Send>>>();
-    // let exec = Probe::new(rt_tx); 
+    // let exec = Probe::new(rt_tx);
     // let _ = exec.clone().spawn_task(async { h_get_json(1).await });
     // let _ = exec.clone().spawn_task(async { h_get_json(2).await });
     // let _ = exec.clone().spawn_task(async { h_get_json(3).await });
@@ -166,9 +166,9 @@ fn main() -> Result<(), failure::Error> {
     //         }
     //     }
     // }
-   
+
     let mut rt = tokio::runtime::Runtime::new().unwrap();
-    let exec = Probe::new(rt.executor()); 
+    let exec = Probe::new(rt.executor());
 
     //test normal spawn
     exec.clone().spawn_task( async { h_get_json(1).await } );
