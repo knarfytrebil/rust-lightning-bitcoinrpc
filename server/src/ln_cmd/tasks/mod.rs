@@ -1,4 +1,3 @@
-#![feature(async_await)]
 pub mod ln_mgr;
 pub mod node;
 pub mod udp_srv;
