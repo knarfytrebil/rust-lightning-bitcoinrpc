@@ -12,12 +12,14 @@ extern crate lightning;
 extern crate lightning_invoice;
 extern crate lightning_net_tokio;
 extern crate ln_manager;
-extern crate log;
 extern crate num_traits;
 extern crate rand;
 extern crate secp256k1;
 extern crate serde_json;
 extern crate protocol;
+
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate serde_derive;
@@ -48,8 +50,8 @@ fn main() {
     let ln_conf_arg = &args[1];
     let node_conf_arg = &args[2];
 
-    println!("USE ln SETTING FILE - {:?}", ln_conf_arg);
-    println!("USE node SETTING FILE - {:?}", node_conf_arg);
+    info!("USE ln SETTING FILE - {:?}", ln_conf_arg);
+    info!("USE node SETTING FILE - {:?}", node_conf_arg);
 
     let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();

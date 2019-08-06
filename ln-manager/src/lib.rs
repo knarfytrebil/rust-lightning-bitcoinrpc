@@ -10,7 +10,6 @@ extern crate futures;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;
-extern crate log;
 extern crate num_traits;
 extern crate rand;
 extern crate secp256k1;
@@ -22,6 +21,9 @@ extern crate tokio_io;
 extern crate tokio_tcp;
 extern crate tokio_timer;
 extern crate futures_timer;
+
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate serde_derive;
@@ -48,6 +50,7 @@ use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::peer_handler::PeerManager;
 use lightning::ln::{channelmanager, channelmonitor, peer_handler, router};
+use lightning::util::logger::{Level};
 use secp256k1::key::PublicKey;
 use secp256k1::{All, Secp256k1};
 
@@ -60,8 +63,6 @@ use ln_bridge::rpc_client::RPCClient;
 use ln_bridge::log_printer::LogPrinter;
 use ln_bridge::settings::Settings;
 use ln_bridge::Restorable;
-
-use log::{info};
 
 use executor::Larva;
 
@@ -85,7 +86,7 @@ impl<T: Larva> LnManager<T> {
     pub fn new(settings: Settings, larva: T) -> Self {
 
         // Logger
-        let logger = Arc::new(LogPrinter {});
+        let logger = Arc::new(LogPrinter { level: Level::Debug });
         let rpc_client = Arc::new(RPCClient::new(settings.bitcoind.rpc_url.clone()));
         let secp_ctx = Secp256k1::new();
         let fee_estimator = Arc::new(FeeEstimator::new());
@@ -247,30 +248,31 @@ impl<T: Larva> LnManager<T> {
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
 
-        // let setup_larva = larva.clone();
-        // let listener =
-        //     tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
-        //     .unwrap();
+        println!("Lightning Port binded on localhost:{}", &settings.lightning.port);
+        let setup_larva = larva.clone();
+        let listener =
+            tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
+            .unwrap();
 
 
-        // let _ = larva.clone().spawn_task(
-        //     listener
-        //         .incoming()
-        //         .for_each(move |sock| {
-        //             info!("Got new inbound connection, waiting on them to start handshake...");
-        //             Connection::setup_inbound(
-        //                 peer_manager_listener.clone(),
-        //                 event_listener.clone(),
-        //                 sock.unwrap(),
-        //                 setup_larva.clone(),
-        //             );
-        //             // for_each expect ()
-        //             future::ready(())
-        //         })
-        //         .map(|_| Ok(())),
-        // );
+        let _ = larva.clone().spawn_task(
+            listener
+                .incoming()
+                .for_each(move |sock| {
+                    info!("Got new inbound connection, waiting on them to start handshake...");
+                    Connection::setup_inbound(
+                        peer_manager_listener.clone(),
+                        event_listener.clone(),
+                        sock.unwrap(),
+                        setup_larva.clone(),
+                    );
+                    // for_each expect ()
+                    future::ready(())
+                })
+                .map(|_| Ok(())),
+        );
 
-        spawn_chain_monitor(
+        let _ = spawn_chain_monitor(
             fee_estimator,
             rpc_client.clone(),
             chain_watcher,

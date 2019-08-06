@@ -4,7 +4,6 @@ pub mod udp_srv;
 use futures::future::Future;
 use futures::task::{Context, Poll};
 use futures::FutureExt;
-// use ln_cmd::executor::SpawnHandler;
 
 use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;

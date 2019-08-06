@@ -9,9 +9,9 @@ use lightning::chain;
 use lightning::ln::channelmonitor;
 use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::util::ser::ReadableArgs;
+use lightning::util::logger::{Level};
 
 use super::log_printer::LogPrinter;
-use log::{info};
 
 #[allow(dead_code)]
 pub struct ChannelMonitor {
@@ -31,7 +31,7 @@ impl ChannelMonitor {
 					if let Ok(txid) = Sha256dHash::from_hex(filename.split_at(64).0) {
 						if let Ok(index) = filename.split_at(65).1.split('.').next().unwrap().parse() {
 							if let Ok(contents) = fs::read(&file.path()) {
-								if let Ok((_last_block_hash, loaded_monitor)) = <(Sha256dHash, channelmonitor::ChannelMonitor)>::read(&mut Cursor::new(&contents), Arc::new(LogPrinter{})) {
+								if let Ok((_last_block_hash, loaded_monitor)) = <(Sha256dHash, channelmonitor::ChannelMonitor)>::read(&mut Cursor::new(&contents), Arc::new(LogPrinter{ level: Level::Debug })) {
 									// TODO: Rescan from last_block_hash
 									res.push((chain::transaction::OutPoint { txid, index }, loaded_monitor));
 									loaded = true;
