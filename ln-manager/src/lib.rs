@@ -308,29 +308,17 @@ impl<T: Larva> LnManager<T> {
     }
 
     pub fn get_network(
-        _rpc_client: &Arc<RPCClient>,
+        rpc_client: &Arc<RPCClient>,
         _larva: &impl Larva,
     ) -> Result<constants::Network, &'static str> {
-        let _thread_rt = tokio::runtime::current_thread::Runtime::new().unwrap();
-        // Blocked Here
-        // thread_rt.block_on(
-        //     rpc_client
-        //     .make_rpc_call("getblockchaininfo", &[], false)
-        //     .and_then(|v| {
-        //         println!("{:?}", &v);
-        //         assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
-        //         assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
-        //
-        //         Ok(Ok(constants::Network::Testnet))
-        //         // match v["chain"].as_str().unwrap() {
-        //         //     "main" => Ok(constants::Network::Bitcoin),
-        //         //     "test" => Ok(constants::Network::Testnet),
-        //         //     "regtest" => Ok(constants::Network::Regtest),
-        //         //     _ => panic!("Unknown Network"),
-        //         // }
-        //         // Ok(())
-        //     })
-        // ).unwrap()
-        Ok(constants::Network::Regtest)
+        let v = rpc_client.sync_rpc_call("getblockchaininfo", &[], false).unwrap();
+        assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
+        assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
+        match v["chain"].as_str().unwrap() {
+            "main" => Ok(constants::Network::Bitcoin),
+            "test" => Ok(constants::Network::Testnet),
+            "regtest" => Ok(constants::Network::Regtest),
+            _ => panic!("Unknown Network")
+        }
     }
 }
