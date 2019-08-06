@@ -5,7 +5,7 @@ use crate::ln_node::settings::Settings as NodeSettings;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 
 pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {
-    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
     let runner = Probe::new(rt.executor());
     let init_node: Action = Action::new(
         node::gen,
@@ -13,6 +13,5 @@ pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {
         runner,
     );
     let _ = init_node.summon();
-    
-    rt.block_on(node::run_forever());
+    let _ = rt.block_on(node::run_forever());
 }
