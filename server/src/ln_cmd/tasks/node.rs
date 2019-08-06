@@ -1,3 +1,4 @@
+
 use crate::ln_cmd::tasks::{udp_srv, ln_mgr};
 use crate::ln_cmd::tasks::{Action, Arg, Probe, TaskFn};
 
@@ -19,4 +20,8 @@ fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
 
 pub fn gen() -> Box<TaskFn> {
     Box::new(node)
+}
+
+pub async fn run_forever() -> Result<(), failure::Error> {
+    loop { }
 }

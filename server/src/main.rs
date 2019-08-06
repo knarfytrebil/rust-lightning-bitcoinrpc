@@ -6,6 +6,7 @@ extern crate bitcoin_hashes;
 extern crate bytes;
 extern crate config;
 extern crate futures;
+extern crate failure;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;

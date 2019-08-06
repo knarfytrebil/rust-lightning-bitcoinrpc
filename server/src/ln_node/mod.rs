@@ -1,5 +1,4 @@
 pub mod settings;
-
 use crate::ln_cmd::tasks::node;
 use crate::ln_cmd::tasks::{Action, Arg, Probe};
 use crate::ln_node::settings::Settings as NodeSettings;
@@ -14,4 +13,6 @@ pub fn run(ln_conf: MgrSettings, node_conf: NodeSettings) {
         runner,
     );
     let _ = init_node.summon();
+    
+    rt.block_on(node::run_forever());
 }

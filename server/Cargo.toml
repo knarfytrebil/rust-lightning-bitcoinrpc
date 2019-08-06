@@ -28,6 +28,7 @@ log = "0.4"
 tokio = { git = "https://github.com/tokio-rs/tokio.git" }
 ln-manager = { path = "../ln-manager" }
 protocol = { path = "../protocol" }
+failure = "0.1.5"
 
 [build-dependencies]
 cc = "1.0"
