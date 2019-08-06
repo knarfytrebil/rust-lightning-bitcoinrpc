@@ -89,13 +89,13 @@ impl channelmonitor::ManyChannelMonitor for ChannelMonitor {
         monitor: channelmonitor::ChannelMonitor,
     ) -> Result<(), channelmonitor::ChannelMonitorUpdateErr> {
         macro_rules! try_fs {
-			($res: expr) => {
-				match $res {
-					Ok(res) => res,
-					Err(_) => return Err(channelmonitor::ChannelMonitorUpdateErr::PermanentFailure),
-				}
-			}
-		}
+            ($res: expr) => {
+                match $res {
+                    Ok(res) => res,
+                    Err(_) => return Err(channelmonitor::ChannelMonitorUpdateErr::PermanentFailure),
+                }
+            }
+        }
         // Do a crazy dance with lots of fsync()s to be overly cautious here...
         // We never want to end up in a state where we've lost the old data, or end up using the
         // old data on power loss after we've returned
