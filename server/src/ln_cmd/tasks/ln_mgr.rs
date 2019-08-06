@@ -1,5 +1,5 @@
-use ln_cmd::tasks::{Arg, TaskFn};
-use ln_cmd::tasks::{Probe};
+use crate::ln_cmd::tasks::{Arg, TaskFn};
+use crate::ln_cmd::tasks::{Probe};
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_manager::LnManager;
 

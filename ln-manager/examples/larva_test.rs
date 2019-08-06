@@ -13,7 +13,7 @@ use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 
-// use ln_manager::executor::Larva;
+use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::rpc_client::{ RPCClient };
 
 use hyper::{ Client, Uri };
@@ -39,12 +39,13 @@ pub struct Probe {
     exec: Executor,
 }
 
-pub trait Larva: Clone + Sized + Send + Sync + 'static {
-    fn spawn_task(
-        &self,
-        task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
-    ) -> Result<(), futures::task::SpawnError>;
-}
+// pub trait Larva: Clone + Sized + Send + Sync + 'static {
+//     fn spawn_task(
+//         &self,
+//         // task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
+//         task: impl Future<Output = Result<(), ()>> + Send + 'static,
+//     ) -> Result<(), futures::task::SpawnError>;
+// }
 
 impl Probe {
     pub fn new(exec: Executor) -> Self {
@@ -57,7 +58,8 @@ impl Probe {
 impl Larva for Probe {
     fn spawn_task(
         &self,
-        task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
+        // task: impl Future<Output = Result<Vec<User>, failure::Error>> + Send + 'static,
+        task: impl Future<Output = Result<(), ()>> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
         self.exec.spawn(async { task.await }.map(|_| ()));
         Ok(())
@@ -92,7 +94,7 @@ impl Larva for Probe {
 // let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
 // println!("{}", &v.unwrap());
 
-async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
+async fn h_get_json(i: usize) -> Result<(), ()> {
     // Interval::new(Duration::from_secs(1))
     //     .for_each(|()|{
     //         // rpc_client.clone().make_rpc_call("getblockchaininfo", &[], false);
@@ -101,23 +103,24 @@ async fn h_get_json(i: usize) -> Result<Vec<User>, failure::Error> {
     // let users = vec![ User { id: 1, name: String::from("Frank") }];
     let h_client = Arc::new(Client::new());
     let url: Uri = "http://jsonplaceholder.typicode.com/users".parse().unwrap();
-    let res = h_client.get(url).await?;
+    let res = h_client.get(url).await.unwrap();
     // // asynchronously concatenate chunks of the body
-    let body = res.into_body().try_concat().await?;
+    let body = res.into_body().try_concat().await.unwrap();
     // // try to parse as json with serde_json
-    let users: Vec<User> = serde_json::from_slice(&body)?;
+    let users: Vec<User> = serde_json::from_slice(&body).unwrap();
 
     println!("{}", i);
     // println!("{:#?}", users);
-    Ok::<Vec<User>, failure::Error>(users)
+    Ok(())
 }
 
-async fn local_rpc() -> Result<Vec<User>, failure::Error> {
+async fn local_rpc() -> Result<(), ()> {
     // let rpc_client = Arc::new(RPCClient::new(String::from("user:pwd@10.146.15.222:18332")));
     let rpc_client = Arc::new(RPCClient::new(String::from("admin1:123@127.0.0.1:19001")));
     let r = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await;
     println!("{:#?}", r);
-    Ok::<Vec<User>, failure::Error>(vec![User{ id: 1, name: String::from("Frank") }])
+    // Ok::<Vec<User>, failure::Error>(vec![User{ id: 1, name: String::from("Frank") }])
+    Ok(())
 }
 
 // #[runtime::main]

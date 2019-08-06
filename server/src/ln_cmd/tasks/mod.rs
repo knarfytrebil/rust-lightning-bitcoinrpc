@@ -1,27 +1,21 @@
+#![feature(async_await)]
 pub mod ln_mgr;
 pub mod node;
 pub mod udp_srv;
-
-use futures::channel::mpsc;
-use futures::executor::ThreadPool;
 use futures::future::Future;
 use futures::task::{Context, Poll};
-use ln_cmd::executor::SpawnHandler;
+use futures::FutureExt;
+// use ln_cmd::executor::SpawnHandler;
 
 use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
-use ln_node::settings::Settings as NodeSettings;
+use crate::ln_node::settings::Settings as NodeSettings;
 
 use std::pin::Pin;
 
-pub type TaskFn = Fn(Vec<Arg>, Probe) -> Result<(), String>;
+pub type TaskFn = dyn Fn(Vec<Arg>, Probe) -> Result<(), String>;
 pub type TaskGen = fn() -> Box<TaskFn>;
-pub type UnboundedSender = mpsc::UnboundedSender<Pin<Box<dyn Future<Output = ()> + Send>>>;
-
-#[derive(Clone)]
-pub enum ProbeT {
-    Pool,
-}
+pub type Executor = tokio::runtime::TaskExecutor;
 
 #[derive(Clone, Debug)]
 pub enum Arg {
@@ -45,17 +39,17 @@ impl Action {
     }
 
     pub fn summon(self) -> Result<(), futures::task::SpawnError> {
-        self.exec.clone().summon_task(self)
+        self.exec.clone().spawn_task(self)
     }
 }
 
 impl Future for Action {
-    type Output = ();
+    type Output = Result<(), ()>;
 
     fn poll(self: Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
         let task = (self.task_gen)();
         match task(self.args.clone(), self.exec.clone()) {
-            Ok(res) => Poll::Ready(res),
+            Ok(_) => Poll::Ready(Ok(())),
             Err(_) => Poll::Pending,
         }
     }
@@ -63,45 +57,24 @@ impl Future for Action {
 
 #[derive(Clone)]
 pub struct Probe {
-    kind: ProbeT,
-    sender: UnboundedSender,
-    thread_pool: ThreadPool,
+    exec: Executor,
 }
 
 impl Probe {
-    pub fn new(kind: ProbeT, sender: UnboundedSender) -> Self {
+    pub fn new(exec: Executor) -> Self {
         Probe {
-            kind: kind,
-            sender: sender,
-            thread_pool: ThreadPool::new().unwrap(),
+            exec: exec,
         }
     }
 }
 
-impl SpawnHandler for Probe {
-    fn summon_task(
+impl Larva for Probe {
+    fn spawn_task(
         &self,
-        task: impl Future<Output = ()> + Send + 'static,
+        task: impl Future<Output = Result<(), ()>> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
-        match self.kind {
-            ProbeT::Pool => {
-                if let Err(err) = self.sender.unbounded_send(Box::pin(task)) {
-                    println!("{}", err);
-                    Err(futures::task::SpawnError::shutdown())
-                } else {
-                    Ok(())
-                }
-            }
-        }
+        self.exec.spawn(async { task.await }.map(|_| ()));
+        Ok(())
     }
-}
 
-// impl Larva for Probe {
-//     fn spawn_task(
-//         &self,
-//         task: impl Future<Item = (), Error = ()> + Send + 'static,
-//     ) -> Result<(), futures::future::ExecuteError<Box<dyn Future<Item = (), Error = ()> + Send>>> {
-//
-//     }
-//
-// }
+}

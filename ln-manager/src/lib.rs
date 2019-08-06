@@ -87,14 +87,12 @@ impl<T: Larva> LnManager<T> {
         // Logger
         let logger = Arc::new(LogPrinter {});
         let rpc_client = Arc::new(RPCClient::new(settings.bitcoind.rpc_url.clone()));
-
         let secp_ctx = Secp256k1::new();
-
         let fee_estimator = Arc::new(FeeEstimator::new());
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network =
-            LnManager::<T>::get_network(&rpc_client, &larva).unwrap();
+            LnManager::<T>::get_network(&rpc_client).unwrap();
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -106,6 +104,7 @@ impl<T: Larva> LnManager<T> {
         if !fs::metadata(&data_path).unwrap().is_dir() {
             panic!("Need storage_directory_path to exist and be a directory (or symlink to one)");
         }
+
         let _ = fs::create_dir(data_path.clone() + "/monitors"); // If it already exists, ignore, hopefully perms are ok
 
         // Key Seed
@@ -145,12 +144,12 @@ impl<T: Larva> LnManager<T> {
         .public_key(&secp_ctx);
 
         println!(
-            "Address - ChannelMonitor Claim: {:?}",
+            "Address - ChannelMonitor Claim Key: {:?}",
             &Address::p2pkh(&pub_key_1, constants::Network::Regtest)
         );
 
         println!(
-            "Address - Cooperative Close: {:?}",
+            "Address - Cooperative Close Key: {:?}",
             &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
         );
         /* <== For debug */
@@ -309,7 +308,6 @@ impl<T: Larva> LnManager<T> {
 
     pub fn get_network(
         rpc_client: &Arc<RPCClient>,
-        _larva: &impl Larva,
     ) -> Result<constants::Network, &'static str> {
         let v = rpc_client.sync_rpc_call("getblockchaininfo", &[], false).unwrap();
         assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);

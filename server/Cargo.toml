@@ -3,6 +3,7 @@ name = "rust-lightning-server"
 version = "0.0.1"
 authors = ["Matt Corallo <git@bluematt.me>"]
 build = "build.rs"
+edition = "2018"
 
 [dependencies]
 bitcoin = "0.18"
@@ -24,6 +25,7 @@ num-derive = "0.2"
 num-traits = "0.2"
 config = "0.9.2"
 log = "0.4"
+tokio = { git = "https://github.com/tokio-rs/tokio.git" }
 ln-manager = { path = "../ln-manager" }
 protocol = { path = "../protocol" }
 
