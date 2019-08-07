@@ -81,7 +81,7 @@ pub struct LnManager<T: Larva> {
 impl_command!(LnManager);
 
 impl<T: Larva> LnManager<T> {
-    pub async fn new(settings: Settings, larva: T) -> Result<(), ()> {
+    pub async fn new(settings: Settings, larva: T) -> Result<Self, ()> {
 
         // Logger
         let logger = Arc::new(LogPrinter { level: Level::Debug });
@@ -285,7 +285,7 @@ impl<T: Larva> LnManager<T> {
         //         .map_err(|_| ())
         // ));
 
-        let _ln_manager = Self {
+        let ln_manager = Self {
             rpc_client,
             //
             network,
@@ -299,7 +299,8 @@ impl<T: Larva> LnManager<T> {
             settings,
             larva,
         };
-        Ok(())
+
+        Ok(ln_manager)
     }
 
 }

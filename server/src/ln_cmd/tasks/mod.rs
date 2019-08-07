@@ -47,7 +47,7 @@ impl Future for Action {
     fn poll(self: Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
         let task = (self.task_gen)();
         match task(self.args.clone(), self.exec.clone()) {
-            Ok(_) => Poll::Ready(Ok(())),
+            Ok(res) => Poll::Ready(Ok(res)),
             Err(_) => Poll::Pending,
         }
     }

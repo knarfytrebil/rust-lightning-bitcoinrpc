@@ -7,13 +7,15 @@ use crate::ln_manager::executor::Larva;
 // arg.1 = node_conf
 fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
 
-    // run udp server
-    let udp_srv: Action = Action::new(udp_srv::gen, vec![arg[1].clone()], exec.clone());
-    let _ = udp_srv.summon();
-
-    // run ln manager
-    let task = ln_mgr::gen(vec![arg[0].clone()], exec.clone());
-    let _ = exec.spawn_task(task);
+    // run udp_srv and ln_mgr 
+    let spawn_ln_mgr = ln_mgr::gen(vec![arg[0].clone()], exec.clone());
+    let executor = exec.clone();
+    let _ = exec.spawn_task(async move { 
+        let ln_mgr = spawn_ln_mgr.await?;
+        let spawn_udp_srv = udp_srv::gen(vec![arg[1].clone()], executor.clone(), ln_mgr);
+        spawn_udp_srv.await;
+        Ok(())
+    });
 
     Ok(())
 }

@@ -6,6 +6,7 @@ pub enum RequestFuncs {
     DisplayHelp,
     PrintSomething(String),
     GetRandomNumber,
+    GetAddresses,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -13,6 +14,7 @@ pub enum ResponseFuncs {
     DisplayHelp(String),
     PrintSomething,
     GetRandomNumber(i32),
+    GetAddresses(String),
     Error(String),
 }
 

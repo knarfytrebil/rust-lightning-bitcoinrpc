@@ -30,32 +30,31 @@ fn req_rep(sock: std::net::UdpSocket, req: protocol::RequestFuncs) -> protocol::
 }
 
 fn main() {
+    // Load Command Mappings
     let yaml = load_yaml!("conf/en_US.yml");
     let matches = App::from_yaml(yaml).get_matches();
   
-    let socket = UdpSocket::bind("127.0.0.1:5000").expect("Could not bind client socket");
+    // Establish Socket Connection with Udp Server
+    let socket = 
+        UdpSocket::bind("127.0.0.1:5000")
+        .expect("Could not bind client socket");
+
     socket
         .connect("127.0.0.1:8123")
         .expect("Could not connect to server");
 
     let mut i = 0;
+    let fmt = format!("Hello Iteration {}", i);
 
-    loop {
-        let fmt = format!("Hello Iteration {}", i);
-        let resp = req_rep(
-            socket.try_clone().expect("Could not clone socket"),
-            protocol::RequestFuncs::PrintSomething(fmt),
-        );
+    let resp = req_rep(
+        socket.try_clone().expect("Could not clone socket"),
+        protocol::RequestFuncs::GetAddresses,
+    );
+    println!("{:?}", resp);
 
-        println!("{:?}", resp);
-
-        let resp = req_rep(
-            socket.try_clone().expect("Could not clone socket"),
-            protocol::RequestFuncs::GetRandomNumber,
-        );
-        println!("{:?}", resp);
-        
-        i += 1;
-        thread::sleep(time::Duration::from_millis(500));
-    }
+    // let resp = req_rep(
+    //     socket.try_clone().expect("Could not clone socket"),
+    //     protocol::RequestFuncs::GetRandomNumber,
+    // );
+    // println!("{:?}", resp);
 }

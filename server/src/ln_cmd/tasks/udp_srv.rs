@@ -1,4 +1,5 @@
 use protocol;
+use ln_manager::LnManager;
 use crate::ln_cmd::tasks::{Arg, TaskFn, Probe};
 use crate::ln_cmd::help;
 use crate::ln_node::settings::Settings as NodeSettings;
@@ -6,7 +7,7 @@ use crate::ln_node::settings::Settings as NodeSettings;
 use std::net::UdpSocket;
 use std::thread;
 
-pub fn task(arg: Vec<Arg>, _exec: Probe) -> Result<(), String> {
+pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Result<(), String> {
     let node_conf: Option<&NodeSettings> = match &arg[0] {
         Arg::NodeConf(conf) => Some(conf),
         _ => None,
@@ -36,10 +37,6 @@ pub fn task(arg: Vec<Arg>, _exec: Probe) -> Result<(), String> {
     // Ok(())
 }
 
-pub fn gen() -> Box<TaskFn> {
-    Box::new(task)
-}
-
 fn handle_msg(
     sock: std::net::UdpSocket,
     sz: usize,
@@ -62,6 +59,9 @@ fn handle_msg(
             }
             protocol::RequestFuncs::DisplayHelp => {
                 protocol::ResponseFuncs::DisplayHelp(help::get())
+            }
+            protocol::RequestFuncs::GetAddresses => {
+                protocol::ResponseFuncs::GetAddresses(help::get())
             }
         }
     }
