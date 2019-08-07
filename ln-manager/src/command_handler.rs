@@ -64,8 +64,8 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
         hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize());
 
     help::show_help_str();
-    println!("Bound on port {}!", &settings.port);
-    println!("node_id: {}", &our_node_id);
+    debug!("Bound on port {}!", &settings.port);
+    debug!("node_id: {}", &our_node_id);
     std::io::stdout().flush().unwrap();
 
     executor.clone().spawn(
@@ -75,8 +75,8 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                     match FromPrimitive::from_u8(line.as_bytes()[0]) {
                         Some(Command::GetInfo) => {
                             // 'g'
-                            println!("node_id: {}", &our_node_id);
-                            println!("Bound on port {}!", &settings.port);
+                            debug!("node_id: {}", &our_node_id);
+                            debug!("Bound on port {}!", &settings.port);
                         }
                         Some(Command::Connect) => {
                             // 'c'
@@ -118,7 +118,7 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                                     channel::list(channel_manager.clone());
                                 }
                                 _ => {
-                                    println!(
+                                    debug!(
                                         "Listing of non-peer/channel objects not yet implemented"
                                     );
                                 }
@@ -144,10 +144,10 @@ pub fn run_command_board(ln_manager: LnManager, executor_command: TaskExecutor) 
                                 keys.clone(),
                             );
                         }
-                        _ => println!("Unknown command: {}", line.as_bytes()[0] as char),
+                        _ => debug!("Unknown command: {}", line.as_bytes()[0] as char),
                     }
                 } else {
-                    println!("Unknown command: {}", line);
+                    debug!("Unknown command: {}", line);
                 }
                 std::io::stdout().flush().unwrap();
                 Ok(())

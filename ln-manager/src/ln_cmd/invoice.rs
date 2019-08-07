@@ -66,18 +66,18 @@ pub fn send(
                     }
                 }) {
                     if arg2.is_some() {
-                        println!("Invoice had amount, you shouldn't specify one");
+                        debug!("Invoice had amount, you shouldn't specify one");
                     }
                     amt
                 } else {
                     if arg2.is_none() {
-                        println!("Invoice didn't have an amount, you should specify one");
+                        debug!("Invoice didn't have an amount, you should specify one");
                         fail_return!();
                     }
                     match arg2.unwrap().parse() {
                         Ok(amt) => amt,
                         Err(_) => {
-                            println!("Provided amount was garbage");
+                            debug!("Provided amount was garbage");
                             fail_return!();
                         }
                     }
@@ -85,7 +85,7 @@ pub fn send(
 
                 if let Some(pubkey) = invoice.payee_pub_key() {
                     if *pubkey != invoice.recover_payee_pub_key() {
-                        println!(
+                        debug!(
                             "Invoice had non-equal duplicative target node_id (ie was malformed)"
                         );
                         fail_return!();
@@ -95,7 +95,7 @@ pub fn send(
                 let mut route_hint = Vec::with_capacity(invoice.routes().len());
                 for route in invoice.routes() {
                     if route.len() != 1 {
-                        println!("Invoice contained multi-hop non-public route, ignoring as yet unsupported");
+                        debug!("Invoice contained multi-hop non-public route, ignoring as yet unsupported");
                     } else {
                         route_hint.push(router::RouteHint {
                             src_node_id: route[0].pubkey,
@@ -113,7 +113,7 @@ pub fn send(
                     raw_invoice.min_final_cltv_expiry().unwrap()
                 };
                 if final_cltv.0 > std::u32::MAX as u64 {
-                    println!("Invoice had garbage final cltv");
+                    debug!("Invoice had garbage final cltv");
                     fail_return!();
                 }
                 match router.get_route(
@@ -130,25 +130,25 @@ pub fn send(
                             .copy_from_slice(&invoice.payment_hash().into_inner()[..]);
                         match channel_manager.send_payment(route, payment_hash) {
                             Ok(()) => {
-                                println!("Sending {} msat", amt);
+                                debug!("Sending {} msat", amt);
                                 let _ = event_notify.try_send(());
                                 Ok(())
                             }
                             Err(e) => {
-                                println!("Failed to send HTLC: {:?}", e);
+                                debug!("Failed to send HTLC: {:?}", e);
                                 Err("Failed to send HLTC".to_string())
                             }
                         }
                     }
                     Err(e) => {
-                        println!("Failed to find route: {}", e.err);
+                        debug!("Failed to find route: {}", e.err);
                         Err("Failed to find route".to_string())
                     }
                 }
             }
         }
         Err(err) => {
-            println!("Bad invoice {:?}", err);
+            debug!("Bad invoice {:?}", err);
             Err("Bad Invoice".to_string())
         }
     }
@@ -170,7 +170,7 @@ pub fn pay(
         PaymentHash(payment_hash.into_inner()),
         PaymentPreimage(payment_preimage),
     );
-    println!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
+    debug!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
 
     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
         Network::Bitcoin => Currency::Bitcoin,
@@ -184,7 +184,7 @@ pub fn pay(
     .current_timestamp()
     .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
     match invoice_res {
-        Ok(invoice) => println!("Invoice: {}", invoice),
-        Err(e) => println!("Error creating invoice: {:?}", e),
+        Ok(invoice) => debug!("Invoice: {}", invoice),
+        Err(e) => debug!("Error creating invoice: {:?}", e),
     }
 }

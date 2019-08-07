@@ -29,7 +29,7 @@ pub fn connect<T: Larva>(
                     print!("Attempting to connect to {}...", addr);
                     match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
                         Ok(stream) => {
-                            println!("connected, initiating handshake!");
+                            debug!("connected, initiating handshake!");
                             let peer_manager = peer_manager.clone();
                             Connection::setup_outbound(
                                 peer_manager,
@@ -44,17 +44,17 @@ pub fn connect<T: Larva>(
                             );
                         }
                         Err(e) => {
-                            println!("connection failed {:?}!", e);
+                            debug!("connection failed {:?}!", e);
                         }
                     }
                 } else {
-                    println!("Couldn't parse host:port into a socket address");
+                    debug!("Couldn't parse host:port into a socket address");
                 }
             } else {
-                println!("Invalid line, should be c pubkey@host:port");
+                debug!("Invalid line, should be c pubkey@host:port");
             }
         }
-        None => println!("Bad PubKey for remote node"),
+        None => debug!("Bad PubKey for remote node"),
     }
 }
 
@@ -64,5 +64,5 @@ pub fn list<T: Larva>(peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>) {
     for node_id in peer_manager.get_peer_node_ids() {
         nodes += &format!("{}, ", hex_str(&node_id.serialize()));
     }
-    println!("Connected nodes: {}", nodes);
+    debug!("Connected nodes: {}", nodes);
 }

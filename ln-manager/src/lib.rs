@@ -144,12 +144,12 @@ impl<T: Larva> LnManager<T> {
         }
         .public_key(&secp_ctx);
 
-        println!(
+        debug!(
             "Address - ChannelMonitor Claim Key: {:?}",
             &Address::p2pkh(&pub_key_1, constants::Network::Regtest)
         );
 
-        println!(
+        debug!(
             "Address - Cooperative Close Key: {:?}",
             &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
         );

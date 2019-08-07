@@ -104,9 +104,9 @@ impl Connection {
                                 larva_ref.clone()
                             )
                         );
-                        println!("Peer disconnected!");
+                        debug!("Peer disconnected!");
                     } else {
-                        println!("We disconnected peer!");
+                        debug!("We disconnected peer!");
                     }
                     future::ok(())
                 })
@@ -183,7 +183,7 @@ impl Connection {
 
                     Self::schedule_read(peer_manager, us, reader, larva);
                 } else {
-                    println!("Failed to write first full message to socket!");
+                    debug!("Failed to write first full message to socket!");
                 }
         }
     }

@@ -12,7 +12,7 @@ pub fn task(arg: Vec<Arg>, _exec: Probe) -> Result<(), String> {
         _ => None,
     };
     let node_address = node_conf.unwrap().server.address.clone();
-    println!("Lightning Server Running on: {}", &node_address);
+    info!("Lightning Server Running on: {}", &node_address);
 
     let udp_socket = UdpSocket::bind(node_address).expect("Could not bind socket");
 

@@ -20,10 +20,10 @@ extern crate protocol;
 
 #[macro_use]
 extern crate log;
+extern crate simplelog;
 
 #[macro_use]
 extern crate serde_derive;
-
 extern crate num_derive;
 
 mod ln_cmd;
@@ -31,6 +31,9 @@ mod ln_node;
 
 use std::env;
 use std::mem;
+use std::fs::File;
+
+use simplelog::*;
 
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
 use ln_node::settings::Settings as NodeSettings;
@@ -44,6 +47,12 @@ fn _check_usize_is_64() {
 }
 
 fn main() {
+
+    CombinedLogger::init(vec![
+        TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed).unwrap(),
+        WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("server.log").unwrap()),
+    ]).unwrap();
+
     let args: Vec<String> = env::args().collect();
 
     // FIXME: Hard code setting argument

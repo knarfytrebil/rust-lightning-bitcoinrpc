@@ -26,27 +26,27 @@ pub fn fund_channel(
                         if let Ok(value) = value_str.parse() {
                             if let Ok(push) = push_str.parse() {
                                 match channel_manager.create_channel(pk, value, push, 0) {
-                                    Ok(_) => println!("Channel created, sending open_channel!"),
-                                    Err(e) => println!("Failed to open channel: {:?}!", e),
+                                    Ok(_) => debug!("Channel created, sending open_channel!"),
+                                    Err(e) => debug!("Failed to open channel: {:?}!", e),
                                 }
                                 let _ = event_notify.try_send(());
                             } else {
-                                println!("Couldn't parse third argument into a push value");
+                                debug!("Couldn't parse third argument into a push value");
                             }
                         } else {
-                            println!("Couldn't parse second argument into a value");
+                            debug!("Couldn't parse second argument into a value");
                         }
                     } else {
-                        println!("Couldn't read third argument");
+                        debug!("Couldn't read third argument");
                     }
                 } else {
-                    println!("Couldn't read second argument");
+                    debug!("Couldn't read second argument");
                 }
             } else {
-                println!("Invalid line, should be n pubkey value");
+                debug!("Invalid line, should be n pubkey value");
             }
         }
-        None => println!("Bad PubKey for remote node"),
+        None => debug!("Bad PubKey for remote node"),
     }
 }
 
@@ -63,13 +63,13 @@ pub fn close(
             channel_id.copy_from_slice(&chan_id_vec);
             match channel_manager.close_channel(&channel_id) {
                 Ok(()) => {
-                    println!("Ok, channel closing!");
+                    debug!("Ok, channel closing!");
                     let _ = event_notify.try_send(());
                 }
-                Err(e) => println!("Failed to close channel: {:?}", e),
+                Err(e) => debug!("Failed to close channel: {:?}", e),
             }
         } else {
-            println!("Bad channel_id hex");
+            debug!("Bad channel_id hex");
         }
     }
 }
@@ -83,16 +83,16 @@ pub fn force_close_all(line: String, channel_manager: &Arc<ChannelManager>) {
     {
         channel_manager.force_close_all_channels();
     } else {
-        println!("Single-channel force-close not yet implemented");
+        debug!("Single-channel force-close not yet implemented");
     }
 }
 
 // List existing channels
 pub fn list(channel_manager: &Arc<ChannelManager>) {
-    println!("All channels:");
+    debug!("All channels:");
     for chan_info in channel_manager.list_channels() {
         if let Some(short_id) = chan_info.short_channel_id {
-            println!(
+            debug!(
                 "id: {}, short_id: {}, peer: {}, value: {} sat",
                 hex_str(&chan_info.channel_id[..]),
                 short_id,
@@ -100,7 +100,7 @@ pub fn list(channel_manager: &Arc<ChannelManager>) {
                 chan_info.channel_value_satoshis
             );
         } else {
-            println!(
+            debug!(
                 "id: {}, not yet confirmed, peer: {}, value: {} sat",
                 hex_str(&chan_info.channel_id[..]),
                 hex_str(&chan_info.remote_network_id.serialize()),

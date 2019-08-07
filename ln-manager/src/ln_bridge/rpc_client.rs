@@ -102,8 +102,8 @@ impl RPCClient {
         let res = raw_res.unwrap();
         if res.status() != hyper::StatusCode::OK {
             if !may_fail {
-                println!("RPC request failed");
-                println!("{:?}", &res.body());
+                debug!("RPC request failed");
+                debug!("{:?}", &res.body());
                 // info!("Failed to get RPC server response (probably bad auth)!");
             }
             Err(())
