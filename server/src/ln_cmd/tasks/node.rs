@@ -1,5 +1,6 @@
 use crate::ln_cmd::tasks::{udp_srv, ln_mgr};
 use crate::ln_cmd::tasks::{Action, Arg, Probe, TaskFn};
+use crate::ln_manager::executor::Larva;
 
 // TODO: Make argument more readable
 // arg.0 = ln_conf
@@ -11,8 +12,8 @@ fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
     let _ = udp_srv.summon();
 
     // run ln manager
-    let ln_mgr: Action = Action::new(ln_mgr::gen, vec![arg[0].clone()], exec.clone());
-    let _ = ln_mgr.summon();
+    let task = ln_mgr::gen(vec![arg[0].clone()], exec.clone());
+    let _ = exec.spawn_task(task);
 
     Ok(())
 }

@@ -83,7 +83,7 @@ pub struct LnManager<T: Larva> {
 impl_command!(LnManager);
 
 impl<T: Larva> LnManager<T> {
-    pub fn new(settings: Settings, larva: T) -> Self {
+    pub async fn new(settings: Settings, larva: T) -> Result<(), ()> {
 
         // Logger
         let logger = Arc::new(LogPrinter { level: Level::Debug });
@@ -92,8 +92,7 @@ impl<T: Larva> LnManager<T> {
         let fee_estimator = Arc::new(FeeEstimator::new());
 
         info!("Checking validity of RPC URL to bitcoind...");
-        let network =
-            LnManager::<T>::get_network(&rpc_client).unwrap();
+        let network = get_network(&rpc_client).await?;
 
         info!("Success! Starting up...");
         if network == constants::Network::Bitcoin {
@@ -144,12 +143,12 @@ impl<T: Larva> LnManager<T> {
         }
         .public_key(&secp_ctx);
 
-        debug!(
+        info!(
             "Address - ChannelMonitor Claim Key: {:?}",
             &Address::p2pkh(&pub_key_1, constants::Network::Regtest)
         );
 
-        debug!(
+        info!(
             "Address - Cooperative Close Key: {:?}",
             &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
         );
@@ -248,7 +247,7 @@ impl<T: Larva> LnManager<T> {
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
 
-        println!("Lightning Port binded on localhost:{}", &settings.lightning.port);
+        info!("Lightning Port binded on localhost:{}", &settings.lightning.port);
         let setup_larva = larva.clone();
         let listener =
             tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
@@ -292,7 +291,7 @@ impl<T: Larva> LnManager<T> {
         //         .map_err(|_| ())
         // ));
 
-        Self {
+        let _ln_manager = Self {
             rpc_client,
             //
             network,
@@ -305,20 +304,23 @@ impl<T: Larva> LnManager<T> {
             keys,
             settings,
             larva,
-        }
+        };
+        Ok(())
     }
 
-    pub fn get_network(
-        rpc_client: &Arc<RPCClient>,
-    ) -> Result<constants::Network, &'static str> {
-        let v = rpc_client.sync_rpc_call("getblockchaininfo", &[], false).unwrap();
-        assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
-        assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
-        match v["chain"].as_str().unwrap() {
-            "main" => Ok(constants::Network::Bitcoin),
-            "test" => Ok(constants::Network::Testnet),
-            "regtest" => Ok(constants::Network::Regtest),
-            _ => panic!("Unknown Network")
-        }
+}
+
+pub async fn get_network(
+    rpc_client: &Arc<RPCClient>,
+) -> Result<constants::Network, ()> {
+    let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await?;
+    assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
+    assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
+    match v["chain"].as_str().unwrap() {
+        "main" => Ok(constants::Network::Bitcoin),
+        "test" => Ok(constants::Network::Testnet),
+        "regtest" => Ok(constants::Network::Regtest),
+        _ => panic!("Unknown Network")
     }
 }
+

@@ -64,6 +64,7 @@ impl Probe {
             exec: exec,
         }
     }
+    
 }
 
 impl Larva for Probe {
@@ -74,5 +75,4 @@ impl Larva for Probe {
         self.exec.spawn(async { task.await }.map(|_| ()));
         Ok(())
     }
-
 }

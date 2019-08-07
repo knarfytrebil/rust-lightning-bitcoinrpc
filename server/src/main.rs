@@ -47,7 +47,6 @@ fn _check_usize_is_64() {
 }
 
 fn main() {
-
     CombinedLogger::init(vec![
         TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed).unwrap(),
         WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("server.log").unwrap()),

@@ -36,7 +36,7 @@ pub struct User {
 
 #[derive(Clone)]
 pub struct Probe {
-    exec: Executor,
+    pub exec: Executor,
 }
 
 // pub trait Larva: Clone + Sized + Send + Sync + 'static {
