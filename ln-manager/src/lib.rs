@@ -38,9 +38,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use futures::future;
-use futures::future::Future;
 use futures::channel::mpsc;
-use futures::Stream;
 use futures::{FutureExt, StreamExt};
 
 use bitcoin::network::constants;
@@ -93,11 +91,7 @@ impl<T: Larva> LnManager<T> {
 
         info!("Checking validity of RPC URL to bitcoind...");
         let network = get_network(&rpc_client).await?;
-
         info!("Success! Starting up...");
-        if network == constants::Network::Bitcoin {
-            panic!("LOL, you're insane");
-        }
 
         // Data Storage
         let data_path = settings.lightning.lndata.clone();
@@ -317,7 +311,10 @@ pub async fn get_network(
     assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
     assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
     match v["chain"].as_str().unwrap() {
-        "main" => Ok(constants::Network::Bitcoin),
+        "main" => { 
+            panic!("LOL, you're insane");
+            Ok(constants::Network::Bitcoin) 
+        },
         "test" => Ok(constants::Network::Testnet),
         "regtest" => Ok(constants::Network::Regtest),
         _ => panic!("Unknown Network")

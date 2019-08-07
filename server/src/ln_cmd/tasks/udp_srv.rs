@@ -26,7 +26,7 @@ pub fn task(arg: Vec<Arg>, _exec: Probe) -> Result<(), String> {
                 });
             }
             Err(e) => {
-                println!("Couldn't receive a datagram: {}", e);
+                error!("Couldn't receive a datagram: {}", e);
             }
         }
     }
@@ -54,7 +54,7 @@ fn handle_msg(
     if let protocol::Message::Request(msg) = msg {
         resp = match msg {
             protocol::RequestFuncs::PrintSomething(s) => {
-                println!("PrintSomething: {}", s);
+                info!("PrintSomething: {}", s);
                 protocol::ResponseFuncs::PrintSomething
             }
             protocol::RequestFuncs::GetRandomNumber => {
@@ -68,6 +68,6 @@ fn handle_msg(
 
     let resp_msg = protocol::Message::Response(resp);
     let ser = protocol::serialize_message(resp_msg);
-    // println!("Handling connection from {}", src);
+    debug!("Handling connection from {}", src);
     sock.send_to(&ser, &src).expect("Failed to send a response");
 }
