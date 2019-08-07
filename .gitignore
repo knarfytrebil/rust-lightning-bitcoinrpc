@@ -1,3 +1,4 @@
 *.swp
 ln/
 target/
+server/server.log
