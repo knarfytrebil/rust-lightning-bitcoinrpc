@@ -26,7 +26,7 @@ fn main() {
             commands::handle(get_target,socket)
         }
         _ => {
-            protocol::ResponseFuncs::Error("Invalid Internal Value".to_string())
+            protocol::ResponseFuncs::Error("Invalid Command or Arguments Provided\nTry running with --help or -h".to_string())
         }
     };
 
@@ -37,6 +37,10 @@ fn main() {
         protocol::ResponseFuncs::GetNodeInfo(info) => {
             println!("{}", info);
         }
+        protocol::ResponseFuncs::Error(e) => {
+            println!("{}", e);
+        }
         _ => {}
-    }
+    };
+
 }
