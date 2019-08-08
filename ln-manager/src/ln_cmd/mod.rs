@@ -28,9 +28,9 @@ macro_rules! impl_command {
                 invoice::pay(line, &self.payment_preimages, &self.network, &self.secp_ctx, &self.keys)
             }
         }
-        impl<T: Larva> peer::PeerC<T> for $item<T> {
-            fn connect(&self, node: String, larva: T) {
-                peer::connect(node, &self.peer_manager, self.event_notify.clone(), larva)
+        impl<T: Larva> peer::PeerC for $item<T> {
+            fn connect(&self, node: String) {
+                peer::connect(node, &self.peer_manager, self.event_notify.clone(), self.larva.clone())
             }
             fn list(&self) {
                 peer::list(&self.peer_manager)

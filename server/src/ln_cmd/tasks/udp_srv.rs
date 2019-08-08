@@ -1,12 +1,13 @@
-use protocol;
-use ln_manager::LnManager;
+use std::net::UdpSocket;
+use std::thread;
+
 use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
+use crate::ln_manager::ln_cmd::peer::PeerC;
 use crate::lightning::chain::keysinterface::KeysInterface;
-
-use std::net::UdpSocket;
-use std::thread;
+use ln_manager::LnManager;
+use protocol;
 
 pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Result<(), String> {
     let node_conf: Option<&NodeSettings> = match &arg[0] {
@@ -65,6 +66,12 @@ fn handle_msg(
                 protocol::ResponseFuncs::GetAddresses(addresses)
             }
             protocol::RequestFuncs::GetNodeInfo => {
+                let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
+                protocol::ResponseFuncs::GetNodeInfo(node_info)
+            }
+            protocol::RequestFuncs::PeerConnect(addr) => {
+                debug!("{}", addr);
+                ln_mgr.connect(addr);
                 let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
                 protocol::ResponseFuncs::GetNodeInfo(node_info)
             }

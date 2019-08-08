@@ -9,6 +9,7 @@ pub enum RequestFuncs {
     GetRandomNumber,
     GetAddresses,
     GetNodeInfo,
+    PeerConnect(String)
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -18,6 +19,7 @@ pub enum ResponseFuncs {
     GetRandomNumber(i32),
     GetAddresses(String),
     GetNodeInfo(String),
+    PeerConnect(String),
     Error(String),
 }
 
@@ -42,15 +44,28 @@ pub struct ProtocalParseError {
 impl FromStr for RequestFuncs {
     type Err = ProtocalParseError; 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "imported_addresses" => {
-                Ok(RequestFuncs::GetAddresses)
-            }
-            "node_info" => {
-                Ok(RequestFuncs::GetNodeInfo)
+        let cmd_value: Vec<&str> = s.split(',').collect();
+        let cmd = cmd_value[0];
+        let value = cmd_value[1];
+        match cmd {
+            "get" => {
+                 match value {
+                    "imported_addresses" => {
+                        Ok(RequestFuncs::GetAddresses)
+                    }
+                    "node_info" => {
+                        Ok(RequestFuncs::GetNodeInfo)
+                    }
+                    _ => {
+                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
+                    }
+                }
+            },
+            "connect" => {
+                Ok(RequestFuncs::PeerConnect(value.to_string()))
             }
             _ => {
-                Err(ProtocalParseError{ msg: String::from("Invalid Request Function") })
+                Err(ProtocalParseError{ msg: String::from("Invalid Command") })
             }
         }
     }

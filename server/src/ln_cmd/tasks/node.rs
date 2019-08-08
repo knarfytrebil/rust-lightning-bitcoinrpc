@@ -1,5 +1,5 @@
 use crate::ln_cmd::tasks::{udp_srv, ln_mgr};
-use crate::ln_cmd::tasks::{Action, Arg, Probe, TaskFn};
+use crate::ln_cmd::tasks::{Arg, Probe, TaskFn};
 use crate::ln_manager::executor::Larva;
 
 // TODO: Make argument more readable
@@ -13,7 +13,7 @@ fn node(arg: Vec<Arg>, exec: Probe) -> Result<(), String> {
     let _ = exec.spawn_task(async move { 
         let ln_mgr = spawn_ln_mgr.await?;
         let spawn_udp_srv = udp_srv::gen(vec![arg[1].clone()], executor.clone(), ln_mgr);
-        spawn_udp_srv.await;
+        let _ = spawn_udp_srv.await;
         Ok(())
     });
 

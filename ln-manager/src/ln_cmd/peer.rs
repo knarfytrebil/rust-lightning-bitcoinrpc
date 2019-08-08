@@ -7,8 +7,8 @@ use std::time::Duration;
 use futures::channel::mpsc;
 use crate::executor::Larva;
 
-pub trait PeerC<T> {
-    fn connect(&self, node: String, larva: T);
+pub trait PeerC {
+    fn connect(&self, node: String);
     fn list(&self);
 }
 
