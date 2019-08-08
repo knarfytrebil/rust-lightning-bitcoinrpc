@@ -50,7 +50,13 @@ fn main() {
         socket.try_clone().expect("Could not clone socket"),
         protocol::RequestFuncs::GetAddresses,
     );
-    println!("{:?}", resp);
+
+    match resp {
+        protocol::ResponseFuncs::GetAddresses(addrs) => {
+            println!("{}", addrs);
+        }
+        _ => {}
+    }
 
     // let resp = req_rep(
     //     socket.try_clone().expect("Could not clone socket"),
