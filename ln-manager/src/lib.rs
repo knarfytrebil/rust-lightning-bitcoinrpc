@@ -43,7 +43,6 @@ use futures::{FutureExt, StreamExt};
 
 use bitcoin::network::constants;
 use bitcoin::util::address::Address;
-use bitcoin::util::bip32;
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::peer_handler::PeerManager;
@@ -104,48 +103,18 @@ impl<T: Larva> LnManager<T> {
         // Key Seed
         let our_node_seed = ln_bridge::key::get_key_seed(data_path.clone());
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
-        let (import_key_1, import_key_2) =
-            bip32::ExtendedPrivKey::new_master(network, &our_node_seed)
-            .map(|extpriv| {
-                (
-                    extpriv
-                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(1).unwrap())
-                        .unwrap()
-                        .private_key
-                        .key,
-                    extpriv
-                        .ckd_priv(&secp_ctx, bip32::ChildNumber::from_hardened_idx(2).unwrap())
-                        .unwrap()
-                        .private_key
-                        .key,
-                )
-            })
-            .unwrap();
+
+        let (import_key_1, import_key_2) = ln_bridge::key::get_import_secret_keys(network, &our_node_seed);
 
         /* ==> For debug */
-        let pub_key_1 = bitcoin::util::key::PrivateKey {
-            key: import_key_1,
-            compressed: true,
-            network,
-        }
-        .public_key(&secp_ctx);
+        let pub_key_1 = ln_bridge::key::get_pub_from_secret(network, import_key_1);
+        let pub_key_2 = ln_bridge::key::get_pub_from_secret(network, import_key_2);
+        
+        info!("Address - ChannelMonitor Claim Key: {:?}",
+            &Address::p2pkh(&pub_key_1, constants::Network::Regtest));
 
-        let pub_key_2 = bitcoin::util::key::PrivateKey {
-            key: import_key_2,
-            compressed: true,
-            network,
-        }
-        .public_key(&secp_ctx);
-
-        info!(
-            "Address - ChannelMonitor Claim Key: {:?}",
-            &Address::p2pkh(&pub_key_1, constants::Network::Regtest)
-        );
-
-        info!(
-            "Address - Cooperative Close Key: {:?}",
-            &Address::p2pkh(&pub_key_2, constants::Network::Regtest)
-        );
+        info!("Address - Cooperative Close Key: {:?}",
+            &Address::p2pkh(&pub_key_2, constants::Network::Regtest));
         /* <== For debug */
 
         let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(network, logger.clone()));

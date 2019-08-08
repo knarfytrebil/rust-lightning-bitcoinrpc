@@ -1,7 +1,7 @@
 use protocol;
 use ln_manager::LnManager;
 use crate::ln_cmd::tasks::{Arg, TaskFn, Probe};
-use crate::ln_cmd::help;
+use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
 
 use std::net::UdpSocket;
@@ -58,10 +58,10 @@ fn handle_msg(
                 protocol::ResponseFuncs::GetRandomNumber(rand::random())
             }
             protocol::RequestFuncs::DisplayHelp => {
-                protocol::ResponseFuncs::DisplayHelp(help::get())
+                protocol::ResponseFuncs::DisplayHelp(utils::get())
             }
             protocol::RequestFuncs::GetAddresses => {
-                protocol::ResponseFuncs::GetAddresses(help::get())
+                protocol::ResponseFuncs::GetAddresses(utils::get())
             }
         }
     }
