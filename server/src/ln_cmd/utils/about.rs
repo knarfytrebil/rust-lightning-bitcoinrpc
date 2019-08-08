@@ -13,4 +13,3 @@ pub fn get() -> String {
 'p' Gets a new invoice for receiving funds"###;
     String::from(help_str)
 }
-

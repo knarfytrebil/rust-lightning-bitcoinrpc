@@ -21,10 +21,8 @@ pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Resul
         let mut buf = [0u8; 1500];
         let sock = udp_socket.try_clone().expect("Failed to clone socket");
         match udp_socket.recv_from(&mut buf) {
-            Ok((sz, src)) => {
-                thread::spawn(move || {
-                    handle_msg(sock, sz, src, buf);
-                });
+            Ok((sz, src)) => { 
+                handle_msg(sock, sz, src, buf, &ln_mgr); 
             }
             Err(e) => {
                 error!("Couldn't receive a datagram: {}", e);
@@ -42,6 +40,7 @@ fn handle_msg(
     sz: usize,
     src: std::net::SocketAddr,
     buf: [u8; 1500],
+    ln_mgr: &LnManager<Probe>,
 ) {
     let mut vec = buf.to_vec();
     vec.resize(sz, 0);
@@ -58,16 +57,19 @@ fn handle_msg(
                 protocol::ResponseFuncs::GetRandomNumber(rand::random())
             }
             protocol::RequestFuncs::DisplayHelp => {
-                protocol::ResponseFuncs::DisplayHelp(utils::get())
+                protocol::ResponseFuncs::DisplayHelp(utils::about::get())
             }
             protocol::RequestFuncs::GetAddresses => {
-                protocol::ResponseFuncs::GetAddresses(utils::get())
+                let addresses = utils::imported_addresses::get(ln_mgr.settings.lightning.lndata.clone(), ln_mgr.network.clone());
+                protocol::ResponseFuncs::GetAddresses(addresses)
             }
         }
     }
 
-    let resp_msg = protocol::Message::Response(resp);
-    let ser = protocol::serialize_message(resp_msg);
-    debug!("Handling connection from {}", src);
-    sock.send_to(&ser, &src).expect("Failed to send a response");
+    thread::spawn(move || {
+        let resp_msg = protocol::Message::Response(resp);
+        let ser = protocol::serialize_message(resp_msg);
+        debug!("Handling connection from {}", src);
+        sock.send_to(&ser, &src).expect("Failed to send a response");
+    });
 }
