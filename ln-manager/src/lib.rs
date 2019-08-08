@@ -42,7 +42,6 @@ use futures::channel::mpsc;
 use futures::{FutureExt, StreamExt};
 
 use bitcoin::network::constants;
-use bitcoin::util::address::Address;
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::peer_handler::PeerManager;
@@ -105,17 +104,6 @@ impl<T: Larva> LnManager<T> {
         let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
 
         let (import_key_1, import_key_2) = ln_bridge::key::get_import_secret_keys(network, &our_node_seed);
-
-        /* ==> For debug */
-        let pub_key_1 = ln_bridge::key::get_pub_from_secret(network, import_key_1);
-        let pub_key_2 = ln_bridge::key::get_pub_from_secret(network, import_key_2);
-        
-        info!("Address - ChannelMonitor Claim Key: {:?}",
-            &Address::p2pkh(&pub_key_1, constants::Network::Regtest));
-
-        info!("Address - Cooperative Close Key: {:?}",
-            &Address::p2pkh(&pub_key_2, constants::Network::Regtest));
-        /* <== For debug */
 
         let chain_watcher = Arc::new(ChainWatchInterfaceUtil::new(network, logger.clone()));
         let chain_broadcaster = Arc::new(ChainBroadcaster::new(rpc_client.clone(),larva.clone()));

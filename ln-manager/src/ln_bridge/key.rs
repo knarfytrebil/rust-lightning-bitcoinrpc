@@ -82,13 +82,15 @@ pub fn get_import_secret_keys(network: constants::Network, node_seed: &[u8; 32])
 }
 
 pub fn get_pub_from_secret(network: constants::Network, secret_key: secp256k1::SecretKey) -> key::PublicKey {
-    bitcoin::util::key::PrivateKey {
+    key::PrivateKey {
         key: secret_key,
         compressed: true,
         network,
     }
     .public_key(&Secp256k1::new())
 }
+
+// hex_str(&PublicKey::from_secret_key(&secp_ctx, &keys.get_node_secret()).serialize()));
 
 // bitcoin version
 // pub fn extprivkey(network: Network, &our_node_seed: &[u8; 32], secp_ctx: Secp256k1<All>) -> () {

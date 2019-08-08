@@ -3,6 +3,7 @@ use ln_manager::LnManager;
 use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
+use crate::lightning::chain::keysinterface::KeysInterface;
 
 use std::net::UdpSocket;
 use std::thread;
@@ -64,8 +65,8 @@ fn handle_msg(
                 protocol::ResponseFuncs::GetAddresses(addresses)
             }
             protocol::RequestFuncs::GetNodeInfo => {
-                let addresses = utils::imported_addresses::get(ln_mgr.settings.lightning.lndata.clone(), ln_mgr.network.clone());
-                protocol::ResponseFuncs::GetAddresses(addresses)
+                let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
+                protocol::ResponseFuncs::GetNodeInfo(node_info)
             }
         }
     }
