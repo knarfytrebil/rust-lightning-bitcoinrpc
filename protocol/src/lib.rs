@@ -1,4 +1,5 @@
 use bincode;
+use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -7,6 +8,7 @@ pub enum RequestFuncs {
     PrintSomething(String),
     GetRandomNumber,
     GetAddresses,
+    GetNodeInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -15,6 +17,7 @@ pub enum ResponseFuncs {
     PrintSomething,
     GetRandomNumber(i32),
     GetAddresses(String),
+    GetNodeInfo(String),
     Error(String),
 }
 
@@ -30,6 +33,27 @@ pub fn serialize_message(msg: Message) -> Vec<u8> {
 
 pub fn deserialize_message(v: Vec<u8>) -> Message {
     bincode::deserialize(&v).expect("Could not deserialize message")
+}
+
+pub struct ProtocalParseError {
+    pub msg: String
+}
+
+impl FromStr for RequestFuncs {
+    type Err = ProtocalParseError; 
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "imported_addresses" => {
+                Ok(RequestFuncs::GetAddresses)
+            }
+            "node_info" => {
+                Ok(RequestFuncs::GetNodeInfo)
+            }
+            _ => {
+                Err(ProtocalParseError{ msg: String::from("Invalid Request Function") })
+            }
+        }
+    }
 }
 
 #[cfg(test)]

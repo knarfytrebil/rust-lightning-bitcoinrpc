@@ -3,11 +3,6 @@ version: "0.0.1"
 author: Gunther Arcanus <gunther.arcanus@gmail.com>
 about: cli interface of rln - Rust Lightning 
 args:
-    - info:
-        short: i
-        long: info 
-        takes_value: false 
-        help: Display <node-id> and <port> binded 
     - connect:
         short: c
         long: connect
@@ -20,7 +15,12 @@ args:
         takes_value: true
         value_name: LIST_ITEM
         help: List connected <peers> or connected <channels>
-        
+    - get:
+        short: g
+        long: get
+        takes_value: true
+        value_name: INTERNAL_VALUE 
+        help: <imported_addresses> | <node_info> 
 
 subcommands:
     - server:

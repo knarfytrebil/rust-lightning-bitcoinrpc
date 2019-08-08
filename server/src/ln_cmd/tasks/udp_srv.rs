@@ -1,6 +1,6 @@
 use protocol;
 use ln_manager::LnManager;
-use crate::ln_cmd::tasks::{Arg, TaskFn, Probe};
+use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
 
@@ -60,6 +60,10 @@ fn handle_msg(
                 protocol::ResponseFuncs::DisplayHelp(utils::about::get())
             }
             protocol::RequestFuncs::GetAddresses => {
+                let addresses = utils::imported_addresses::get(ln_mgr.settings.lightning.lndata.clone(), ln_mgr.network.clone());
+                protocol::ResponseFuncs::GetAddresses(addresses)
+            }
+            protocol::RequestFuncs::GetNodeInfo => {
                 let addresses = utils::imported_addresses::get(ln_mgr.settings.lightning.lndata.clone(), ln_mgr.network.clone());
                 protocol::ResponseFuncs::GetAddresses(addresses)
             }
