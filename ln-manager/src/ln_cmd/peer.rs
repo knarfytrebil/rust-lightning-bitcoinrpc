@@ -38,8 +38,7 @@ pub fn connect<T: Larva>(
                                 tokio::net::TcpStream::from_std(
                                     stream,
                                     &tokio::reactor::Handle::default(),
-                                )
-                                    .unwrap(),
+                                ).unwrap(),
                                 larva,
                             );
                         }
