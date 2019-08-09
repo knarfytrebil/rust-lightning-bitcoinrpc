@@ -190,7 +190,7 @@ impl Connection {
                 .send_data(&initial_send, 0, true) == initial_send.len() {
 
                     Self::schedule_read(peer_manager, us, reader, larva);
-                    info!("Connection Established {}", &their_node_id);
+                    info!("Outbound Connection Established {}", &their_node_id);
                 } else {
                     debug!("Failed to write first full message to socket!");
                 }
