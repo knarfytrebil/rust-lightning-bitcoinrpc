@@ -53,7 +53,6 @@ fn main() {
     let ln_conf_arg = &args[1];
     let node_conf_arg = &args[2];
 
-
     let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
 

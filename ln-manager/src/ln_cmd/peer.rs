@@ -26,7 +26,7 @@ pub fn connect<T: Larva>(
                 let parse_res: Result<std::net::SocketAddr, _> =
                     node.split_at(33 * 2 + 1).1.parse();
                 if let Ok(addr) = parse_res {
-                    print!("Attempting to connect to {}...", addr);
+                    info!("Attempting to connect to {}...", addr);
                     match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
                         Ok(stream) => {
                             debug!("connected, initiating handshake!");

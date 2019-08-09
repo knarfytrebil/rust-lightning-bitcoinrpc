@@ -98,7 +98,6 @@ impl Connection {
                     }
 
 
-                    info!("New Connection Established ...");
                     // TODO: FYI, this part should be rewrote
                     return future::Either::Right(future::ready(()));
 
@@ -165,10 +164,8 @@ impl Connection {
         larva: T
     ) {
         let (reader, this) = Self::new(event_notify, stream, &larva);
-        debug!("SETUP INBOUND");
 
         if let Ok(_) = peer_manager.new_inbound_connection(SocketDescriptor::new(this.clone(), peer_manager.clone(), larva.clone())) {
-            debug!("Passed Peer Manager");
             Self::schedule_read(peer_manager, this, reader, larva);
         }
     }
@@ -193,6 +190,7 @@ impl Connection {
                 .send_data(&initial_send, 0, true) == initial_send.len() {
 
                     Self::schedule_read(peer_manager, us, reader, larva);
+                    info!("Connection Established {}", &their_node_id);
                 } else {
                     debug!("Failed to write first full message to socket!");
                 }
