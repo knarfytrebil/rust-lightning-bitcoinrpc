@@ -19,7 +19,7 @@ pub enum ResponseFuncs {
     GetRandomNumber(i32),
     GetAddresses(String),
     GetNodeInfo(String),
-    PeerConnect(String),
+    PeerConnect,
     Error(String),
 }
 

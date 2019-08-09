@@ -60,6 +60,9 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
         protocol::ResponseFuncs::GetNodeInfo(info) => {
             println!("{}", info);
         }
+        protocol::ResponseFuncs::PeerConnect => {
+            println!("Request Acknowledged ...");
+        }
         protocol::ResponseFuncs::Error(e) => {
             println!("{}", e);
         }

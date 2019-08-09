@@ -70,10 +70,8 @@ fn handle_msg(
                 protocol::ResponseFuncs::GetNodeInfo(node_info)
             }
             protocol::RequestFuncs::PeerConnect(addr) => {
-                debug!("{}", addr);
                 ln_mgr.connect(addr);
-                let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
-                protocol::ResponseFuncs::GetNodeInfo(node_info)
+                protocol::ResponseFuncs::PeerConnect
             }
         }
     }

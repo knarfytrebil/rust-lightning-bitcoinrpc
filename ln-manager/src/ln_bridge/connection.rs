@@ -2,7 +2,7 @@ use bytes::BufMut;
 
 use futures::future;
 use futures::{Sink, Poll};
-use futures::{FutureExt, StreamExt, SinkExt, TryStreamExt, TryFutureExt};
+use futures::{FutureExt, StreamExt, SinkExt};
 // use futures::task::Poll;
 use futures::channel::mpsc;
 
@@ -41,75 +41,83 @@ pub struct Connection {
 impl Connection {
     fn schedule_read<T: Larva>(
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
-        us: Arc<Mutex<Self>>,
+        this: Arc<Mutex<Self>>,
         reader: futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>,
         larva: T
     ) {
-        let us_ref = us.clone();
-        let us_close_ref = us.clone();
+        let this_ref = this.clone();
+        let this_close_ref = this.clone();
         let peer_manager_ref = peer_manager.clone();
         let larva_ref = larva.clone();
         let _ = larva.clone().spawn_task(
-            reader.for_each(move |b| {
-                let b = b.unwrap();
-                let pending_read = b.to_vec();
-                let mut lock = us_ref.lock().unwrap();
-                assert!(lock.pending_read.is_empty());
+            async move {
+                reader.for_each(move |b| {
+                    let b = b.unwrap();
+                    let pending_read = b.to_vec();
 
-                if lock.read_paused {
-                    lock.pending_read = pending_read;
-                    let (sender, blocker) = futures::channel::oneshot::channel();
-                    lock.read_blocker = Some(sender);
-                    return future::Either::Left(blocker.then(|_| { future::ready(()) }));
-                }
+                    {
+                        let mut lock = this_ref.lock().unwrap();
+                        assert!(lock.pending_read.is_empty());
+                        if lock.read_paused {
+                            debug!("READ PAUSED");
+                            lock.pending_read = pending_read;
+                            let (sender, blocker) = futures::channel::oneshot::channel();
+                            lock.read_blocker = Some(sender);
+                            return future::Either::Left(blocker.then(|_| { future::ready(()) }));
+                        }
+                    }
 
-                //TODO: There's a race where we don't meet the requirements of disconnect_socket if its
-                //called right here, after we release the us_ref lock in the scope above, but before we
-                //call read_event!
-                match peer_manager.read_event(
-                    &mut SocketDescriptor::new(
-                        us_ref.clone(),
+                    //TODO: There's a race where we don't meet the requirements of disconnect_socket if its
+                    //called right here, after we release the us_ref lock in the scope above, but before we
+                    //call read_event!
+                    let mut sd = SocketDescriptor::new(
+                        this_ref.clone(),
                         peer_manager.clone(),
                         larva.clone()
-                    ), pending_read) {
-                    Ok(pause_read) => {
-                        if pause_read {
-                            let mut lock = us_ref.lock().unwrap();
-                            lock.read_paused = true;
+                    );
+                    match peer_manager.read_event(&mut sd, pending_read) {
+                        Ok(pause_read) => {
+                            if pause_read {
+                                let mut lock = this_ref.lock().unwrap();
+                                lock.read_paused = true;
+                            }
+                        },
+                        Err(e) => {
+                            error!("Peer Manager Read Error{}", e);
+                            this_ref.lock().unwrap().need_disconnect = false;
+                            // return future::Either::Right(future::ok(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
+                            // TODO: should discuss Err
+                            return future::Either::Right(future::ready(()));
                         }
-                    },
-                    Err(e) => {
-                        us_ref.lock().unwrap().need_disconnect = false;
-                        // return future::Either::Right(future::ok(std::io::Error::new(std::io::ErrorKind::InvalidData, e)));
-                        // TODO: should discuss Err
-                        return future::Either::Right(future::ready(()));
                     }
-                }
 
-                if let Err(e) = us_ref.lock().unwrap().event_notify.try_send(()) {
-                    // Ignore full errors as we just need them to poll after this point, so if the user
-                    // hasn't received the last send yet, it doesn't matter.
-                    assert!(e.is_full());
-                }
+                    if let Err(e) = this_ref.lock().unwrap().event_notify.try_send(()) {
+                        // Ignore full errors as we just need them to poll after this point, so if the user
+                        // hasn't received the last send yet, it doesn't matter.
+                        assert!(e.is_full());
+                    }
 
-                // TODO: FYI, this part should be rewrote
-                return future::Either::Right(future::ready(()));
 
-            })
+                    info!("New Connection Established ...");
+                    // TODO: FYI, this part should be rewrote
+                    return future::Either::Right(future::ready(()));
+
+                })
                 .then(move |_| {
-                    if us_close_ref.lock().unwrap().need_disconnect {
+                    if this_close_ref.lock().unwrap().need_disconnect {
                         peer_manager_ref.disconnect_event(
                             &SocketDescriptor::new(
-                                us_close_ref, peer_manager_ref.clone(),
+                                this_close_ref, peer_manager_ref.clone(),
                                 larva_ref.clone()
                             )
                         );
-                        debug!("Peer disconnected!");
+                        info!("Peer Disconnected ...");
                     } else {
                         debug!("We disconnected peer!");
                     }
                     future::ok(())
-                })
+                }).await
+            }
         );
     }
 
@@ -117,19 +125,19 @@ impl Connection {
         (futures::stream::SplitStream<tokio_codec::Framed<TcpStream, tokio_codec::BytesCodec>>, Arc<Mutex<Self>>) {
             let (mut writer, reader) = tokio_codec::Framed::new(stream, tokio_codec::BytesCodec::new()).split();
             let (send_sink, mut send_stream) = mpsc::channel(3);
-            // TODO: error handle
             let _ = larva.spawn_task(async move {
-                writer.send_all(
+                let _ = writer.send_all(
                     &mut send_stream
+                    // TODO: error handle
                     //     .map_err(|e| -> std::io::Error {
-                    //         unreachable!();
-                    //     // std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-                    //     // std::io::Error::new(std::io::ErrorKind::InvalidData, e)
+                    //     unreachable!();
                     // })
-                ).and_then(|_| { future::ok(())});
+                ).await;
                 Ok(())
+                // .and_then(|_| { future::ok(())});
+                // Ok(())
             });
-            let us = Arc::new(
+            let this = Arc::new(
                 Mutex::new(
                     Self {
                         writer: Some(send_sink),
@@ -142,7 +150,7 @@ impl Connection {
                     }
                 )
             );
-            (reader, us)
+            (reader, this)
         }
 
     /// Process incoming messages and feed outgoing messages on the provided socket generated by
@@ -154,11 +162,14 @@ impl Connection {
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         event_notify: mpsc::Sender<()>,
         stream: TcpStream,
-        larva: T) {
-        let (reader, us) = Self::new(event_notify, stream, &larva);
+        larva: T
+    ) {
+        let (reader, this) = Self::new(event_notify, stream, &larva);
+        debug!("SETUP INBOUND");
 
-        if let Ok(_) = peer_manager.new_inbound_connection(SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone())) {
-            Self::schedule_read(peer_manager, us, reader, larva);
+        if let Ok(_) = peer_manager.new_inbound_connection(SocketDescriptor::new(this.clone(), peer_manager.clone(), larva.clone())) {
+            debug!("Passed Peer Manager");
+            Self::schedule_read(peer_manager, this, reader, larva);
         }
     }
 
@@ -240,7 +251,20 @@ impl<T: Larva> SocketDescriptor<T> {
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         larva: T,
     ) -> Self {
-        let id = conn.lock().unwrap().id;
+        debug!("socket descriptior");
+        let id = match conn.try_lock() {
+            Ok(conn) => {
+                debug!("conn {}", &conn.id);
+                conn.id
+            }
+            Err(e) => {
+                debug!("About to Panic !!!");
+                debug!("{}", e); 
+                panic!("{}", e); 
+            }
+        };
+        // let id = conn.lock().unwrap().id;
+        debug!("socket id {}", &id);
         Self { conn, id, peer_manager, larva }
     }
 }
@@ -296,35 +320,37 @@ impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
         }
 
         let mut bytes = bytes::BytesMut::with_capacity(data.len() - write_offset);
+
         bytes.put(&data[write_offset..]);
         // TODO AsyncSink
         let writer = us.writer.as_ref().unwrap();
         // TODO check logic
         match writer.clone().try_send(bytes.freeze()) {
-            Ok(res) => {
-                0
+            Ok(_) => {
+                data.len()
             },
             Err(e) => {
+                error!("{:?}", e);
                 us.read_paused = true;
-				        let us_ref = self.clone();
+                let us_ref = self.clone();
                 let mut w = us.writer.take().unwrap();
-				        let _ = self.larva.spawn_task(async move {
+                let _ = self.larva.spawn_task(async move {
                     w.flush().then(move |writer_res| {
-				                if let Ok(_) = writer_res {
-				                    // {
-				                        //let mut us = us_ref.conn.lock().unwrap();
-				                       // us.writer = Some(writer);
-				                    // }
-				                    schedule_read!(us_ref);
-				                } // we'll fire the disconnect event on the socket reader end
+                        if let Ok(_) = writer_res {
+                            // {
+                            //     let mut us = us_ref.conn.lock().unwrap();
+                            //     us.writer = Some(writer);
+                            // }
+                            schedule_read!(us_ref);
+                        } // we'll fire the disconnect event on the socket reader end
                         // Ok(())
                         future::ok(())
                     }).await
                 });
-				        0
+                0
             },
         }
-	  }
+    }
 
     fn disconnect_socket(&mut self) {
         let mut us = self.conn.lock().unwrap();
