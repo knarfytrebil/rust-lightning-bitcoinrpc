@@ -21,6 +21,12 @@ args:
         takes_value: true
         value_name: INTERNAL_VALUE 
         help: <imported_addresses> | <node_info> 
+    - node:
+        short: -n
+        long: node 
+        takes_value: true
+        value_name: NODE
+        help: rlncli <...> -n 127.0.0.1:8123
 
 subcommands:
     - server:

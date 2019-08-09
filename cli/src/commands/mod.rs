@@ -33,12 +33,14 @@ fn handle(value: &str, sock: std::net::UdpSocket) -> protocol::ResponseFuncs {
 }
 
 pub fn react(command: &str, matches: &clap::ArgMatches ) {
+    let node_addr = matches.value_of("node").unwrap_or("127.0.0.1:8123"); 
+
     let socket = 
         UdpSocket::bind("127.0.0.1:5000")
         .expect("Could not bind client socket");
 
     socket
-        .connect("127.0.0.1:8123")
+        .connect(node_addr)
         .expect("Could not connect to server");
 
     let resp = match matches.value_of(command) {
