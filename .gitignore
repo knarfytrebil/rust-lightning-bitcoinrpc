@@ -2,4 +2,4 @@
 *.swo
 ln/
 target/
-server/server.log
+server/server*

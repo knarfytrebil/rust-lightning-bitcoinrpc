@@ -47,22 +47,25 @@ fn _check_usize_is_64() {
 }
 
 fn main() {
-    CombinedLogger::init(vec![
-        TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap(),
-        WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("server.log").unwrap()),
-    ]).unwrap();
-
     let args: Vec<String> = env::args().collect();
 
     // FIXME: Hard code setting argument
     let ln_conf_arg = &args[1];
     let node_conf_arg = &args[2];
 
-    info!("USE ln SETTING FILE - {:?}", ln_conf_arg);
-    info!("USE node SETTING FILE - {:?}", node_conf_arg);
 
     let ln_conf = MgrSettings::new(ln_conf_arg).unwrap();
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
+
+    let log_file_name = format!("server_{}.log", &node_conf.server.address);
+    
+    CombinedLogger::init(vec![
+        TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap(),
+        WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(log_file_name).unwrap()),
+    ]).unwrap();
+
+    info!("USE ln SETTING FILE - {:?}", ln_conf_arg);
+    info!("USE node SETTING FILE - {:?}", node_conf_arg);
 
     ln_node::run(ln_conf, node_conf);
 }
