@@ -59,6 +59,7 @@ pub fn connect<T: Larva>(
 
 
 pub fn list<T: Larva>(peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>) {
+    debug!("peer list");
     let mut nodes = String::new();
     for node_id in peer_manager.get_peer_node_ids() {
         nodes += &format!("{}, ", hex_str(&node_id.serialize()));

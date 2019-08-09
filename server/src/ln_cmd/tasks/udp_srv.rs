@@ -73,6 +73,10 @@ fn handle_msg(
                 ln_mgr.connect(addr);
                 protocol::ResponseFuncs::PeerConnect
             }
+            protocol::RequestFuncs::PeerList => {
+                ln_mgr.list();
+                protocol::ResponseFuncs::PeerList("hi".to_string())
+            }
         }
     }
 

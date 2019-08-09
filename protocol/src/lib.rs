@@ -9,7 +9,8 @@ pub enum RequestFuncs {
     GetRandomNumber,
     GetAddresses,
     GetNodeInfo,
-    PeerConnect(String)
+    PeerConnect(String),
+    PeerList,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -20,6 +21,7 @@ pub enum ResponseFuncs {
     GetAddresses(String),
     GetNodeInfo(String),
     PeerConnect,
+    PeerList(String),
     Error(String),
 }
 
@@ -63,6 +65,16 @@ impl FromStr for RequestFuncs {
             },
             "connect" => {
                 Ok(RequestFuncs::PeerConnect(value.to_string()))
+            }
+            "list" => {
+                match value {
+                    "peer" => {
+                        Ok(RequestFuncs::PeerList)
+                    }
+                    _ => {
+                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
+                    }
+                }
             }
             _ => {
                 Err(ProtocalParseError{ msg: String::from("Invalid Command") })
