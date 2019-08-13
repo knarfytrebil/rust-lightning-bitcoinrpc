@@ -28,17 +28,18 @@ args:
         value_name: NODE
         help: rbcli <...> -n 127.0.0.1:8123
     - channel:
-        short: ch
+        multiple: true
+        short: m 
         long: channel
         takes_value: true
         value_name: ACTION
-        help: rbcli -ch <create> / <close> / <killall>
+        help: rbcli -m <create> / <close> / <killall>
     - nodekey:
-        short: nk
+        short: k
         long: nodekey
         takes_value: true
         value_name: NODEKEY
-        help: rbcli <...> -nk <node_key>
+        help: rbcli <...> -k <node_key>
 
 subcommands:
     - server:
@@ -46,12 +47,13 @@ subcommands:
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
         args:
-            - nodekey:
-                short: n
-                help: the node key to establish channel with, the node must be already connected to.
-            - channelvalue:
-                short: c
-                help: value in stastoshi in the funded channel 
-            - pushvalue:
-                short: p
-                help: push value in msats
+            - start:
+                long: start
+                short: up
+                takes_value: false
+                help: rbcli server --start 
+            - stop:
+                long: stop 
+                short: down
+                takes_value: false
+                help: rbcli server --stop

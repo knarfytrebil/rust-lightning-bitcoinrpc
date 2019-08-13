@@ -5,6 +5,7 @@ use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
 use crate::ln_manager::ln_cmd::peer::PeerC;
+use crate::ln_manager::ln_cmd::channel::ChannelC;
 use crate::lightning::chain::keysinterface::KeysInterface;
 use ln_manager::LnManager;
 use protocol;
@@ -76,6 +77,18 @@ fn handle_msg(
             protocol::RequestFuncs::PeerList => {
                 let nodes = ln_mgr.list();
                 protocol::ResponseFuncs::PeerList(nodes)
+            }
+            protocol::RequestFuncs::ChannelCreate(args) => {
+                debug!("{:#?}", args);
+                protocol::ResponseFuncs::ChannelCreate
+            }
+            protocol::RequestFuncs::ChannelClose(id) => {
+                debug!("{:#?}", id);
+                protocol::ResponseFuncs::ChannelClose
+            }
+            protocol::RequestFuncs::ChannelCloseAll => {
+                protocol::ResponseFuncs::ChannelCloseAll
+
             }
         }
     }

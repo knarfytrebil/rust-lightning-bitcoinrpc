@@ -8,7 +8,7 @@ pub trait ChannelC {
     fn fund_channel(&self, line: String);
     fn close(&self, line: String);
     fn force_close_all(&self, line: String);
-    fn list(&self);
+    fn channel_list(&self);
 }
 
 // fund channel
@@ -88,7 +88,7 @@ pub fn force_close_all(line: String, channel_manager: &Arc<ChannelManager>) {
 }
 
 // List existing channels
-pub fn list(channel_manager: &Arc<ChannelManager>) {
+pub fn channel_list(channel_manager: &Arc<ChannelManager>) {
     debug!("All channels:");
     for chan_info in channel_manager.list_channels() {
         if let Some(short_id) = chan_info.short_channel_id {

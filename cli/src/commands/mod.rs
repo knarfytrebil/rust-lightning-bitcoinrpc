@@ -45,9 +45,15 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
         .connect(node_addr)
         .expect("Could not connect to server");
 
-    let resp = match matches.value_of(command) {
-        Some(value) => {
-            let command_and_value = format!("{},{}", command, value);
+    let resp = match matches.values_of(command) {
+        Some(values) => {
+            let value: Vec<String> = values
+                .into_iter()
+                .map(|v| {
+                    v.to_string()
+                })
+                .collect();
+            let command_and_value = format!("{},{}", command, value.join(","));
             handle(&command_and_value, socket)
         }
         _ => {

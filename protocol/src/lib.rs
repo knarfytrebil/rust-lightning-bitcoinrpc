@@ -10,6 +10,9 @@ pub enum RequestFuncs {
     GetAddresses,
     GetNodeInfo,
     PeerConnect(String),
+    ChannelCreate(Vec<String>),
+    ChannelClose(String),
+    ChannelCloseAll,
     PeerList,
 }
 
@@ -22,6 +25,9 @@ pub enum ResponseFuncs {
     GetNodeInfo(String),
     PeerConnect,
     PeerList(Vec<String>),
+    ChannelCreate,
+    ChannelClose,
+    ChannelCloseAll,
     Error(String),
 }
 
@@ -62,13 +68,41 @@ impl FromStr for RequestFuncs {
                         Err(ProtocalParseError{ msg: String::from("Invalid Value") })
                     }
                 }
-            },
+            }
             "connect" => {
                 Ok(RequestFuncs::PeerConnect(value.to_string()))
             }
+            "channel" => {
+                match value {
+                    "create" => {
+                        if cmd_value.len() != 5 {
+                            return Err(ProtocalParseError{ msg: String::from("Insufficient Arguments") });
+                        }
+                        let args: Vec<String> = cmd_value[2..]
+                            .into_iter()
+                            .map(|v| {
+                                v.to_string()
+                            }).collect();
+                        Ok(RequestFuncs::ChannelCreate(args))
+                    }
+                    "kill" => {
+                        if cmd_value.len() != 3 {
+                            return Err(ProtocalParseError{ msg: String::from("Insufficient Arguments") });
+                        }
+                        let channel = cmd_value[2].to_string();
+                        Ok(RequestFuncs::ChannelClose(channel))
+                    }
+                    "killall" => {
+                        Ok(RequestFuncs::ChannelCloseAll)
+                    }
+                    _ => {
+                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
+                    }
+                }
+            }
             "list" => {
                 match value {
-                    "peer" => {
+                    "peers" => {
                         Ok(RequestFuncs::PeerList)
                     }
                     _ => {
