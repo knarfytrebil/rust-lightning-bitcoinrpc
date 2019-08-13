@@ -7,8 +7,8 @@ macro_rules! impl_command {
     ($item:tt) => (
         use ln_cmd::{channel, invoice, peer};
         impl<T: Larva> channel::ChannelC for $item<T> {
-            fn fund_channel(&self, line: String) {
-                channel::fund_channel(line, &self.channel_manager, self.event_notify.clone())
+            fn fund_channel(&self, args: Vec<String>) {
+                channel::fund_channel(args, &self.channel_manager, self.event_notify.clone())
             }
             fn close(&self, line: String) {
                 channel::close(line, &self.channel_manager, self.event_notify.clone())

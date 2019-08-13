@@ -79,7 +79,7 @@ fn handle_msg(
                 protocol::ResponseFuncs::PeerList(nodes)
             }
             protocol::RequestFuncs::ChannelCreate(args) => {
-                debug!("{:#?}", args);
+                ln_mgr.fund_channel(args);
                 protocol::ResponseFuncs::ChannelCreate
             }
             protocol::RequestFuncs::ChannelClose(id) => {

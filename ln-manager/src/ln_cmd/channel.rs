@@ -5,7 +5,7 @@ use lightning::ln::channelmanager::ChannelManager;
 use crate::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
 
 pub trait ChannelC {
-    fn fund_channel(&self, line: String);
+    fn fund_channel(&self, line: Vec<String>);
     fn close(&self, line: String);
     fn force_close_all(&self, line: String);
     fn channel_list(&self);
@@ -13,43 +13,32 @@ pub trait ChannelC {
 
 // fund channel
 pub fn fund_channel(
-    line: String,
+    args: Vec<String>,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
 ) {
-    match hex_to_compressed_pubkey(line.split_at(0).1) {
-        Some(pk) => {
-            if line.as_bytes()[33 * 2] == ' ' as u8 {
-                let mut args = line.split_at(33 * 2 + 1).1.split(' ');
-                if let Some(value_str) = args.next() {
-                    if let Some(push_str) = args.next() {
-                        if let Ok(value) = value_str.parse() {
-                            if let Ok(push) = push_str.parse() {
-                                match channel_manager.create_channel(pk, value, push, 0) {
-                                    Ok(_) => debug!("Channel created, sending open_channel!"),
-                                    Err(e) => debug!("Failed to open channel: {:?}!", e),
-                                }
-                                let _ = event_notify.try_send(());
-                            } else {
-                                debug!("Couldn't parse third argument into a push value");
-                            }
-                        } else {
-                            debug!("Couldn't parse second argument into a value");
-                        }
-                    } else {
-                        debug!("Couldn't read third argument");
+    let pubkey_str = &args[0];
+    let value_str = &args[1];
+    let push_str = &args[2];
+    match hex_to_compressed_pubkey(&pubkey_str) {
+        Some(pubkey) => {
+            let value = value_str.parse().unwrap_or(100000);
+            let push = push_str.parse().unwrap_or(500000);
+                match channel_manager.create_channel(pubkey, value, push, 0) {
+                    Ok(_) => { 
+                        info!("Channel created, {} sending open_channel ...", pubkey_str); 
                     }
-                } else {
-                    debug!("Couldn't read second argument");
+                    Err(e) => { 
+                        warn!("Failed to open channel: {:?}!", e);
+                    }
                 }
-            } else {
-                debug!("Invalid line, should be n pubkey value");
-            }
+                let _ = event_notify.try_send(());
         }
-        None => debug!("Bad PubKey for remote node"),
+        None => { 
+            warn!("Invalid public key for remote node.");
+        }
     }
 }
-
 
 // Close single channel
 pub fn close(
