@@ -1,7 +1,7 @@
-name: rlncli 
+name: rbcli 
 version: "0.0.1"
 author: Gunther Arcanus <gunther.arcanus@gmail.com>
-about: cli interface of rln - Rust Lightning 
+about: cli interface of Rustbolt - Lightning with Rust 
 args:
     - connect:
         short: c
@@ -22,7 +22,7 @@ args:
         value_name: INTERNAL_VALUE 
         help: <imported_addresses> | <node_info> 
     - node:
-        short: -n
+        short: n
         long: node 
         takes_value: true
         value_name: NODE

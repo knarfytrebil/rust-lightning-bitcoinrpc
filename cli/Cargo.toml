@@ -1,7 +1,7 @@
 [package]
-name = "rlncli"
+name = "rbcli"
 version = "0.1.0"
-authors = ["Maarten Tamboer <maartentamboer@msn.com>"]
+authors = ["Gunther Arcanus <gunther.arcanus@gmail.com>"]
 edition = "2018"
 
 [dependencies]

@@ -90,7 +90,6 @@ mod tests {
     fn it_works() {
         let a = Message::Request(RequestFuncs::PrintSomething("".to_string()));
         let ser = serialize_message(a.clone());
-
         let der = deserialize_message(ser);
         assert_eq!(a, der);
     }
