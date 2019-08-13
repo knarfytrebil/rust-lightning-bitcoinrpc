@@ -32,7 +32,7 @@ macro_rules! impl_command {
             fn connect(&self, node: String) {
                 peer::connect(node, &self.peer_manager, self.event_notify.clone(), self.larva.clone())
             }
-            fn list(&self) {
+            fn list(&self) -> Vec<String> {
                 peer::list(&self.peer_manager)
             }
         }

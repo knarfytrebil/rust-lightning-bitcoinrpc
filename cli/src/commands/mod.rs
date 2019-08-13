@@ -63,6 +63,12 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
         protocol::ResponseFuncs::PeerConnect => {
             println!("Request Acknowledged ...");
         }
+        protocol::ResponseFuncs::PeerList(peers) => {
+            println!("Connected Peers:");
+            for peer in peers {
+                println!("{}", peer);
+            }
+        }
         protocol::ResponseFuncs::Error(e) => {
             println!("{}", e);
         }

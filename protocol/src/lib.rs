@@ -21,7 +21,7 @@ pub enum ResponseFuncs {
     GetAddresses(String),
     GetNodeInfo(String),
     PeerConnect,
-    PeerList(String),
+    PeerList(Vec<String>),
     Error(String),
 }
 

@@ -9,7 +9,7 @@ use crate::executor::Larva;
 
 pub trait PeerC {
     fn connect(&self, node: String);
-    fn list(&self);
+    fn list(&self) -> Vec<String>;
 }
 
 // connect peer
@@ -58,11 +58,11 @@ pub fn connect<T: Larva>(
 }
 
 
-pub fn list<T: Larva>(peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>) {
-    debug!("peer list");
-    let mut nodes = String::new();
-    for node_id in peer_manager.get_peer_node_ids() {
-        nodes += &format!("{}, ", hex_str(&node_id.serialize()));
-    }
-    debug!("Connected nodes: {}", nodes);
+pub fn list<T: Larva>(peer_manager: &Arc<PeerManager<SocketDescriptor<T>>>) -> Vec<String>{
+    peer_manager
+        .get_peer_node_ids()
+        .into_iter()
+        .map(|node_id| {
+            hex_str(&node_id.serialize())
+        }).collect()
 }

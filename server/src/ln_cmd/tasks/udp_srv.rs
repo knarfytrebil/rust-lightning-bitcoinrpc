@@ -74,8 +74,8 @@ fn handle_msg(
                 protocol::ResponseFuncs::PeerConnect
             }
             protocol::RequestFuncs::PeerList => {
-                ln_mgr.list();
-                protocol::ResponseFuncs::PeerList("hi".to_string())
+                let nodes = ln_mgr.list();
+                protocol::ResponseFuncs::PeerList(nodes)
             }
         }
     }
