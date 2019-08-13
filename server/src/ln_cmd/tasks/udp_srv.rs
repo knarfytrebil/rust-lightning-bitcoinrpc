@@ -83,12 +83,16 @@ fn handle_msg(
                 protocol::ResponseFuncs::ChannelCreate
             }
             protocol::RequestFuncs::ChannelClose(id) => {
-                debug!("{:#?}", id);
+                ln_mgr.close(id);
                 protocol::ResponseFuncs::ChannelClose
             }
             protocol::RequestFuncs::ChannelCloseAll => {
+                ln_mgr.force_close_all();
                 protocol::ResponseFuncs::ChannelCloseAll
-
+            }
+            protocol::RequestFuncs::ChannelList => {
+                ln_mgr.channel_list();
+                protocol::ResponseFuncs::ChannelList
             }
         }
     }

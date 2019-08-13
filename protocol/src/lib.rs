@@ -13,6 +13,7 @@ pub enum RequestFuncs {
     ChannelCreate(Vec<String>),
     ChannelClose(String),
     ChannelCloseAll,
+    ChannelList,
     PeerList,
 }
 
@@ -24,10 +25,11 @@ pub enum ResponseFuncs {
     GetAddresses(Vec<String>),
     GetNodeInfo(String),
     PeerConnect,
-    PeerList(Vec<String>),
     ChannelCreate,
     ChannelClose,
     ChannelCloseAll,
+    ChannelList,
+    PeerList(Vec<String>),
     Error(String),
 }
 
@@ -104,6 +106,9 @@ impl FromStr for RequestFuncs {
                 match value {
                     "peers" => {
                         Ok(RequestFuncs::PeerList)
+                    }
+                    "channels" => {
+                        Ok(RequestFuncs::ChannelList)
                     }
                     _ => {
                         Err(ProtocalParseError{ msg: String::from("Invalid Value") })

@@ -7,7 +7,7 @@ use crate::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
 pub trait ChannelC {
     fn fund_channel(&self, line: Vec<String>);
     fn close(&self, line: String);
-    fn force_close_all(&self, line: String);
+    fn force_close_all(&self);
     fn channel_list(&self);
 }
 
@@ -42,43 +42,38 @@ pub fn fund_channel(
 
 // Close single channel
 pub fn close(
-    line: String,
+    ch_id: String,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
 ) {
-    if line.len() == 64 + 2 {
-        if let Some(chan_id_vec) = hex_to_vec(line.split_at(2).1) {
+    println!("{}", &ch_id);
+    if ch_id.len() == 64 + 2 {
+        if let Some(chan_id_vec) = hex_to_vec(&ch_id) {
             let mut channel_id = [0; 32];
             channel_id.copy_from_slice(&chan_id_vec);
+            debug!("called close");
             match channel_manager.close_channel(&channel_id) {
                 Ok(()) => {
-                    debug!("Ok, channel closing!");
+                    info!("Channel closing: {}", &ch_id);
                     let _ = event_notify.try_send(());
                 }
-                Err(e) => debug!("Failed to close channel: {:?}", e),
+                Err(e) => warn!("Failed to close channel: {:?}", e),
             }
         } else {
-            debug!("Bad channel_id hex");
+            warn!("Invalid channel_id ...");
         }
+    } else {
+        warn!("Channel id has invalid length ...");
     }
 }
 
 // Force close all channels
-pub fn force_close_all(line: String, channel_manager: &Arc<ChannelManager>) {
-    if line.len() == 5
-        && line.as_bytes()[2] == 'a' as u8
-        && line.as_bytes()[3] == 'l' as u8
-        && line.as_bytes()[4] == 'l' as u8
-    {
-        channel_manager.force_close_all_channels();
-    } else {
-        debug!("Single-channel force-close not yet implemented");
-    }
+pub fn force_close_all(channel_manager: &Arc<ChannelManager>) {
+    channel_manager.force_close_all_channels();
 }
 
 // List existing channels
 pub fn channel_list(channel_manager: &Arc<ChannelManager>) {
-    debug!("All channels:");
     for chan_info in channel_manager.list_channels() {
         if let Some(short_id) = chan_info.short_channel_id {
             debug!(

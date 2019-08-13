@@ -13,8 +13,8 @@ macro_rules! impl_command {
             fn close(&self, line: String) {
                 channel::close(line, &self.channel_manager, self.event_notify.clone())
             }
-            fn force_close_all(&self, line: String) {
-                channel::force_close_all(line, &self.channel_manager)
+            fn force_close_all(&self) {
+                channel::force_close_all(&self.channel_manager)
             }
             fn channel_list(&self) {
                 channel::channel_list(&self.channel_manager)
