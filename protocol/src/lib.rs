@@ -18,7 +18,7 @@ pub enum ResponseFuncs {
     DisplayHelp(String),
     PrintSomething,
     GetRandomNumber(i32),
-    GetAddresses(String),
+    GetAddresses(Vec<String>),
     GetNodeInfo(String),
     PeerConnect,
     PeerList(Vec<String>),

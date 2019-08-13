@@ -33,7 +33,9 @@ fn handle(value: &str, sock: std::net::UdpSocket) -> protocol::ResponseFuncs {
 }
 
 pub fn react(command: &str, matches: &clap::ArgMatches ) {
-    let node_addr = matches.value_of("node").unwrap_or("127.0.0.1:8123"); 
+    let node_addr = matches
+        .value_of("node")
+        .unwrap_or("127.0.0.1:8123"); 
 
     let socket = 
         UdpSocket::bind("127.0.0.1:5000")
@@ -55,7 +57,10 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
 
     match resp {
         protocol::ResponseFuncs::GetAddresses(addrs) => {
-            println!("{}", addrs);
+            println!("Imported Addresses:"); 
+            for addr in addrs {
+                println!("{}", addr);
+            }
         }
         protocol::ResponseFuncs::GetNodeInfo(info) => {
             println!("{}", info);
