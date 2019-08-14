@@ -26,12 +26,12 @@ fn to_network(currency: Currency) -> Network {
 }
 
 pub trait InvoiceC {
-    fn pay(&self, line: String) -> Result<(), String>;
+    fn pay(&self, args: Vec<String>) -> Result<(), String>;
     fn create_invoice(&self, line: String) -> Result<String, String>;
 }
 
 pub fn pay(
-    line: String,
+    args: Vec<String>,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
     network: &Network,
@@ -39,12 +39,12 @@ pub fn pay(
 ) -> Result<(), String> {
     macro_rules! fail_return {
         () => {
-            print!("> ");
+            println!(">");
             return Ok(());
         };
     }
-    let mut args = line.split_at(2).1.split(' ');
-    match Invoice::from_str(args.next().unwrap()) {
+    let invoice_str = &args[0];
+    match Invoice::from_str(invoice_str) {
         Ok(invoice) => {
             // Raw Invoice Generated Here
             let raw_invoice = invoice.clone().into_signed_raw();
@@ -56,7 +56,7 @@ pub fn pay(
             {
                 Err("Wrong network on invoice".to_string())
             } else {
-                let arg2 = args.next();
+                let arg2 = &args[1];
                 let amt = if let Some(amt) = invoice.amount_pico_btc().and_then(|amt| {
                     if amt % 10 != 0 {
                         None
@@ -64,16 +64,16 @@ pub fn pay(
                         Some(amt / 10)
                     }
                 }) {
-                    if arg2.is_some() {
+                    if args.len() == 2 {
                         debug!("Invoice had amount, you shouldn't specify one");
                     }
                     amt
                 } else {
-                    if arg2.is_none() {
+                    if args.len() == 1 {
                         debug!("Invoice didn't have an amount, you should specify one");
                         fail_return!();
                     }
-                    match arg2.unwrap().parse() {
+                    match arg2.parse() {
                         Ok(amt) => amt,
                         Err(_) => {
                             debug!("Provided amount was garbage");

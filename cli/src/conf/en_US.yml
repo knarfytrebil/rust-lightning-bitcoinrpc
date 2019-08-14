@@ -24,7 +24,14 @@ subcommands:
     - info:
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
-        about: show info node_info / imported_addresses
+        about: "show info node_info / imported_addresses\n
+        \n
+        ██╗███╗   ██╗███████╗ ██████╗ \n  
+        ██║████╗  ██║██╔════╝██╔═══██╗\n
+        ██║██╔██╗ ██║█████╗  ██║   ██║\n
+        ██║██║╚██╗██║██╔══╝  ██║   ██║\n
+        ██║██║ ╚████║██║     ╚██████╔╝\n
+        ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝ \n"
         settings:
             - coloredhelp
         args:
@@ -40,7 +47,14 @@ subcommands:
                 takes_value: false
                 help: rbcli info -addr
     - invoice:
-        about: create / pay lightning invoice
+        about: "create / pay lightning invoice\n
+        \n
+        ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗\n 
+        ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝\n
+        ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗  \n
+        ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝  \n
+        ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗\n
+        ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝\n"
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
         settings:
@@ -53,13 +67,21 @@ subcommands:
                 value_name: AMOUNT 
                 help: rbcli invoice -c <amount> ...
             - pay:
+                multiple: true
                 long: pay 
                 short: p
                 takes_value: true 
-                value_name: AMOUNT 
+                value_name: <INVOICE_PAY_ARGS> 
                 help: rbcli invoice -p <amount>
     - channel:
-        about: create / kill / killall lightning channels
+        about: "create / kill / killall lightning channels\n
+        \n
+         ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗     \n 
+        ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║     \n
+        ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║     \n
+        ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║     \n
+        ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗\n
+         ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝\n"
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
         settings:
@@ -89,7 +111,14 @@ subcommands:
                 takes_value: false
                 help: rbcli channel -l
     - peer:
-        about: connect / list lightning peer 
+        about: "connect / list lightning peer\n
+        \n
+        ██████╗ ███████╗███████╗██████╗ \n 
+        ██╔══██╗██╔════╝██╔════╝██╔══██╗\n
+        ██████╔╝█████╗  █████╗  ██████╔╝\n
+        ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗\n
+        ██║     ███████╗███████╗██║  ██║\n
+        ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝\n"
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
         settings:
@@ -107,7 +136,14 @@ subcommands:
                 takes_value: false 
                 help: rbcli peer -l
     - server:
-        about: start / stop rustbolt server 
+        about: "start / stop rustbolt server\n
+        \n
+        ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗ \n 
+        ██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗\n
+        ███████╗█████╗  ██████╔╝██║   ██║█████╗  ██████╔╝\n
+        ╚════██║██╔══╝  ██╔══██╗╚██╗ ██╔╝██╔══╝  ██╔══██╗\n
+        ███████║███████╗██║  ██║ ╚████╔╝ ███████╗██║  ██║\n
+        ╚══════╝╚══════╝╚═╝  ╚═╝  ╚══╝   ╚══════╝╚═╝  ╚═╝\n"
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
         settings:

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum RequestFuncs {
-    DisplayHelp,
     GetAddresses,
     GetNodeInfo,
     PeerConnect(String),
@@ -12,13 +11,13 @@ pub enum RequestFuncs {
     ChannelClose(String),
     ChannelCloseAll,
     ChannelList,
-    InvoiceCreate(String),
     PeerList,
+    InvoiceCreate(String),
+    InvoicePay(Vec<String>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ResponseFuncs {
-    DisplayHelp(String),
     GetAddresses(Vec<String>),
     GetNodeInfo(String),
     PeerConnect,
@@ -28,6 +27,7 @@ pub enum ResponseFuncs {
     ChannelList,
     PeerList(Vec<String>),
     InvoiceCreate(Result<String, String>),
+    InvoicePay,
     Error(String),
 }
 
@@ -119,6 +119,14 @@ impl FromStr for RequestFuncs {
                     "create" =>  {
                         let value = cmd_value[2].to_string();
                         Ok(RequestFuncs::InvoiceCreate(value))
+                    }
+                    "pay" => {
+                        let args: Vec<String> = cmd_value[2..]
+                            .into_iter()
+                            .map(|v| {
+                                v.to_string()
+                            }).collect();
+                        Ok(RequestFuncs::InvoicePay(args))
                     }
                     _ => {
                         Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
