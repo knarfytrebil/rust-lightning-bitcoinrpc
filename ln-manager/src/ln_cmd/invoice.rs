@@ -56,7 +56,6 @@ pub fn pay(
             {
                 Err("Wrong network on invoice".to_string())
             } else {
-                let arg2 = &args[1];
                 let amt = if let Some(amt) = invoice.amount_pico_btc().and_then(|amt| {
                     if amt % 10 != 0 {
                         None
@@ -73,7 +72,7 @@ pub fn pay(
                         debug!("Invoice didn't have an amount, you should specify one");
                         fail_return!();
                     }
-                    match arg2.parse() {
+                    match args[1].parse() {
                         Ok(amt) => amt,
                         Err(_) => {
                             debug!("Provided amount was garbage");
