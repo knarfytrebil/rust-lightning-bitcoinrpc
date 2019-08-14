@@ -47,7 +47,7 @@ pub fn close(
     mut event_notify: mpsc::Sender<()>,
 ) {
     println!("{}", &ch_id);
-    if ch_id.len() == 64 + 2 {
+    if ch_id.len() == 64 {
         if let Some(chan_id_vec) = hex_to_vec(&ch_id) {
             let mut channel_id = [0; 32];
             channel_id.copy_from_slice(&chan_id_vec);
