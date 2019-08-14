@@ -1,7 +1,7 @@
 name: rbcli 
 version: "0.0.1"
 author: Gunther Arcanus <gunther.arcanus@gmail.com>
-about: "cli interface of Rustbolt - Lightning with Rust          \n    
+about: "cli interface of Rustbolt - Lightning with Rust          \n
 \n
 ██████╗ ██╗   ██╗███████╗████████╗██████╗  ██████╗ ██╗  ████████╗\n 
 ██╔══██╗██║   ██║██╔════╝╚══██╔══╝██╔══██╗██╔═══██╗██║  ╚══██╔══╝\n 
@@ -22,9 +22,9 @@ args:
 
 subcommands:
     - info:
-        about: show info <node_info> / <imported_addresses>
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
+        about: show info node_info / imported_addresses
         settings:
             - coloredhelp
         args:
