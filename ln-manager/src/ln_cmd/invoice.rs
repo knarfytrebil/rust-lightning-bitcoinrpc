@@ -15,6 +15,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use secp256k1::{All, Secp256k1};
+
 // convert currency to network
 #[allow(dead_code)]
 fn to_network(currency: Currency) -> Network {
@@ -22,6 +23,15 @@ fn to_network(currency: Currency) -> Network {
         Currency::Bitcoin => Network::Bitcoin,
         Currency::BitcoinTestnet => Network::Testnet,
         Currency::Regtest => Network::Regtest,
+    }
+}
+
+#[allow(dead_code)]
+fn to_currency(network: Network) -> Currency {
+    match network {
+        Network::Bitcoin => Currency::Bitcoin,
+        Network::Testnet => Currency::BitcoinTestnet,
+        Network::Regtest => Currency::Regtest,
     }
 }
 
@@ -166,18 +176,17 @@ pub fn create_invoice(
 
     debug!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
 
-    let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
-        Network::Bitcoin => Currency::Bitcoin,
-        Network::Testnet => Currency::BitcoinTestnet,
-        Network::Regtest => Currency::Regtest,
-    })
-    .payment_hash(payment_hash)
-    .description("rust-lightning-bitcoinrpc invoice".to_string())
-    //TODO: Restore routing
-    //.route(chans)
-    .amount_pico_btc(value.parse::<u64>().unwrap())
-    .current_timestamp()
-    .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
+    let currency = to_currency(*network);
+
+    let invoice_res = lightning_invoice::InvoiceBuilder::new(currency)
+        .payment_hash(payment_hash)
+        .description("rust-lightning-bitcoinrpc invoice".to_string())
+        //TODO: Restore routing
+        //.route(chans)
+        .amount_pico_btc(value.parse::<u64>().unwrap())
+        .current_timestamp()
+        .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
+
     match invoice_res {
         Ok(invoice) => { 
             Ok(invoice.to_string())
