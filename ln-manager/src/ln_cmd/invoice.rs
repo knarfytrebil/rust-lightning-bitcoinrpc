@@ -48,12 +48,8 @@ pub fn pay(
         Ok(invoice) => {
             // Raw Invoice Generated Here
             let raw_invoice = invoice.clone().into_signed_raw();
-            if match invoice.currency() {
-                Currency::Bitcoin => Network::Bitcoin,
-                Currency::BitcoinTestnet => Network::Testnet,
-                Currency::Regtest => Network::Regtest,
-            } != *network
-            {
+            let invoice_network = to_network(invoice.currency());
+            if invoice_network != *network {
                 Err("Wrong network on invoice".to_string())
             } else {
                 let amt = if let Some(amt) = invoice.amount_pico_btc().and_then(|amt| {
