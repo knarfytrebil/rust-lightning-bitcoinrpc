@@ -1,6 +1,5 @@
 use std::net::UdpSocket;
 use std::thread;
-
 use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
@@ -18,9 +17,7 @@ pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Resul
     };
     let node_address = node_conf.unwrap().server.address.clone();
     info!("Lightning Server Running on: {}", &node_address);
-
     let udp_socket = UdpSocket::bind(node_address).expect("Could not bind socket");
-
     loop {
         let mut buf = [0u8; 1500];
         let sock = udp_socket.try_clone().expect("Failed to clone socket");

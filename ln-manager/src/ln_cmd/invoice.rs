@@ -26,24 +26,23 @@ fn to_network(currency: Currency) -> Network {
 }
 
 pub trait InvoiceC {
-    fn send(&self, line: String) -> Result<(), String>;
+    fn pay(&self, line: String) -> Result<(), String>;
     fn create_invoice(&self, line: String) -> Result<String, String>;
 }
 
-pub fn send(
+pub fn pay(
     line: String,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
     network: &Network,
     router: &Arc<router::Router>,
-) -> std::result::Result<(), String> {
+) -> Result<(), String> {
     macro_rules! fail_return {
         () => {
             print!("> ");
             return Ok(());
         };
     }
-
     let mut args = line.split_at(2).1.split(' ');
     match Invoice::from_str(args.next().unwrap()) {
         Ok(invoice) => {
@@ -169,6 +168,7 @@ pub fn create_invoice(
         PaymentHash(payment_hash.into_inner()),
         PaymentPreimage(payment_preimage),
     );
+
     debug!("payment_hash: {}", hex_str(&payment_hash.into_inner()));
 
     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
