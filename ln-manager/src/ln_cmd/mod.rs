@@ -21,10 +21,10 @@ macro_rules! impl_command {
             }
         }
         impl<T: Larva> invoice::InvoiceC for $item<T> {
-            fn send(&self, line: String) -> std::result::Result<(), String> {
+            fn send(&self, line: String) -> Result<(), String> {
                 invoice::send(line, &self.channel_manager, self.event_notify.clone(), &self.network, &self.router)
             }
-            fn create_invoice(&self, line: String) {
+            fn create_invoice(&self, line: String) -> Result<String, String> {
                 invoice::create_invoice(line, &self.payment_preimages, &self.network, &self.secp_ctx, &self.keys)
             }
         }

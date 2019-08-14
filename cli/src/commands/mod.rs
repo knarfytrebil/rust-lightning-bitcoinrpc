@@ -85,6 +85,18 @@ pub fn react(command: &str, sub_command: &str, matches: &clap::ArgMatches, sub_m
                 println!("{}", peer);
             }
         }
+        protocol::ResponseFuncs::InvoiceCreate(res) => {
+            match res {
+                Ok(invoice) => {
+                    println!("Invoice created");
+                    println!("{}", invoice);
+                }
+                Err(e) => {
+                    println!("Invoice creation error");
+                    println!("{}", e);
+                }
+            }
+        }
         protocol::ResponseFuncs::Error(e) => {
             println!("{}", e);
         }

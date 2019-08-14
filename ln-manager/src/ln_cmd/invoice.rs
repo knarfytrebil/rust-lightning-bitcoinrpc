@@ -26,8 +26,8 @@ fn to_network(currency: Currency) -> Network {
 }
 
 pub trait InvoiceC {
-    fn send(&self, line: String) -> std::result::Result<(), String>;
-    fn create_invoice(&self, line: String);
+    fn send(&self, line: String) -> Result<(), String>;
+    fn create_invoice(&self, line: String) -> Result<String, String>;
 }
 
 pub fn send(
@@ -160,7 +160,7 @@ pub fn create_invoice(
     network: &Network,
     secp_ctx: &Secp256k1<All>,
     keys: &Arc<KeysManager>,
-) {
+) -> Result<String, String> {
     let mut payment_preimage = [0; 32];
     thread_rng().fill_bytes(&mut payment_preimage);
     let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
@@ -184,7 +184,9 @@ pub fn create_invoice(
     .current_timestamp()
     .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
     match invoice_res {
-        Ok(invoice) => debug!("Invoice: {}", invoice),
-        Err(e) => debug!("Error creating invoice: {:?}", e),
+        Ok(invoice) => { 
+            Ok(invoice.to_string())
+        }
+        Err(e) => Err(format!("Error, {:#?}", e).to_string()),
     }
 }

@@ -92,9 +92,9 @@ fn handle_msg(
                 ln_mgr.channel_list();
                 protocol::ResponseFuncs::ChannelList
             }
-            protocol::RequestFuncs::InvoiceCreate(_) => {
-                // ln_mgr.();
-                protocol::ResponseFuncs::ChannelList
+            protocol::RequestFuncs::InvoiceCreate(amount) => {
+                let invoice_res = ln_mgr.create_invoice(amount);
+                protocol::ResponseFuncs::InvoiceCreate(invoice_res)
             }
         }
     }

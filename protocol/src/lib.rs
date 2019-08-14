@@ -27,7 +27,7 @@ pub enum ResponseFuncs {
     ChannelCloseAll,
     ChannelList,
     PeerList(Vec<String>),
-    InvoiceCreate(String),
+    InvoiceCreate(Result<String, String>),
     Error(String),
 }
 
@@ -110,7 +110,18 @@ impl FromStr for RequestFuncs {
                         Ok(RequestFuncs::ChannelList)
                     }
                     _ => {
-                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
+                        Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
+                    }
+                }
+            }
+            "invoice" => {
+                match sub_command {
+                    "create" =>  {
+                        let value = cmd_value[2].to_string();
+                        Ok(RequestFuncs::InvoiceCreate(value))
+                    }
+                    _ => {
+                        Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
                     }
                 }
             }
