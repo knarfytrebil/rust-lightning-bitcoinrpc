@@ -24,8 +24,8 @@ macro_rules! impl_command {
             fn send(&self, line: String) -> std::result::Result<(), String> {
                 invoice::send(line, &self.channel_manager, self.event_notify.clone(), &self.network, &self.router)
             }
-            fn pay(&self, line: String) {
-                invoice::pay(line, &self.payment_preimages, &self.network, &self.secp_ctx, &self.keys)
+            fn create_invoice(&self, line: String) {
+                invoice::create_invoice(line, &self.payment_preimages, &self.network, &self.secp_ctx, &self.keys)
             }
         }
         impl<T: Larva> peer::PeerC for $item<T> {

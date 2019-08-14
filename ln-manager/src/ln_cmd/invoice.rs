@@ -27,7 +27,7 @@ fn to_network(currency: Currency) -> Network {
 
 pub trait InvoiceC {
     fn send(&self, line: String) -> std::result::Result<(), String>;
-    fn pay(&self, line: String);
+    fn create_invoice(&self, line: String);
 }
 
 pub fn send(
@@ -154,14 +154,13 @@ pub fn send(
     }
 }
 
-pub fn pay(
-    line: String,
+pub fn create_invoice(
+    value: String,
     payment_preimages: &Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
     network: &Network,
     secp_ctx: &Secp256k1<All>,
     keys: &Arc<KeysManager>,
 ) {
-    let value = line.split_at(2).1;
     let mut payment_preimage = [0; 32];
     thread_rng().fill_bytes(&mut payment_preimage);
     let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
@@ -175,10 +174,11 @@ pub fn pay(
     let invoice_res = lightning_invoice::InvoiceBuilder::new(match network {
         Network::Bitcoin => Currency::Bitcoin,
         Network::Testnet => Currency::BitcoinTestnet,
-        Network::Regtest => Currency::Regtest, //TODO
+        Network::Regtest => Currency::Regtest,
     })
     .payment_hash(payment_hash)
     .description("rust-lightning-bitcoinrpc invoice".to_string())
+    //TODO: Restore routing
     //.route(chans)
     .amount_pico_btc(value.parse::<u64>().unwrap())
     .current_timestamp()

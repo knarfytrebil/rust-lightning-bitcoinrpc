@@ -1,19 +1,23 @@
 #[macro_use]
 extern crate clap;
-use clap::{App, AppSettings};
+use clap::App;
 mod commands;
 
 fn main() {
     let yaml = load_yaml!("conf/en_US.yml");
-    let matches = App::from_yaml(yaml)
-        .setting(AppSettings::ColoredHelp)
-        .get_matches();
+    let matches = App::from_yaml(yaml).get_matches();
+    let commands = vec!["info", "invoice", "channel", "peer"];
 
-    let commands = vec!["get", "connect", "list", "channel"];
-
-    commands.into_iter().for_each(|command| {
-        if matches.is_present(command) {
-            commands::react(command, &matches);
-        }
-    });
+    commands.into_iter().for_each(
+        |command| if let Some(sub_matches) =
+            matches.subcommand_matches(command)
+        {
+            let sub_commands = vec![ "node", "addresses", "create", "pay", "kill", "killall", "list", "connect",];
+            sub_commands.into_iter().for_each(|sub_command| {
+                if sub_matches.is_present(sub_command) {
+                    commands::react(command, sub_command, &matches, sub_matches);
+                }
+            });
+        },
+    );
 }

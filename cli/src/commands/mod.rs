@@ -32,7 +32,7 @@ fn handle(value: &str, sock: std::net::UdpSocket) -> protocol::ResponseFuncs {
     }
 }
 
-pub fn react(command: &str, matches: &clap::ArgMatches ) {
+pub fn react(command: &str, sub_command: &str, matches: &clap::ArgMatches, sub_matches: &clap::ArgMatches) {
     let node_addr = matches
         .value_of("node")
         .unwrap_or("127.0.0.1:8123"); 
@@ -45,7 +45,12 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
         .connect(node_addr)
         .expect("Could not connect to server");
 
-    let resp = match matches.values_of(command) {
+    // println!("matches:{:#?}", &matches);
+    // println!("sub_matches:{:#?}", &sub_matches);
+    // println!("command:{}", &command);
+    // println!("sub_command:{}", &sub_command);
+
+    let resp = match sub_matches.values_of(sub_command) {
         Some(values) => {
             let value: Vec<String> = values
                 .into_iter()
@@ -53,7 +58,7 @@ pub fn react(command: &str, matches: &clap::ArgMatches ) {
                     v.to_string()
                 })
                 .collect();
-            let command_and_value = format!("{},{}", command, value.join(","));
+            let command_and_value = format!("{},{},{}", command, sub_command, value.join(","));
             handle(&command_and_value, socket)
         }
         _ => {

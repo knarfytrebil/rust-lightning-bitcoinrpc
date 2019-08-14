@@ -1,51 +1,117 @@
 name: rbcli 
 version: "0.0.1"
 author: Gunther Arcanus <gunther.arcanus@gmail.com>
-about: cli interface of Rustbolt - Lightning with Rust 
+about: "cli interface of Rustbolt - Lightning with Rust          \n    
+\n
+██████╗ ██╗   ██╗███████╗████████╗██████╗  ██████╗ ██╗  ████████╗\n 
+██╔══██╗██║   ██║██╔════╝╚══██╔══╝██╔══██╗██╔═══██╗██║  ╚══██╔══╝\n 
+██████╔╝██║   ██║███████╗   ██║   ██████╔╝██║   ██║██║     ██║   \n  
+██╔══██╗██║   ██║╚════██║   ██║   ██╔══██╗██║   ██║██║     ██║   \n  
+██║  ██║╚██████╔╝███████║   ██║   ██████╔╝╚██████╔╝███████╗██║   \n  
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚═════╝  ╚═════╝ ╚══════╝╚═╝   \n"
+settings:
+    - coloredhelp
+    - subcommandrequired
 args:
-    - connect:
-        short: c
-        long: connect
-        takes_value: true
-        value_name: PEER_INFO
-        help: rbcli -c <node-id>@<host>:<port>
-    - list:
-        short: l
-        long: list
-        takes_value: true
-        value_name: LIST_ITEM
-        help: rbcli -l <peers> / <channels>
-    - get:
-        short: g
-        long: get
-        takes_value: true
-        value_name: INTERNAL_VALUE 
-        help: rbcli -g <node_info> / <imported_addresses>
     - node:
         short: n
         long: node 
         takes_value: true
         value_name: NODE
         help: rbcli <...> -n 127.0.0.1:8123
-    - channel:
-        multiple: true
-        short: m 
-        long: channel
-        takes_value: true
-        value_name: ACTION
-        help: rbcli -m <create> / <close> / <killall>
-    - nodekey:
-        short: k
-        long: nodekey
-        takes_value: true
-        value_name: NODEKEY
-        help: rbcli <...> -k <node_key>
 
 subcommands:
+    - info:
+        about: show info <node_info> / <imported_addresses>
+        author: Lilian Voss <lilian.voss@gmail.com>
+        version: "0.0.1"
+        settings:
+            - coloredhelp
+        args:
+            - node:
+                long: node
+                short: n
+                takes_value: false
+                help: rbcli info -n
+
+            - addresses:
+                long: addresses
+                short: a
+                takes_value: false
+                help: rbcli info -addr
+    - invoice:
+        about: create / pay lightning invoice
+        author: Lilian Voss <lilian.voss@gmail.com>
+        version: "0.0.1"
+        settings:
+            - coloredhelp
+        args:
+            - create:
+                long: create 
+                short: c 
+                takes_value: true
+                value_name: AMOUNT 
+                help: rbcli invoice -c <amount> ...
+            - pay:
+                long: pay 
+                short: p
+                takes_value: true 
+                value_name: AMOUNT 
+                help: rbcli invoice -p <amount>
+    - channel:
+        about: create / kill / killall lightning channels
+        author: Lilian Voss <lilian.voss@gmail.com>
+        version: "0.0.1"
+        settings:
+            - coloredhelp
+        args:
+            - create:
+                multiple: true
+                long: create
+                short: c 
+                takes_value: true
+                value_name: CHANNEL_CREATE_ARGS
+                help: rbcli channel -c <pubkey> <channel_value> <push_value> 
+            - kill:
+                long: kill 
+                short: k 
+                takes_value: true 
+                value_name: CHANNEL_ID 
+                help: rbcli channel -k <channel_id>
+            - killall:
+                long: killall
+                short: x 
+                takes_value: false 
+                help: rbcli channel -x
+            - list:
+                long: list
+                short: l
+                takes_value: false
+                help: rbcli channel -l
+    - peer:
+        about: connect / list lightning peer 
+        author: Lilian Voss <lilian.voss@gmail.com>
+        version: "0.0.1"
+        settings:
+            - coloredhelp
+        args:
+            - connect:
+                long: connect 
+                short: c 
+                takes_value: true
+                value_name: PEER_INFO 
+                help: rbcli peer -c <pubkey>@<host>:<port> ...
+            - list:
+                long: list 
+                short: l 
+                takes_value: false 
+                help: rbcli peer -l
     - server:
         about: start / stop rustbolt server 
         author: Lilian Voss <lilian.voss@gmail.com>
         version: "0.0.1"
+        settings:
+            - coloredhelp
         args:
             - start:
                 long: start

@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum RequestFuncs {
     DisplayHelp,
-    PrintSomething(String),
-    GetRandomNumber,
     GetAddresses,
     GetNodeInfo,
     PeerConnect(String),
@@ -14,14 +12,13 @@ pub enum RequestFuncs {
     ChannelClose(String),
     ChannelCloseAll,
     ChannelList,
+    InvoiceCreate(String),
     PeerList,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ResponseFuncs {
     DisplayHelp(String),
-    PrintSomething,
-    GetRandomNumber(i32),
     GetAddresses(Vec<String>),
     GetNodeInfo(String),
     PeerConnect,
@@ -30,6 +27,7 @@ pub enum ResponseFuncs {
     ChannelCloseAll,
     ChannelList,
     PeerList(Vec<String>),
+    InvoiceCreate(String),
     Error(String),
 }
 
@@ -56,26 +54,37 @@ impl FromStr for RequestFuncs {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let cmd_value: Vec<&str> = s.split(',').collect();
         let cmd = cmd_value[0];
-        let value = cmd_value[1];
+        let sub_command = cmd_value[1];
         match cmd {
-            "get" => {
-                 match value {
-                    "imported_addresses" => {
+            "info" => {
+                 match sub_command {
+                    "addresses" => {
                         Ok(RequestFuncs::GetAddresses)
                     }
-                    "node_info" => {
+                    "node" => {
                         Ok(RequestFuncs::GetNodeInfo)
                     }
                     _ => {
-                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
+                        Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
                     }
                 }
             }
-            "connect" => {
-                Ok(RequestFuncs::PeerConnect(value.to_string()))
+            "peer" => {
+                match sub_command {
+                    "connect" => {
+                        let value = cmd_value[2].to_string();
+                        Ok(RequestFuncs::PeerConnect(value))
+                    }
+                    "list" => {
+                        Ok(RequestFuncs::PeerList)
+                    }
+                    _ => {
+                        Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
+                    }
+                }
             }
             "channel" => {
-                match value {
+                match sub_command {
                     "create" => {
                         if cmd_value.len() != 5 {
                             return Err(ProtocalParseError{ msg: String::from("Insufficient Arguments") });
@@ -97,17 +106,7 @@ impl FromStr for RequestFuncs {
                     "killall" => {
                         Ok(RequestFuncs::ChannelCloseAll)
                     }
-                    _ => {
-                        Err(ProtocalParseError{ msg: String::from("Invalid Value") })
-                    }
-                }
-            }
-            "list" => {
-                match value {
-                    "peers" => {
-                        Ok(RequestFuncs::PeerList)
-                    }
-                    "channels" => {
+                    "list" => {
                         Ok(RequestFuncs::ChannelList)
                     }
                     _ => {

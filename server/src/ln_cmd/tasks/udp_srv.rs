@@ -6,6 +6,7 @@ use crate::ln_cmd::utils;
 use crate::ln_node::settings::Settings as NodeSettings;
 use crate::ln_manager::ln_cmd::peer::PeerC;
 use crate::ln_manager::ln_cmd::channel::ChannelC;
+use crate::ln_manager::ln_cmd::invoice::InvoiceC;
 use crate::lightning::chain::keysinterface::KeysInterface;
 use ln_manager::LnManager;
 use protocol;
@@ -32,7 +33,6 @@ pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Resul
             }
         }
     }
-
     // exit here
     // FIXME: Unreachable
     // Ok(())
@@ -52,22 +52,20 @@ fn handle_msg(
 
     if let protocol::Message::Request(msg) = msg {
         resp = match msg {
-            protocol::RequestFuncs::PrintSomething(s) => {
-                info!("PrintSomething: {}", s);
-                protocol::ResponseFuncs::PrintSomething
-            }
-            protocol::RequestFuncs::GetRandomNumber => {
-                protocol::ResponseFuncs::GetRandomNumber(rand::random())
-            }
             protocol::RequestFuncs::DisplayHelp => {
                 protocol::ResponseFuncs::DisplayHelp(utils::about::get())
             }
             protocol::RequestFuncs::GetAddresses => {
-                let addresses = utils::imported_addresses::get(ln_mgr.settings.lightning.lndata.clone(), ln_mgr.network.clone());
+                let addresses = utils::imported_addresses::get(
+                    ln_mgr.settings.lightning.lndata.clone(), 
+                    ln_mgr.network.clone()
+                );
                 protocol::ResponseFuncs::GetAddresses(addresses)
             }
             protocol::RequestFuncs::GetNodeInfo => {
-                let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
+                let node_info = utils::node_info::get(
+                    &ln_mgr.keys.get_node_secret()
+                );
                 protocol::ResponseFuncs::GetNodeInfo(node_info)
             }
             protocol::RequestFuncs::PeerConnect(addr) => {
@@ -92,6 +90,10 @@ fn handle_msg(
             }
             protocol::RequestFuncs::ChannelList => {
                 ln_mgr.channel_list();
+                protocol::ResponseFuncs::ChannelList
+            }
+            protocol::RequestFuncs::InvoiceCreate(_) => {
+                // ln_mgr.();
                 protocol::ResponseFuncs::ChannelList
             }
         }
