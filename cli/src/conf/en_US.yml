@@ -19,7 +19,6 @@ args:
         takes_value: true
         value_name: NODE
         help: rbcli <...> -n 127.0.0.1:8123
-
 subcommands:
     - info:
         author: Lilian Voss <lilian.voss@gmail.com>
