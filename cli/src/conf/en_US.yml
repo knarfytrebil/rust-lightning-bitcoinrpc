@@ -45,7 +45,7 @@ subcommands:
                 long: addresses
                 short: a
                 takes_value: false
-                help: rbcli info -addr
+                help: rbcli info -a
     - invoice:
         about: "create / pay lightning invoice\n
         \n
