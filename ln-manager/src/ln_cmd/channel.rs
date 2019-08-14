@@ -46,7 +46,6 @@ pub fn close(
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
 ) {
-    println!("{}", &ch_id);
     if ch_id.len() == 64 {
         if let Some(chan_id_vec) = hex_to_vec(&ch_id) {
             let mut channel_id = [0; 32];
