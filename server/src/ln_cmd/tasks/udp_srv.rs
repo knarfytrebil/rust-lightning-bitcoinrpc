@@ -49,9 +49,6 @@ fn handle_msg(
 
     if let protocol::Message::Request(msg) = msg {
         resp = match msg {
-            protocol::RequestFuncs::DisplayHelp => {
-                protocol::ResponseFuncs::DisplayHelp(utils::about::get())
-            }
             protocol::RequestFuncs::GetAddresses => {
                 let addresses = utils::imported_addresses::get(
                     ln_mgr.settings.lightning.lndata.clone(), 
@@ -93,6 +90,11 @@ fn handle_msg(
                 let invoice_res = ln_mgr.create_invoice(amount);
                 protocol::ResponseFuncs::InvoiceCreate(invoice_res)
             }
+            protocol::RequestFuncs::InvoicePay(args) => {
+                let _invoice_res = ln_mgr.pay(args);
+                protocol::ResponseFuncs::InvoicePay
+            }
+
         }
     }
 
