@@ -33,7 +33,6 @@ use std::sync::{Arc, Mutex};
 use std::error::Error;
 use std::time::{Duration};
 use std::vec::Vec;
-use std::pin::Pin;
 
 pub struct FeeEstimator {
     background_est: AtomicUsize,
@@ -199,15 +198,15 @@ fn find_fork_step(
         || target_header_opt.as_ref().unwrap().1.height < current_header.height
     {
         // currentheader--
-        let send_res = block_on(
-            steps_tx
-                .send(ForkStep::ConnectBlock((
-                    current_header.previousblockhash.clone(),
-                    current_header.height - 1,
-                )))
-        );
+        debug!("before try_send");
+        let send_res = steps_tx.try_send(ForkStep::ConnectBlock((
+            current_header.previousblockhash.clone(),
+            current_header.height - 1,
+        )));
         if let Ok(_) = send_res {
-            let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
+            debug!("try send ok");
+            let new_cur_header = block_on(rpc_client.get_block_header(&current_header.previousblockhash));
+            debug!("trigger recursive");
             return find_fork_step(
                 steps_tx,
                 new_cur_header.unwrap(),
@@ -216,6 +215,7 @@ fn find_fork_step(
             );
         } else {
             // Caller droped the receiver, we should give up now
+            debug!("try send faile");
             return;
         }
     } else {
@@ -223,6 +223,7 @@ fn find_fork_step(
         let target_header = target_header_opt.unwrap().1;
         // Everything below needs to disconnect target, so go ahead and do that now
         let c_header = target_header.clone();
+        debug!("before try_send 1234" );
         let send_res = block_on(
             steps_tx
                 .send(ForkStep::DisconnectBlock(c_header.into()))
@@ -231,13 +232,10 @@ fn find_fork_step(
             // send err match
             if target_header.previousblockhash == current_header.previousblockhash {
                 // Found the fork, also connect current and finish!
-                let _ = block_on(
-                    steps_tx
-                        .send(ForkStep::ConnectBlock((
-                            current_header.previousblockhash.clone(),
-                            current_header.height - 1,
-                        )))
-                );
+                let _ = steps_tx.try_send(ForkStep::ConnectBlock((
+                    current_header.previousblockhash.clone(),
+                    current_header.height - 1,
+                )));
                 return;
             } else if target_header.height > current_header.height {
                 // Target is higher, walk it back and recurse
@@ -255,19 +253,13 @@ fn find_fork_step(
             } else {
                 // Target and current are at the same height, but we're not at fork yet, walk
                 // both back and recurse
-                let send_res = block_on(
-                    steps_tx
-                        .send(ForkStep::ConnectBlock((
-                            current_header.previousblockhash.clone(),
-                            current_header.height - 1,
-                        )))
-                );
+                let send_res = steps_tx.try_send(ForkStep::ConnectBlock((
+                    current_header.previousblockhash.clone(),
+                    current_header.height - 1,
+                )));
                 if let Ok(_) = send_res {
                     let new_cur_header = rpc_client.get_header(&current_header.previousblockhash);
-                    let new_target_header = rpc_client.get_header(
-                        &target_header
-                            .previousblockhash,
-                    );
+                    let new_target_header = rpc_client.get_header(&target_header.previousblockhash);
                     find_fork_step(
                         steps_tx,
                         new_cur_header.unwrap(),
@@ -364,7 +356,7 @@ pub async fn spawn_chain_monitor(
             let chain_broadcaster = chain_broadcaster.clone();
             let mut event_notify = event_notify.clone();
             let larva = larva.clone();
-            larva.spawn_task(async move {
+            let _ = larva.spawn_task(async move {
                 let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await?;
                 let new_block = v["bestblockhash"].as_str().unwrap().to_string();
                 let old_block = cur_block.lock().unwrap().clone();
