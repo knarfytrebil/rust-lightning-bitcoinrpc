@@ -222,13 +222,17 @@ impl<T: Larva> LnManager<T> {
                 .map(|_| Ok(())),
         );
 
-        let _ = spawn_chain_monitor(
-            fee_estimator,
-            rpc_client.clone(),
-            chain_watcher,
-            chain_broadcaster,
-            event_notify.clone(),
-            larva.clone(),
+        let _ = larva.clone().spawn_task(
+            async {
+                spawn_chain_monitor(
+                    fee_estimator,
+                    rpc_client.clone(),
+                    chain_watcher,
+                    chain_broadcaster,
+                    event_notify.clone(),
+                    larva.clone(),
+                ).map(| _| Ok(()))
+            }.await
         );
 
         // TODO see below

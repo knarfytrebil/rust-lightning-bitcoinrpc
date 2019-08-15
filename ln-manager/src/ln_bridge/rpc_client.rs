@@ -108,7 +108,7 @@ impl RPCClient {
             }
             Err(())
         } else {
-            Ok(block_on(res.into_body().try_concat().map_ok(|body| {
+            let v = res.into_body().try_concat().map_ok(|body| {
                 let v: serde_json::Value = match serde_json::from_slice(&body) {
                     Ok(v) => v,
                     Err(_) => {
@@ -132,7 +132,35 @@ impl RPCClient {
                     info!("Failed to parse RPC server response!");
                     return serde_json::Value::Null;
                 }
-            })).unwrap())
+            }).await;
+            Ok(v.unwrap())
+        }
+    }
+
+    pub async fn get_block_header(
+        &self,
+        header_hash: &str,
+    ) -> Result<GetHeaderResponse, ()> {
+        let param = "\"".to_string() + header_hash + "\"";
+        let p = &[&param[..]];
+        let v = self.make_rpc_call("getblockheader", p, false).await;
+        let mut v = v.unwrap();
+        if v.is_object() {
+            if let None = v.get("previousblockhash") {
+                // Got a request for genesis block, add a dummy previousblockhash
+                v.as_object_mut().unwrap().insert(
+                    "previousblockhash".to_string(),
+                    serde_json::Value::String("".to_string()),
+                );
+            }
+        }
+        let deser_res: Result<GetHeaderResponse, _> = serde_json::from_value(v);
+        match deser_res {
+            Ok(resp) => Ok(resp),
+            Err(_) => {
+                error!("Got invalid header message from RPC server!");
+                Err(())
+            }
         }
     }
 
