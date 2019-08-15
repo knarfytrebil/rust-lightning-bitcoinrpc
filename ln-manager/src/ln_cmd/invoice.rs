@@ -168,8 +168,12 @@ pub fn create_invoice(
     let mut payment_preimage = [0; 32];
     thread_rng().fill_bytes(&mut payment_preimage);
     let payment_hash = bitcoin_hashes::sha256::Hash::hash(&payment_preimage);
+
     //TODO: Store this on disk somewhere!
-    payment_preimages.lock().unwrap().insert(
+    payment_preimages
+        .lock()
+        .unwrap()
+        .insert(
         PaymentHash(payment_hash.into_inner()),
         PaymentPreimage(payment_preimage),
     );
@@ -185,7 +189,9 @@ pub fn create_invoice(
         //.route(chans)
         .amount_pico_btc(value.parse::<u64>().unwrap())
         .current_timestamp()
-        .build_signed(|msg_hash| secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret()));
+        .build_signed(|msg_hash| { 
+            secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret())
+        });
 
     match invoice_res {
         Ok(invoice) => { 
