@@ -1,6 +1,9 @@
 use super::rpc_client::{GetHeaderResponse, RPCClient};
 use super::utils::hex_to_vec;
 
+use tokio::runtime::current_thread::Runtime;
+use std::thread;
+
 use bitcoin;
 use serde_json;
 // use tokio_timer;
@@ -12,7 +15,7 @@ use futures::future;
 use futures::prelude::*;
 use futures::future::Future;
 use futures::channel::mpsc;
-use futures::{FutureExt, TryFutureExt, SinkExt, StreamExt};
+use futures::{StreamExt};
 use futures::executor::block_on;
 use futures_timer::Interval;
 
@@ -183,7 +186,11 @@ fn find_fork_step(
     target_header_opt: Option<(String, GetHeaderResponse)>,
     rpc_client: Arc<RPCClient>
 ) {
-    debug!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIND FORK STEP INNER >>>>>>>>>>>>>>>>>>>>>>");
+    debug!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIND FORK STEP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+    debug!("current height: {}", &current_header.height);
+    debug!("target height: {}", target_header_opt.as_ref().unwrap().1.height);
+    debug!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIND FORK STEP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+
     if target_header_opt.is_some()
         && target_header_opt.as_ref().unwrap().0 == current_header.previousblockhash
     {
@@ -203,20 +210,30 @@ fn find_fork_step(
             current_header.previousblockhash.clone(),
             current_header.height - 1,
         )));
-        if let Ok(_) = send_res {
-            debug!("try send ok");
-            let new_cur_header = block_on(rpc_client.get_block_header(&current_header.previousblockhash));
-            debug!("trigger recursive");
-            return find_fork_step(
-                steps_tx,
-                new_cur_header.unwrap(),
-                target_header_opt,
-                rpc_client
-            );
-        } else {
-            // Caller droped the receiver, we should give up now
-            debug!("try send faile");
-            return;
+        match send_res {
+            Ok(_) => {
+                debug!("try send ok");
+                // Spawn a future onto the runtime
+                thread::spawn(move || {
+                    let mut rt = Runtime::new().unwrap();
+                    rt.block_on(async move { 
+                        debug!("recursive");
+                        let new_cur_header = rpc_client.get_block_header(&current_header.previousblockhash).await;
+                        find_fork_step(
+                            steps_tx,
+                            new_cur_header.unwrap(),
+                            target_header_opt,
+                            rpc_client
+                        );
+                    });
+                });
+                return;
+
+            }
+            Err(e) => {
+                debug!("try send failed, {}", e);
+                return;
+            }
         }
     } else {
         // is_some == True 1 2 3 4
@@ -299,17 +316,19 @@ async fn find_fork(
     let current_resp = rpc_client.get_block_header(&current_hash).await;
     let current_header = current_resp.unwrap();
     if let Ok(_) = steps_tx.start_send(ForkStep::ConnectBlock((
-        current_hash,
+        current_hash.clone(),
         current_header.height
     ))) {
         if current_header.previousblockhash == target_hash || current_header.height == 1 {
             // Fastpath one-new-block-connected or reached block 1
-            info!("New consecutive block discovered."); 
+            info!("New block discovered.."); 
+            info!("New Height: {}", &current_header.height); 
+            info!("New Hash: {}", &current_hash); 
             return;
         } else {
             if let Ok(target_header) = rpc_client.get_block_header(&target_hash).await {
-                // 1 2 3 4
-                debug!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIND FORK STEP 1 >>>>>>>>>>>>>>>>>>>>>>");
+                // Skipped few blocks rescan
+                info!("Found non consecutive blocks ... scanning ...");
                 find_fork_step(
                     steps_tx,
                     current_header,
@@ -317,7 +336,7 @@ async fn find_fork(
                     rpc_client,
                 )
             } else {
-                debug!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIND FORK STEP 2 >>>>>>>>>>>>>>>>>>>>>>");
+                warn!("Unknown block hash Found ...");
                 // fork
                 assert_eq!(target_hash, "");
                 find_fork_step(
@@ -345,7 +364,6 @@ pub async fn spawn_chain_monitor(
             rpc_client.clone()
         )}.await
     );
-
     let cur_block = Arc::new(Mutex::new(String::from("")));
     Interval::new(Duration::from_secs(1))
         .for_each(|_| { 
@@ -369,7 +387,7 @@ pub async fn spawn_chain_monitor(
                     return Ok(()); 
                 }
 
-                let (events_tx, _events_rx): (mpsc::Sender<ForkStep>, mpsc::Receiver<ForkStep>) = mpsc::channel(1);
+                let (events_tx, events_rx): (mpsc::Sender<ForkStep>, mpsc::Receiver<ForkStep>) = mpsc::channel(1);
 
                 find_fork(
                     events_tx,
@@ -378,102 +396,39 @@ pub async fn spawn_chain_monitor(
                     rpc_client.clone(),
                 ).await;
 
+                let events: Vec<ForkStep> = events_rx.collect().await;
+
+                let actions = events.into_iter().rev().map(|event| {
+                    let client = rpc_client.clone();
+                    let watcher = chain_watcher.clone();
+                    async move {
+                        match event {
+                            ForkStep::DisconnectBlock(ref header) => {
+                                info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
+                                watcher.block_disconnected(header);
+                            }
+                            ForkStep::ConnectBlock((ref hash, height)) => {
+                                let block_height = height;
+                                let param = &[&("\"".to_string() + hash + "\""), "0"];
+                                let block_hex = client.make_rpc_call("getblock", param, false).await;
+                                let block: Block = encode::deserialize(
+                                    &hex_to_vec(block_hex.unwrap().as_str().unwrap())
+                                    .unwrap()
+                                ).unwrap();
+                                info!("Connecting block {}, Height: {}", block.bitcoin_hash().to_hex(), &block_height);
+                                watcher.block_connected_with_filtering(&block, block_height);
+                            }
+                        }
+                    }
+                });
+                
+                let _ = future::join_all(actions).await;
+                let _ = FeeEstimator::update_values(fee_estimator, rpc_client).await;
+                let _ = event_notify.try_send(());
+                chain_broadcaster.rebroadcast_txn().await;
                 Ok(())
             });
             future::ready(())
         }).await;
         Ok(())
-}
-
-//     Interval::new(Duration::from_secs(1))
-//         .for_each(move |_| {
-// rpc_client
-//     .make_rpc_call("getblockchaininfo", &[], false)
-//     .map_ok(move |v| {
-//         // check block height
-//         let new_block = v["bestblockhash"].as_str().unwrap().to_string();
-//         let old_block = cur_block.lock().unwrap().clone();
-//         if new_block == old_block {
-//             return future::Either::Left(future::ok(()));
-//         }
-
-//         *cur_block.lock().unwrap() = new_block.clone();
-//         if old_block == "" {
-//             return future::Either::Left(future::ok(()));
-//         }
-
-//         //
-//         let (events_tx, events_rx) = mpsc::channel(1);
-//         find_fork(
-//             events_tx,
-//             new_block,
-//             old_block,
-//             rpc_client.clone(),
-//             larva.clone(),
-//         );
-//         info!("NEW BEST BLOCK!");
-//         future::Either::Right(events_rx.collect().then(move |events_res| {
-//             let events = events_res.unwrap();
-//             for event in events.iter().rev() {
-//                 if let &ForkStep::DisconnectBlock(ref header) = &event {
-//                     info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
-//                     chain_watcher.block_disconnected(header);
-//                 }
-//             }
-//             let mut connect_futures = Vec::with_capacity(events.len());
-//             for event in events.iter().rev() {
-//                 if let &ForkStep::ConnectBlock((ref hash, height)) = &event {
-//                     let block_height = height;
-//                     let chain_watcher = chain_watcher.clone();
-//                     connect_futures.push(
-//                         rpc_client
-//                             .make_rpc_call(
-//                                 "getblock",
-//                                 &[&("\"".to_string() + hash + "\""), "0"],
-//                                 false,
-//                             )
-//                             .map(move |blockhex| {
-//                                 let block: Block = encode::deserialize(
-//                                     &hex_to_vec(
-//                                         blockhex.unwrap().as_str().unwrap(),
-//                                     )
-//                                         .unwrap(),
-//                                 )
-//                                     .unwrap();
-//                                 info!(
-//                                     "Connecting block {}",
-//                                     block.bitcoin_hash().to_hex()
-//                                 );
-//                                 chain_watcher.block_connected_with_filtering(
-//                                     &block,
-//                                     block_height,
-//                                 );
-//                                 Ok(())
-//                             }),
-//                     );
-//                 }
-//             }
-//             future::try_join_all(connect_futures)
-//                 .then(move |_: Result<Vec<()>, ()>| {
-//                     FeeEstimator::update_values(fee_estimator, &rpc_client)
-//                 })
-//                 .then(move |_| {
-//                     let _ = event_notify.try_send(());
-//                     future::ok(())
-//                 })
-//                 .then(move |_: Result<(), ()>| {
-//                     chain_broadcaster.rebroadcast_txn();
-//                     future::ok(())
-//                 })
-//         }))
-//     })
-//     .map(|_| Ok(()))
-// })
-
-async fn chain_poll() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    Interval::new(Duration::from_secs(1))
-        .for_each(|_| { 
-            future::ready(())
-        }).await;
-    Ok(())
 }

@@ -76,7 +76,6 @@ impl RPCClient {
         params: &[&str],
         may_fail: bool,
     ) -> Result<serde_json::Value, ()> {
-        debug!("inside rpc");
         let mut request = hyper::Request::post(&self.uri);
         let auth: &str = &self.basic_auth;
         request.header("Authorization", auth);
@@ -87,8 +86,6 @@ impl RPCClient {
                 param_str += ",";
             }
         }
-
-        debug!("before req");
         let raw_res = self.client.request(
             request
                 .body(hyper::Body::from(
@@ -101,7 +98,6 @@ impl RPCClient {
                         + "}",
                 )).unwrap()
         ).await;
-        debug!("after req");
         let res = raw_res.unwrap();
         if res.status() != hyper::StatusCode::OK {
             debug!("status wrong");
@@ -174,6 +170,7 @@ impl RPCClient {
         header_hash: &str,
     ) -> Result<GetHeaderResponse, ()> {
         let param = "\"".to_string() + header_hash + "\"";
+        debug!("get header");
         debug!("{:#?}", &param);
         let v = self.sync_rpc_call("getblockheader", &[&param], false);
         let mut v = v.unwrap();
