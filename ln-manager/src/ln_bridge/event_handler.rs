@@ -184,7 +184,7 @@ pub struct EventHandler<T: Larva> {
     peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
     channel_manager: Arc<channelmanager::ChannelManager>,
     monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
-    broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+    broadcaster: Arc<dyn chain::chaininterface::BroadcasterInterface>,
     txn_to_broadcast:
     Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
@@ -197,7 +197,7 @@ impl<T: Larva> EventHandler<T> {
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
         channel_manager: Arc<channelmanager::ChannelManager>,
-        broadcaster: Arc<chain::chaininterface::BroadcasterInterface>,
+        broadcaster: Arc<dyn chain::chaininterface::BroadcasterInterface>,
         payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
         larva: impl Larva,
     ) -> mpsc::Sender<()> {

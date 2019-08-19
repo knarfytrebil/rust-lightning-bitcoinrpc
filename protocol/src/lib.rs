@@ -21,7 +21,7 @@ pub enum ResponseFuncs {
     GetAddresses(Vec<String>),
     GetNodeInfo(String),
     PeerConnect,
-    ChannelCreate,
+    ChannelCreate(String),
     ChannelClose,
     ChannelCloseAll,
     ChannelList,

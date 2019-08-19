@@ -5,18 +5,18 @@ use lightning::ln::channelmanager::ChannelManager;
 use crate::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
 
 pub trait ChannelC {
-    fn fund_channel(&self, line: Vec<String>);
+    fn fund_channel(&self, line: Vec<String>) -> Result<String, String>;
     fn close(&self, line: String);
     fn force_close_all(&self);
     fn channel_list(&self);
 }
 
 // fund channel
-pub fn fund_channel(
+pub fn fund_channel (
     args: Vec<String>,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
-) {
+) -> Result<String, String>{
     let pubkey_str = &args[0];
     let value_str = &args[1];
     let push_str = &args[2];
@@ -24,18 +24,24 @@ pub fn fund_channel(
         Some(pubkey) => {
             let value = value_str.parse().unwrap_or(100000);
             let push = push_str.parse().unwrap_or(500000);
-                match channel_manager.create_channel(pubkey, value, push, 0) {
-                    Ok(_) => { 
-                        info!("Channel created, {} sending open_channel ...", pubkey_str); 
-                    }
-                    Err(e) => { 
-                        warn!("Failed to open channel: {:?}!", e);
-                    }
+            match channel_manager.create_channel(pubkey, value, push, 0) {
+                Ok(_) => { 
+                    info!("Channel created, {} sending open_channel ...", pubkey_str); 
+                    let _ = event_notify.try_send(());
+                    Ok(String::from(pubkey_str))
                 }
-                let _ = event_notify.try_send(());
+                Err(e) => { 
+                    let err_str = format!("Failed to open channel: {:?}!", e);
+                    warn!("{}", &err_str);
+                    let _ = event_notify.try_send(());
+                    Err(err_str)
+                }
+            }
         }
         None => { 
-            warn!("Invalid public key for remote node.");
+            let err_str = "Invalid public key for remote node.";
+            warn!("{}", &err_str);
+            Err(err_str.to_string())
         }
     }
 }

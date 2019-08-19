@@ -71,8 +71,10 @@ fn handle_msg(
                 protocol::ResponseFuncs::PeerList(nodes)
             }
             protocol::RequestFuncs::ChannelCreate(args) => {
-                ln_mgr.fund_channel(args);
-                protocol::ResponseFuncs::ChannelCreate
+                match ln_mgr.fund_channel(args) {
+                    Ok(channel) => { protocol::ResponseFuncs::ChannelCreate(channel) },
+                    Err(e) => { protocol::ResponseFuncs::Error(e) }
+                }
             }
             protocol::RequestFuncs::ChannelClose(id) => {
                 ln_mgr.close(id);

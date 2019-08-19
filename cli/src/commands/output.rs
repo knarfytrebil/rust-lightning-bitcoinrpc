@@ -35,6 +35,9 @@ pub fn json(resp: protocol::ResponseFuncs) {
                 "error": e 
             })
         }
+        protocol::ResponseFuncs::ChannelCreate(c) => {
+            json!({ "channel": c })
+        }
         _ => {
             json!({ 
                 "response": "Error",
