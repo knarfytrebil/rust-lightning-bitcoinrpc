@@ -131,6 +131,7 @@ def main():
     r5 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
     print_pass("got channel: {}".format(r5))
 
+    time.sleep(5)
     r6 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
     print_pass("got channel list: {}".format(r6))
 
