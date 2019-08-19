@@ -1,5 +1,5 @@
 [package]
-name = "rust-lightning-server"
+name = "rustbolt"
 version = "0.0.1"
 authors = ["Matt Corallo <git@bluematt.me>"]
 build = "build.rs"

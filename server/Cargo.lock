@@ -1185,7 +1185,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "rust-lightning-server"
+name = "rustbolt"
 version = "0.0.1"
 dependencies = [
  "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
