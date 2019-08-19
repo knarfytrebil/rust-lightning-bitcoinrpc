@@ -1,5 +1,5 @@
 import os, datetime, time
-import subprocess
+import subprocess, json
 
 # Print Messages
 def get_now():
@@ -9,8 +9,8 @@ def get_now():
 def print_info(message):
     print("{} \x1b[1;34m[ INFO]\x1b[0m {} ... ".format(get_now(), message))
 
-def print_warn(message):
-    print("{} \x1b[1;33m[ WARN]\x1b[0m {} ... ".format(get_now(), message))
+def print_exec(message):
+    print("{} \x1b[1;33m[ EXEC]\x1b[0m {}".format(get_now(), message))
 
 def print_pass(message):
     print("{} \x1b[1;32m[ PASS]\x1b[0m {} ... ".format(get_now(), message))
@@ -29,17 +29,16 @@ def get_env(test_version):
         "server": { 
             "bin": "rustbolt",
             "root": server_dir,
-            "test": server_dir + 'target/' + test_version + '/'
-        },
+            "test": "{}target/{}/".format(server_dir,test_version) },
         "cli": {
             "bin": "rbcli",
             "root": client_dir,
-            "test": client_dir + 'target/' + test_version + '/'
+            "test": "{}target/{}/".format(client_dir,test_version)
         },
         "conf": {
             "root" : conf_dir,
             "server": { 
-                "dir": conf_dir + 'server/',
+                "dir": "{}server/".format(conf_dir),
                 "ln": "ln.conf.toml",
                 "node": "node.conf.toml"
             }
@@ -90,8 +89,9 @@ def run_server(server_id, build_dir, version, env):
     return server
 
 def run_cli(build_dir, env, cmd):
+    print_exec(">>> rbcli {}".format(" ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"] 
-    return subprocess.check_output([cli_bin, ] + cmd).decode('ascii')
+    return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
 
 def main():
     env = get_env("debug")
@@ -109,14 +109,27 @@ def main():
     print_info("waiting for server to stablize, counting for 5 secs")
     time.sleep(5)
 
-    
-    print_info("rbcli info -an")
-    r1 = run_cli(cli_build_dir, env, ["info", "-an"])
-    print_info(r1)
+    # Info
+    r0 = run_cli(cli_build_dir, env, ["info", "-a"])
+    print_pass("got node #1 addresses: {}".format(r0))
+   
+    r1 = run_cli(cli_build_dir, env, ["info", "-n"])
+    print_pass("got node #1 public key: {}".format(r1["node_id"]))
 
-    print_info("rbcli -n 127.0.0.1:8124 info -an")
-    run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-an"])
-    print_pass("get info success")
+    r2 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-n"])
+    print_pass("got node #2 public key: {}".format(r2["node_id"]))
+
+    # Peer 
+    r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
+    print_pass("got connection: {}".format(r3))
+
+    time.sleep(5)
+    r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
+    print_pass("got node #2 peers: {}".format(r4))
+
+    # Channel 
+    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
+    print_pass("got channel: {}".format(r5))
 
     s1.kill()
     s2.kill()

@@ -18,7 +18,13 @@ args:
         long: node 
         takes_value: true
         value_name: NODE
-        help: rbcli <...> -n 127.0.0.1:8123
+        help: rbcli -n 127.0.0.1:8123 <...>
+    - json:
+        short: j
+        long: json
+        takes_value: false
+        help: rbcli -j <...>
+             
 subcommands:
     - info:
         author: Lilian Voss <lilian.voss@gmail.com>

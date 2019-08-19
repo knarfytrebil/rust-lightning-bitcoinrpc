@@ -1,4 +1,5 @@
 use std::net::UdpSocket;
+mod output;
 
 pub fn req_rep(sock: std::net::UdpSocket, req: protocol::RequestFuncs) -> protocol::ResponseFuncs {
     let msg = protocol::Message::Request(req);
@@ -37,6 +38,11 @@ pub fn react(command: &str, sub_command: &str, matches: &clap::ArgMatches, sub_m
         .value_of("node")
         .unwrap_or("127.0.0.1:8123"); 
 
+    let fn_output_format = match matches.is_present("json") {
+        true => output::json,
+        false => output::human
+    };
+
     let socket = 
         UdpSocket::bind("127.0.0.1:5000")
         .expect("Could not bind client socket");
@@ -66,40 +72,5 @@ pub fn react(command: &str, sub_command: &str, matches: &clap::ArgMatches, sub_m
         }
     };
 
-    match resp {
-        protocol::ResponseFuncs::GetAddresses(addrs) => {
-            println!("Imported Addresses:"); 
-            for addr in addrs {
-                println!("{}", addr);
-            }
-        }
-        protocol::ResponseFuncs::GetNodeInfo(info) => {
-            println!("{}", info);
-        }
-        protocol::ResponseFuncs::PeerConnect => {
-            println!("Request Acknowledged ...");
-        }
-        protocol::ResponseFuncs::PeerList(peers) => {
-            println!("Connected Peers:");
-            for peer in peers {
-                println!("{}", peer);
-            }
-        }
-        protocol::ResponseFuncs::InvoiceCreate(res) => {
-            match res {
-                Ok(invoice) => {
-                    println!("Invoice created");
-                    println!("{}", invoice);
-                }
-                Err(e) => {
-                    println!("Invoice creation error");
-                    println!("{}", e);
-                }
-            }
-        }
-        protocol::ResponseFuncs::Error(e) => {
-            println!("{}", e);
-        }
-        _ => {}
-    };
+    fn_output_format(resp);
 }

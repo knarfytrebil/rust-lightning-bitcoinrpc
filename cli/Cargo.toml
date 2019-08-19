@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 protocol = { path = "../protocol" }
 clap = { version = "~2.33.0", features = [ "yaml" ] }
+serde_json = "1"
