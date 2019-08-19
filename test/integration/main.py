@@ -91,11 +91,10 @@ def run_server(server_id, build_dir, version, env):
 
 def run_cli(build_dir, env, cmd):
     cli_bin =  build_dir + env["cli"]["bin"] 
-    cli = subprocess.run([cli_bin, ] + cmd)
+    return subprocess.check_output([cli_bin, ] + cmd).decode('ascii')
 
 def main():
     env = get_env("debug")
-    TEST_OVER = False
 
     # Build Lightning Server
     server_build_dir = build("server", "debug", env)
@@ -112,7 +111,9 @@ def main():
 
     
     print_info("rbcli info -an")
-    run_cli(cli_build_dir, env, ["info", "-an"])
+    r1 = run_cli(cli_build_dir, env, ["info", "-an"])
+    print_info(r1)
+
     print_info("rbcli -n 127.0.0.1:8124 info -an")
     run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-an"])
     print_pass("get info success")
