@@ -3,7 +3,7 @@ import subprocess
 
 # Print Messages
 def get_now():
-    now = datetime.datetime.now()
+    now = datetime.datetime.utcnow()
     return now.strftime('%H:%M:%S')
 
 def print_info(message):
