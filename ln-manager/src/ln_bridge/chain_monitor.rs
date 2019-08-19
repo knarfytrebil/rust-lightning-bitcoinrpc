@@ -382,6 +382,7 @@ pub async fn spawn_chain_monitor(
                 if new_block == old_block {
                     return Ok(());
                 }
+
                 *cur_block.lock().unwrap() = new_block.clone();
                 if old_block == "" {
                     return Ok(()); 
