@@ -13,26 +13,10 @@ pub fn json(resp: protocol::ResponseFuncs) {
         protocol::ResponseFuncs::PeerList(peers) => {
             json!({ "peers": peers })
         }
-        protocol::ResponseFuncs::InvoiceCreate(res) => {
-            match res {
-                Ok(invoice) => {
-                    json!({ 
-                        "response": "Invoice Created ...",
-                        "invoice": invoice
-                    })
-                }
-                Err(e) => {
-                    json!({ 
-                        "response": "Invoice Creation Error ...",
-                        "error": e 
-                    })
-                }
-            }
-        }
-        protocol::ResponseFuncs::Error(e) => {
+        protocol::ResponseFuncs::InvoiceCreate(invoice) => {
             json!({ 
-                "response": "Error",
-                "error": e 
+                "response": "Invoice Created ...",
+                "invoice": invoice
             })
         }
         protocol::ResponseFuncs::ChannelCreate(c) => {
@@ -50,6 +34,12 @@ pub fn json(resp: protocol::ResponseFuncs) {
             }).collect();
             json!({ 
                 "channels": channels 
+            })
+        }
+        protocol::ResponseFuncs::Error(e) => {
+            json!({ 
+                "response": "Error",
+                "error": e 
             })
         }
         _ => {
@@ -82,17 +72,9 @@ pub fn human(resp: protocol::ResponseFuncs) {
                 println!("{}", peer);
             }
         }
-        protocol::ResponseFuncs::InvoiceCreate(res) => {
-            match res {
-                Ok(invoice) => {
-                    println!("Invoice created");
-                    println!("{}", invoice);
-                }
-                Err(e) => {
-                    println!("Invoice creation error");
-                    println!("{}", e);
-                }
-            }
+        protocol::ResponseFuncs::InvoiceCreate(invoice) => {
+            println!("Invoice created");
+            println!("{}", invoice);
         }
         protocol::ResponseFuncs::Error(e) => {
             println!("{}", e);

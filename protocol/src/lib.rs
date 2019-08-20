@@ -26,7 +26,7 @@ pub enum ResponseFuncs {
     ChannelCloseAll,
     ChannelList(Vec<String>),
     PeerList(Vec<String>),
-    InvoiceCreate(Result<String, String>),
+    InvoiceCreate(String),
     InvoicePay,
     Error(String),
 }

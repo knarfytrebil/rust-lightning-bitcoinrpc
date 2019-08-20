@@ -90,12 +90,16 @@ fn handle_msg(
                 protocol::ResponseFuncs::ChannelList(ln_mgr.channel_list())
             }
             protocol::RequestFuncs::InvoiceCreate(amount) => {
-                let invoice_res = ln_mgr.create_invoice(amount);
-                protocol::ResponseFuncs::InvoiceCreate(invoice_res)
+                match ln_mgr.create_invoice(amount) {
+                    Ok(invoice_res) => { protocol::ResponseFuncs::InvoiceCreate(invoice_res) }
+                    Err(e) => { protocol::ResponseFuncs::Error(e) }
+                }
             }
             protocol::RequestFuncs::InvoicePay(args) => {
-                let _invoice_res = ln_mgr.pay(args);
-                protocol::ResponseFuncs::InvoicePay
+                match ln_mgr.pay(args) {
+                    Ok(_) => { protocol::ResponseFuncs::InvoicePay }
+                    Err(e) => { protocol::ResponseFuncs::Error(e) }
+                }
             }
 
         }
