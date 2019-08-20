@@ -7,7 +7,7 @@ pub fn json(resp: protocol::ResponseFuncs) {
         protocol::ResponseFuncs::GetNodeInfo(info) => {
             json!({ "node_id": info })
         }
-        protocol::ResponseFuncs::PeerConnect => {
+        protocol::ResponseFuncs::PeerConnect | protocol::ResponseFuncs::ChannelCloseAll => {
             json!({ "response": "Request Acknowledged ..."})
         }
         protocol::ResponseFuncs::PeerList(peers) => {
@@ -37,6 +37,20 @@ pub fn json(resp: protocol::ResponseFuncs) {
         }
         protocol::ResponseFuncs::ChannelCreate(c) => {
             json!({ "channel": c })
+        }
+        protocol::ResponseFuncs::ChannelClose(c) => {
+            json!({ 
+                "response": "Channel closed",
+                "channel": c,
+            })
+        }
+        protocol::ResponseFuncs::ChannelList(l) => {
+            let channels: Vec<serde_json::Value> = l.into_iter().map(|c|{
+                serde_json::from_str(&c).unwrap()
+            }).collect();
+            json!({ 
+                "channels": channels 
+            })
         }
         _ => {
             json!({ 

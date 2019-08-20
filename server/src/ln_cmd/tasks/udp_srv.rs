@@ -77,16 +77,17 @@ fn handle_msg(
                 }
             }
             protocol::RequestFuncs::ChannelClose(id) => {
-                ln_mgr.close(id);
-                protocol::ResponseFuncs::ChannelClose
+                match ln_mgr.close(id) {
+                    Ok(channel) => { protocol::ResponseFuncs::ChannelClose(channel) }
+                    Err(e) => { protocol::ResponseFuncs::Error(e) }
+                }
             }
             protocol::RequestFuncs::ChannelCloseAll => {
                 ln_mgr.force_close_all();
                 protocol::ResponseFuncs::ChannelCloseAll
             }
             protocol::RequestFuncs::ChannelList => {
-                ln_mgr.channel_list();
-                protocol::ResponseFuncs::ChannelList
+                protocol::ResponseFuncs::ChannelList(ln_mgr.channel_list())
             }
             protocol::RequestFuncs::InvoiceCreate(amount) => {
                 let invoice_res = ln_mgr.create_invoice(amount);

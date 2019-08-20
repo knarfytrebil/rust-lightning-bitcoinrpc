@@ -3,12 +3,13 @@ use std::sync::Arc;
 
 use lightning::ln::channelmanager::ChannelManager;
 use crate::ln_bridge::utils::{hex_str, hex_to_vec, hex_to_compressed_pubkey};
+use serde_json::json;
 
 pub trait ChannelC {
     fn fund_channel(&self, line: Vec<String>) -> Result<String, String>;
-    fn close(&self, line: String);
+    fn close(&self, line: String) -> Result<String, String>;
     fn force_close_all(&self);
-    fn channel_list(&self);
+    fn channel_list(&self) -> Vec<String>;
 }
 
 // fund channel
@@ -16,7 +17,7 @@ pub fn fund_channel (
     args: Vec<String>,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
-) -> Result<String, String>{
+) -> Result<String, String> {
     let pubkey_str = &args[0];
     let value_str = &args[1];
     let push_str = &args[2];
@@ -51,7 +52,7 @@ pub fn close(
     ch_id: String,
     channel_manager: &Arc<ChannelManager>,
     mut event_notify: mpsc::Sender<()>,
-) {
+) -> Result<String, String> {
     if ch_id.len() == 64 {
         if let Some(chan_id_vec) = hex_to_vec(&ch_id) {
             let mut channel_id = [0; 32];
@@ -59,16 +60,22 @@ pub fn close(
             debug!("called close");
             match channel_manager.close_channel(&channel_id) {
                 Ok(()) => {
-                    info!("Channel closing: {}", &ch_id);
                     let _ = event_notify.try_send(());
+                    info!("Channel closing: {}", &ch_id);
+                    Ok(ch_id.to_string())
                 }
-                Err(e) => warn!("Failed to close channel: {:?}", e),
+                Err(e) => { 
+                    warn!("Failed to close channel: {:?}", e);
+                    Err(format!("Channel Close Failure: {:?}", e).to_string())
+                }
             }
         } else {
             warn!("Invalid channel_id ...");
+            Err(format!("Invalid channel_id"))
         }
     } else {
         warn!("Channel id has invalid length ...");
+        Err(format!("Channel id has invalid length ..."))
     }
 }
 
@@ -78,23 +85,28 @@ pub fn force_close_all(channel_manager: &Arc<ChannelManager>) {
 }
 
 // List existing channels
-pub fn channel_list(channel_manager: &Arc<ChannelManager>) {
-    for chan_info in channel_manager.list_channels() {
-        if let Some(short_id) = chan_info.short_channel_id {
-            debug!(
-                "id: {}, short_id: {}, peer: {}, value: {} sat",
-                hex_str(&chan_info.channel_id[..]),
-                short_id,
-                hex_str(&chan_info.remote_network_id.serialize()),
-                chan_info.channel_value_satoshis
-            );
-        } else {
-            debug!(
-                "id: {}, not yet confirmed, peer: {}, value: {} sat",
-                hex_str(&chan_info.channel_id[..]),
-                hex_str(&chan_info.remote_network_id.serialize()),
-                chan_info.channel_value_satoshis
-            );
+pub fn channel_list(channel_manager: &Arc<ChannelManager>) -> Vec<String> {
+    let channels = channel_manager.list_channels();
+    channels.into_iter().map(|channel| {
+        match channel.short_channel_id {
+            Some(short_id) => {
+                json!({ 
+                    "id": hex_str(&channel.channel_id[..]), 
+                    "confirmed": true,
+                    "short_id": short_id,
+                    "peer": hex_str(&channel.remote_network_id.serialize()),
+                    "value_sats": channel.channel_value_satoshis
+                }).to_string()
+            }
+            None => {
+                json!({ 
+                    "id": hex_str(&channel.channel_id[..]), 
+                    "confirmed": false,
+                    "short_id": "",
+                    "peer": hex_str(&channel.remote_network_id.serialize()),
+                    "value_sats": channel.channel_value_satoshis
+                }).to_string()
+            }
         }
-    }
+    }).collect()
 }

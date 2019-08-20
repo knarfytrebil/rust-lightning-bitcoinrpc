@@ -77,7 +77,7 @@ subcommands:
                 short: p
                 takes_value: true 
                 value_name: <INVOICE_PAY_ARGS> 
-                help: rbcli invoice -p <amount>
+                help: rbcli invoice -p <NVOICE_PAY_ARGS>
     - channel:
         about: "create / kill / killall lightning channels\n
         \n

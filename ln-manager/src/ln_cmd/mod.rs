@@ -10,13 +10,13 @@ macro_rules! impl_command {
             fn fund_channel(&self, args: Vec<String>) -> Result<String, String> {
                 channel::fund_channel(args, &self.channel_manager, self.event_notify.clone())
             }
-            fn close(&self, line: String) {
+            fn close(&self, line: String) -> Result<String, String> {
                 channel::close(line, &self.channel_manager, self.event_notify.clone())
             }
             fn force_close_all(&self) {
                 channel::force_close_all(&self.channel_manager)
             }
-            fn channel_list(&self) {
+            fn channel_list(&self) -> Vec<String> {
                 channel::channel_list(&self.channel_manager)
             }
         }

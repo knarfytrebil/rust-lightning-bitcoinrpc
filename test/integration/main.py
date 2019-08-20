@@ -109,7 +109,12 @@ def main():
     print_info("waiting for server to stablize, counting for 5 secs")
     time.sleep(5)
 
-    # Info
+    # ██╗███╗   ██╗███████╗ ██████╗ 
+    # ██║████╗  ██║██╔════╝██╔═══██╗
+    # ██║██╔██╗ ██║█████╗  ██║   ██║
+    # ██║██║╚██╗██║██╔══╝  ██║   ██║
+    # ██║██║ ╚████║██║     ╚██████╔╝
+    # ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝ 
     r0 = run_cli(cli_build_dir, env, ["info", "-a"])
     print_pass("got node #1 addresses: {}".format(r0))
    
@@ -119,7 +124,12 @@ def main():
     r2 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-n"])
     print_pass("got node #2 public key: {}".format(r2["node_id"]))
 
-    # Peer 
+    # ██████╗ ███████╗███████╗██████╗ 
+    # ██╔══██╗██╔════╝██╔════╝██╔══██╗
+    # ██████╔╝█████╗  █████╗  ██████╔╝
+    # ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗
+    # ██║     ███████╗███████╗██║  ██║
+    # ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
     r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
     print_pass("got connection: {}".format(r3))
 
@@ -127,13 +137,53 @@ def main():
     r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
     print_pass("got node #2 peers: {}".format(r4))
 
-    # Channel 
+    #  ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗      
+    # ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║     
+    # ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║     
+    # ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║     
+    # ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
+    #  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     r5 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
     print_pass("got channel: {}".format(r5))
 
-    time.sleep(5)
-    r6 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    r6 = run_cli(cli_build_dir, env, ["channel", "-l"])
     print_pass("got channel list: {}".format(r6))
+
+    r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    print_pass("got channel list node #2: {}".format(r7))
+
+    r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+    print_pass("channel killed: {}".format(r8))
+
+    r9 = run_cli(cli_build_dir, env, ["channel", "-l"])
+    print_pass("got channel list: {}".format(r9))
+
+    r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
+    print_pass("got channel: {}".format(r10))
+
+    r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    print_pass("got channel list node #2: {}".format(r11))
+
+    r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
+    print_pass("channel killall executed node #2: {}".format(r12))
+
+    r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    print_pass("got channel list node #2: {}".format(r13))
+
+    r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
+    print_pass("got channel: {}".format(r14))
+    
+    # ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗
+    # ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝
+    # ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗  
+    # ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝  
+    # ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
+    # ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "5000"])
+    print_pass("got invoice: {}".format(r15))
+ 
+    r16 = run_cli(cli_build_dir, env, ["invoice", "-p", r15["invoice"], "500"])
+    print_pass("pay invoice: {}".format(r16))
 
     s1.kill()
     s2.kill()
