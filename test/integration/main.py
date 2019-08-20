@@ -1,5 +1,7 @@
 import os, datetime, time
 import subprocess, json
+import requests
+from requests.auth import HTTPBasicAuth
 
 # Print Messages
 def get_now():
@@ -14,6 +16,9 @@ def print_exec(message):
 
 def print_pass(message):
     print("{} \x1b[1;32m[ PASS]\x1b[0m {} ... ".format(get_now(), message))
+
+def print_bold(message, tag):
+    print("{} \x1b[1;37m[{}]\x1b[0m {} ... ".format(get_now(), tag.upper(), message))
 
 def print_error(message):
     print("{} \x1b[1;31m[ERROR]\x1b[0m {} ... ".format(get_now(), message))
@@ -45,6 +50,16 @@ def get_env(test_version):
         }
     }
     return environment
+
+def sleep(secs):
+    print_bold("sleep for {}".format(secs), " warn")
+    end = ""
+    for i in range(0, secs):
+        if i + 1 == secs:
+            end = "\n"
+        if i:
+            print("{}...".format(secs-i), end=end, flush=True )
+        time.sleep(1)
 
 def build(project, version, env):
     print_info("building {} version: {}".format(project, version))
@@ -93,8 +108,38 @@ def run_cli(build_dir, env, cmd):
     cli_bin =  build_dir + env["cli"]["bin"] 
     return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
 
+class BitcoinClient:
+    def __init__(self, rpc_url):
+        (credential, rpc_url) = rpc_url.split("@")
+        (usr, pwd) = credential.split(":")
+        self.rpc_url = "http://{}".format(rpc_url)
+        self.headers = {'content-type': 'application/json'}
+        self.req_id = 0
+        self.auth=HTTPBasicAuth(usr, pwd)
+        self.payload = {
+            "method": "",
+            "params": [],
+            "jsonrpc": "2.0",
+            "id": self.req_id,
+        }
+
+    def raw_request(self, url, data, headers):
+        self.req_id += 1
+        return requests.post(url, data=data, headers=headers, auth=self.auth).json()
+
+    def req(self, method, params):
+        self.payload["method"] = method
+        self.payload["params"] = params
+        return self.raw_request(self.rpc_url, data=json.dumps(self.payload), headers=self.headers)
+
 def test():
     env = get_env("debug")
+
+    # Establish Bitcoind RPC
+    bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19001")
+    info = bitcoin_cli.req("getblockchaininfo", [])
+    print_info("current block height: {}".format(info["result"]["blocks"]))
+    print_info("best block hash: {}".format(info["result"]["bestblockhash"]))
 
     # Build Lightning Server
     server_build_dir = build("server", "debug", env)
@@ -106,8 +151,7 @@ def test():
     s1 = run_server(1, server_build_dir, "debug", env)
     s2 = run_server(2, server_build_dir, "debug", env)
 
-    print_info("waiting for server to stablize, counting for 5 secs")
-    time.sleep(5)
+    sleep(5)
 
     """
     ██╗███╗   ██╗███████╗ ██████╗ 
@@ -137,7 +181,7 @@ def test():
     r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
     print_pass("got connection: {}".format(r3))
 
-    time.sleep(5)
+    sleep(5)
     r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
     print_pass("got node #2 peers: {}".format(r4))
 
@@ -151,6 +195,11 @@ def test():
     """
     r5 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
     print_pass("got channel: {}".format(r5))
+
+    sleep(5)
+    gen = bitcoin_cli.req("generate", [10])
+    print_info(gen)
+    sleep(5)
 
     r6 = run_cli(cli_build_dir, env, ["channel", "-l"])
     print_pass("got channel list: {}".format(r6))
