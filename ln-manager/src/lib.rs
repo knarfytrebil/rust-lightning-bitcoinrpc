@@ -35,7 +35,7 @@ pub mod ln_cmd;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+// use std::time::{Duration, Instant};
 
 use futures::future;
 use futures::channel::mpsc;
@@ -198,12 +198,11 @@ impl<T: Larva> LnManager<T> {
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
 
-        info!("Lightning Port binded on localhost:{}", &settings.lightning.port);
+        info!("Lightning Port binded on 0.0.0.0:{}", &settings.lightning.port);
         let setup_larva = larva.clone();
         let listener =
             tokio_tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
             .unwrap();
-
 
         let _ = larva.clone().spawn_task(
             listener
@@ -216,7 +215,6 @@ impl<T: Larva> LnManager<T> {
                         sock.unwrap(),
                         setup_larva.clone(),
                     );
-                    // for_each expect ()
                     future::ready(())
                 })
                 .map(|_| Ok(())),
@@ -275,7 +273,7 @@ pub async fn get_network(
     match v["chain"].as_str().unwrap() {
         "main" => { 
             panic!("LOL, you're insane");
-            Ok(constants::Network::Bitcoin) 
+            // Ok(constants::Network::Bitcoin) 
         },
         "test" => Ok(constants::Network::Testnet),
         "regtest" => Ok(constants::Network::Regtest),

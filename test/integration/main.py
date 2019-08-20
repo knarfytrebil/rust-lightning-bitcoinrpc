@@ -12,7 +12,7 @@ def print_info(message):
     print("{} \x1b[1;34m[ INFO]\x1b[0m {} ... ".format(get_now(), message))
 
 def print_exec(message):
-    print("{} \x1b[1;33m[ EXEC]\x1b[0m {}".format(get_now(), message))
+    print("{} \x1b[1;33m[ >>>>]\x1b[0m {}".format(get_now(), message))
 
 def print_pass(message):
     print("{} \x1b[1;32m[ PASS]\x1b[0m {} ... ".format(get_now(), message))
@@ -52,7 +52,7 @@ def get_env(test_version):
     return environment
 
 def sleep(secs):
-    print_bold("sleep for {}".format(secs), " warn")
+    print_bold("sleep for next {} sec(s)".format(secs), " warn")
     end = ""
     for i in range(0, secs):
         if i + 1 == secs:
@@ -104,7 +104,7 @@ def run_server(server_id, build_dir, version, env):
     return server
 
 def run_cli(build_dir, env, cmd):
-    print_exec(">>> rbcli {}".format(" ".join(cmd)))
+    print_exec("rbcli {}".format(" ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"] 
     return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
 

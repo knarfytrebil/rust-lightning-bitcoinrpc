@@ -7,19 +7,16 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use lightning::chain;
 use lightning::ln::channelmonitor;
-use lightning::ln::channelmonitor::ManyChannelMonitor;
 use lightning::util::ser::ReadableArgs;
 use lightning::util::logger::Level;
 
 use super::log_printer::LogPrinter;
 
-#[allow(dead_code)]
 pub struct ChannelMonitor {
     pub monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     pub file_prefix: String,
 }
 
-#[allow(dead_code)]
 impl ChannelMonitor {
     pub fn load_from_disk(
         file_prefix: &String,
@@ -65,17 +62,6 @@ impl ChannelMonitor {
             }
         }
         res
-    }
-
-    pub fn load_from_vec(
-        &self,
-        mut monitors: Vec<(chain::transaction::OutPoint, channelmonitor::ChannelMonitor)>,
-    ) {
-        for (outpoint, monitor) in monitors.drain(..) {
-            if let Err(_) = self.monitor.add_update_monitor(outpoint, monitor) {
-                panic!("Failed to load monitor that deserialized");
-            }
-        }
     }
 }
 #[cfg(any(target_os = "macos", target_os = "ios"))]
