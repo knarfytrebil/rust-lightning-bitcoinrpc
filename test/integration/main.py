@@ -191,11 +191,10 @@ def test():
     print_pass("got invoice: {}".format(r15))
  
     r16 = run_cli(cli_build_dir, env, ["invoice", "-p", r15["invoice"], "500"])
-    print_pass("pay invoice: {}".format(r16))
+    print_error("pay invoice: {}".format(r16))
 
     s1.kill()
     s2.kill()
-     
 
 if __name__ == '__main__':
     test()
