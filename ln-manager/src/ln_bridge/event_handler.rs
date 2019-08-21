@@ -30,7 +30,7 @@ async fn handle_fund_tx<T: Larva>(
     &temporary_channel_id: &[u8; 32],
     us: Arc<EventHandler<T>>,
     value: &[&str; 2]
-) -> Result<(), ()> {
+) {
     let tx_hex = us.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
@@ -64,14 +64,13 @@ async fn handle_fund_tx<T: Larva>(
     us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
     let _ = self_sender.try_send(());
     info!("Generated funding tx!");
-    Ok(())
 }
 
-async fn handle_receiver<T: Larva>(
+async fn handle_events<T: Larva>(
     us: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
-) -> Result<(), ()> {
+) {
     us.peer_manager.process_events();
     let mut events = us.channel_manager.get_and_clear_pending_events();
     events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -155,7 +154,6 @@ async fn handle_receiver<T: Larva>(
         us.channel_manager.write(&mut f).unwrap();
     }
     fs::rename(&tmp_filename, &filename).unwrap();
-    Ok(())
 }
 
 pub struct EventHandler<T: Larva> {
@@ -183,7 +181,7 @@ impl<T: Larva> EventHandler<T> {
         payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
         larva: impl Larva,
     ) -> mpsc::Sender<()> {
-        let us = Arc::new(Self {
+        let this = Arc::new(Self {
             network,
             file_prefix,
             rpc_client,
@@ -196,15 +194,12 @@ impl<T: Larva> EventHandler<T> {
         });
         let (sender, receiver) = mpsc::channel(2);
         let self_sender = sender.clone();
+
         let _ = larva.clone().spawn_task(
-            receiver.for_each(move |_| {
-                let _ = handle_receiver(
-                    &us,
-                    &self_sender,
-                    &larva
-                );
-                future::ready(())
-            }).map(|_| Ok(()))
+            async move {
+                receiver.for_each(|_| { handle_events(&this, &self_sender, &larva) }).await;
+                Ok(())
+            }
         );
         sender
     }

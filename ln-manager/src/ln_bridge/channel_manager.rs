@@ -78,7 +78,7 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
             let mut mut_monitors_loaded = args.monitors_loaded;
             for (outpoint, drain_monitor) in mut_monitors_loaded.drain(..) {
                 if let Err(_) = args.monitor.add_update_monitor(outpoint, drain_monitor) {
-                panic!("Failed to load monitor that deserialized");
+                    panic!("Failed to load monitor that deserialized");
                 }
             }
             //TODO: Rescan
