@@ -4,8 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::future;
 use futures::channel::mpsc;
-use futures::{Future, Stream, StreamExt, FutureExt, TryFutureExt};
-use futures::executor::block_on;
+use futures::{Future, StreamExt, FutureExt};
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -18,77 +17,13 @@ use lightning::ln::channelmanager::{PaymentHash, PaymentPreimage};
 use lightning::ln::channelmonitor;
 use lightning::ln::peer_handler;
 use lightning::util::events::{Event, EventsProvider};
-use lightning::util::ser::Writeable;
-
+use lightning::util::ser::Writeable; 
 use super::connection::SocketDescriptor;
 
 use super::utils::{hex_to_vec, hex_str};
 use super::rpc_client::RPCClient;
 use crate::executor::Larva;
 use log::{info};
-
-pub fn divide_rest_event<T: Larva>(
-    event: Event,
-    us: &Arc<EventHandler<T>>,
-    mut sender: mpsc::Sender<()>,
-    larva: &impl Larva,
-) {
-    match event {
-        Event::PaymentReceived { payment_hash, amt } => {
-            let images = us.payment_preimages.lock().unwrap();
-            if let Some(payment_preimage) = images.get(&payment_hash) {
-                if us.channel_manager.claim_funds(payment_preimage.clone()) {
-                    info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
-                } else {
-                    info!("Failed to claim money we were told we had?");
-                }
-            } else {
-                us.channel_manager.fail_htlc_backwards(&payment_hash);
-                info!("Received payment but we didn't know the preimage :(");
-            }
-            let _ = sender.try_send(());
-        },
-        Event::PendingHTLCsForwardable { time_forwardable } => {
-            let us = us.clone();
-            let mut sender = sender.clone();
-            let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
-                us.channel_manager.process_pending_htlc_forwards();
-                let _ = sender.try_send(());
-                future::ok(())
-            })));
-        },
-        Event::FundingBroadcastSafe { funding_txo, .. } => {
-            let mut txn = us.txn_to_broadcast.lock().unwrap();
-            let tx = txn.remove(&funding_txo).unwrap();
-            us.broadcaster.broadcast_transaction(&tx);
-            info!("Broadcast funding tx {}!", tx.txid());
-        },
-        Event::PaymentSent { payment_preimage } => {
-            info!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
-        },
-        Event::PaymentFailed { payment_hash, rejected_by_dest } => {
-            info!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
-        },
-        Event::SpendableOutputs { mut outputs } => {
-            for output in outputs.drain(..) {
-                match output {
-                    SpendableOutputDescriptor:: StaticOutput { outpoint, .. } => {
-                        info!("Got on-chain output Bitcoin Core should know how to claim at {}:{}", hex_str(&outpoint.txid[..]), outpoint.vout);
-                    },
-                    SpendableOutputDescriptor::DynamicOutputP2WSH { .. } => {
-                        info!("Got on-chain output we should claim...");
-                        //TODO: Send back to Bitcoin Core!
-                    },
-                    SpendableOutputDescriptor::DynamicOutputP2WPKH { .. } => {
-                        info!("Got on-chain output we should claim...");
-                        //TODO: Send back to Bitcoin Core!
-                    },
-                }
-            }
-        },
-        _ => { }
-    }
-}
 
 fn handle_fund_tx<T: Larva>(
     mut self_sender: mpsc::Sender<()>,
@@ -155,13 +90,58 @@ fn handle_receiver<T: Larva>(
                     )
                 );
             },
-            _ => {
-                divide_rest_event(
-                    event,
-                    &us,
-                    self_sender.clone(),
-                    larva,
-                )
+            Event::PaymentReceived { payment_hash, amt } => {
+                let images = us.payment_preimages.lock().unwrap();
+                if let Some(payment_preimage) = images.get(&payment_hash) {
+                    if us.channel_manager.claim_funds(payment_preimage.clone()) {
+                        info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
+                    } else {
+                        info!("Failed to claim money we were told we had?");
+                    }
+                } else {
+                    us.channel_manager.fail_htlc_backwards(&payment_hash);
+                    info!("Received payment but we didn't know the preimage :(");
+                }
+                let mut sender = self_sender.clone();
+                let _ = sender.try_send(());
+            },
+            Event::PendingHTLCsForwardable { time_forwardable } => {
+                let us = us.clone();
+                let mut sender = self_sender.clone();
+                let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+                    us.channel_manager.process_pending_htlc_forwards();
+                    let _ = sender.try_send(());
+                    future::ok(())
+                })));
+            },
+            Event::FundingBroadcastSafe { funding_txo, .. } => {
+                let mut txn = us.txn_to_broadcast.lock().unwrap();
+                let tx = txn.remove(&funding_txo).unwrap();
+                us.broadcaster.broadcast_transaction(&tx);
+                info!("Broadcast funding tx {}!", tx.txid());
+            },
+            Event::PaymentSent { payment_preimage } => {
+                info!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
+            },
+            Event::PaymentFailed { payment_hash, rejected_by_dest } => {
+                info!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
+            },
+            Event::SpendableOutputs { mut outputs } => {
+                for output in outputs.drain(..) {
+                    match output {
+                        SpendableOutputDescriptor:: StaticOutput { outpoint, .. } => {
+                            info!("Got on-chain output Bitcoin Core should know how to claim at {}:{}", hex_str(&outpoint.txid[..]), outpoint.vout);
+                        },
+                        SpendableOutputDescriptor::DynamicOutputP2WSH { .. } => {
+                            info!("Got on-chain output we should claim...");
+                            //TODO: Send back to Bitcoin Core!
+                        },
+                        SpendableOutputDescriptor::DynamicOutputP2WPKH { .. } => {
+                            info!("Got on-chain output we should claim...");
+                            //TODO: Send back to Bitcoin Core!
+                        },
+                    }
+                }
             }
         }
     }

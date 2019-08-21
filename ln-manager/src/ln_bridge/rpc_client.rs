@@ -6,7 +6,7 @@ use bitcoin_hashes::hex::FromHex;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin::blockdata::block::BlockHeader;
 
-use futures::{StreamExt, TryFutureExt, TryStreamExt};
+use futures::{TryFutureExt, TryStreamExt};
 use futures::executor::block_on;
 
 use log::{info, error};

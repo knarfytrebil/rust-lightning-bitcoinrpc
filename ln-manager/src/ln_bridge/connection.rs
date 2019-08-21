@@ -1,7 +1,6 @@
 use bytes::BufMut;
 
 use futures::future;
-use futures::{Sink, Poll};
 use futures::{FutureExt, StreamExt, SinkExt};
 // use futures::task::Poll;
 use futures::channel::mpsc;
@@ -18,7 +17,7 @@ use std::mem;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 use std::vec::Vec;
 use std::hash::Hash;
 
