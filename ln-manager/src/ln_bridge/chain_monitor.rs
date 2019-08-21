@@ -366,7 +366,7 @@ pub async fn spawn_chain_monitor(
     );
     let cur_block = Arc::new(Mutex::new(String::from("")));
     Interval::new(Duration::from_secs(1))
-        .for_each(|_| { 
+        .for_each(|_| { async {
             let cur_block = cur_block.clone();
             let fee_estimator = fee_estimator.clone();
             let rpc_client = rpc_client.clone();
@@ -429,7 +429,7 @@ pub async fn spawn_chain_monitor(
                 chain_broadcaster.rebroadcast_txn().await;
                 Ok(())
             });
-            future::ready(())
-        }).await;
-        Ok(())
+        }
+    }).await;
+    Ok(())
 }
