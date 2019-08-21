@@ -91,25 +91,16 @@ pub fn force_close_all(channel_manager: &Arc<ChannelManager>) {
 pub fn channel_list(channel_manager: &Arc<ChannelManager>) -> Vec<String> {
     let channels = channel_manager.list_channels();
     channels.into_iter().map(|channel| {
-        match channel.short_channel_id {
-            Some(short_id) => {
-                json!({ 
-                    "id": hex_str(&channel.channel_id[..]), 
-                    "confirmed": true,
-                    "short_id": short_id,
-                    "peer": hex_str(&channel.remote_network_id.serialize()),
-                    "value_sats": channel.channel_value_satoshis
-                }).to_string()
-            }
-            None => {
-                json!({ 
-                    "id": hex_str(&channel.channel_id[..]), 
-                    "confirmed": false,
-                    "short_id": "",
-                    "peer": hex_str(&channel.remote_network_id.serialize()),
-                    "value_sats": channel.channel_value_satoshis
-                }).to_string()
-            }
-        }
+        let id = match channel.short_channel_id {
+            Some(short_id) => { format!("{}",short_id) }
+            None => { "".to_string() }
+        };
+        json!({ 
+            "id": hex_str(&channel.channel_id[..]), 
+            "confirmed": true,
+            "short_id": id,
+            "peer": hex_str(&channel.remote_network_id.serialize()),
+            "value_sats": channel.channel_value_satoshis
+        }).to_string()
     }).collect()
 }
