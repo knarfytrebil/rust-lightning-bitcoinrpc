@@ -90,6 +90,7 @@ impl Connection {
                         }
                     }
 
+                    warn!(">>> SEND FROM SCHEDULE READ");
                     if let Err(e) = this_ref.lock().unwrap().event_notify.try_send(()) {
                         // Ignore full errors as we just need them to poll after this point, so if the user
                         // hasn't received the last send yet, it doesn't matter.
@@ -292,6 +293,8 @@ macro_rules! schedule_read {
                     sender.send(Ok(())).unwrap();
                 }
                 us.read_paused = false;
+
+                warn!(">>> SEND FROM SCHEDULE READ macro");
                 if let Err(e) = us.event_notify.try_send(()) {
                     // Ignore full errors as we just need them to poll after this point, so if the user
                     // hasn't received the last send yet, it doesn't matter.

@@ -28,12 +28,14 @@ pub fn fund_channel (
             match channel_manager.create_channel(pubkey, value, push, 0) {
                 Ok(_) => { 
                     info!("Channel created, {} sending open_channel ...", pubkey_str); 
+                    warn!("SEND FROM fund channel"); 
                     let _ = event_notify.try_send(());
                     Ok(String::from(pubkey_str))
                 }
                 Err(e) => { 
                     let err_str = format!("Failed to open channel: {:?}!", e);
                     warn!("{}", &err_str);
+                    warn!("SEND FROM fund channel failed"); 
                     let _ = event_notify.try_send(());
                     Err(err_str)
                 }
@@ -60,6 +62,7 @@ pub fn close(
             debug!("called close");
             match channel_manager.close_channel(&channel_id) {
                 Ok(()) => {
+                    warn!("SEND FROM close channel"); 
                     let _ = event_notify.try_send(());
                     info!("Channel closing: {}", &ch_id);
                     Ok(ch_id.to_string())

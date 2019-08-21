@@ -62,6 +62,7 @@ async fn handle_fund_tx<T: Larva>(
     };
     us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
     us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
+    warn!(">>> SEND FROM HANDLE FUND TX");
     let _ = self_sender.try_send(());
     info!("Generated funding tx!");
 }
@@ -103,6 +104,7 @@ async fn handle_events<T: Larva>(
                     info!("Received payment but we didn't know the preimage :(");
                 }
                 let mut sender = self_sender.clone();
+                warn!(">>> SEND FROM PAYMENT RECEIVED");
                 let _ = sender.try_send(());
             },
             Event::PendingHTLCsForwardable { time_forwardable } => {
@@ -111,6 +113,7 @@ async fn handle_events<T: Larva>(
                 let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
                     us.channel_manager.process_pending_htlc_forwards();
                     let _ = sender.try_send(());
+                    warn!(">>> SEND FROM PENDING HTLC");
                     future::ok(())
                 })));
             },

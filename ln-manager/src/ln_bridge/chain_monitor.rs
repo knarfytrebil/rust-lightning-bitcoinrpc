@@ -413,8 +413,8 @@ pub async fn spawn_chain_monitor(
                                     &hex_to_vec(block_hex.unwrap().as_str().unwrap())
                                     .unwrap()
                                 ).unwrap();
-                                info!("Connecting block {}, Height: {}", block.bitcoin_hash().to_hex(), &block_height);
                                 watcher.block_connected_with_filtering(&block, block_height);
+                                info!("Connecting block {}, Height: {}", block.bitcoin_hash().to_hex(), &block_height);
                             }
                         }
                     }
@@ -422,8 +422,9 @@ pub async fn spawn_chain_monitor(
                 
                 let _ = future::join_all(actions).await;
                 let _ = FeeEstimator::update_values(fee_estimator, rpc_client).await;
-                let _ = event_notify.try_send(());
                 chain_broadcaster.rebroadcast_txn().await;
+                warn!(">>> SEND FROM CHAIN MONITOR interval");
+                let _ = event_notify.try_send(());
                 Ok(())
             });
         }
