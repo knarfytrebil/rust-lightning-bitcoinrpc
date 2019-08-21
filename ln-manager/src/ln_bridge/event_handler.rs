@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::future;
 use futures::channel::mpsc;
-use futures::{Future, StreamExt, FutureExt};
+use futures::{StreamExt, FutureExt};
 
 use bitcoin::blockdata;
 use bitcoin::consensus::encode;
@@ -25,30 +25,32 @@ use super::rpc_client::RPCClient;
 use crate::executor::Larva;
 use log::{info};
 
-fn handle_fund_tx<T: Larva>(
+async fn handle_fund_tx<T: Larva>(
     mut self_sender: mpsc::Sender<()>,
     &temporary_channel_id: &[u8; 32],
     us: Arc<EventHandler<T>>,
     value: &[&str; 2]
-) -> impl Future<Output = Result<(), ()>> {
-    let tx_hex = us.rpc_client.sync_rpc_call(
+) -> Result<(), ()> {
+    let tx_hex = us.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
         false
-    ).unwrap();
+    ).await.unwrap();
 
-    let funded_tx = us.rpc_client.sync_rpc_call(
+    let funded_tx_args = &[&format!("\"{}\"", tx_hex.as_str().unwrap())[..]];
+    let funded_tx = us.rpc_client.make_rpc_call(
         "fundrawtransaction",
-        &[&format!("\"{}\"", tx_hex.as_str().unwrap())],
+        funded_tx_args,
         false
-    ).unwrap();
+    ).await.unwrap();
     
     let changepos = funded_tx["changepos"].as_i64().unwrap();
-
     assert!(changepos == 0 || changepos == 1);
+
+    let signed_tx_args = &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())[..]];
     let signed_tx = us.rpc_client.sync_rpc_call(
         "signrawtransactionwithwallet",
-        &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())],
+        signed_tx_args,
         false
     ).unwrap();
 
@@ -62,14 +64,14 @@ fn handle_fund_tx<T: Larva>(
     us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
     let _ = self_sender.try_send(());
     info!("Generated funding tx!");
-    future::ok(())
+    Ok(())
 }
 
-fn handle_receiver<T: Larva>(
+async fn handle_receiver<T: Larva>(
     us: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
-) -> impl Future<Output = Result<(), ()>> {
+) -> Result<(), ()> {
     us.peer_manager.process_events();
     let mut events = us.channel_manager.get_and_clear_pending_events();
     events.append(&mut us.monitor.get_and_clear_pending_events());
@@ -81,14 +83,13 @@ fn handle_receiver<T: Larva>(
                     constants::Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
                     constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
                 }).expect("LN funding tx should always be to a SegWit output").to_address();
-                return future::Either::Left(
-                    handle_fund_tx(
-                        self_sender.clone(),
-                        &temporary_channel_id,
-                        us.clone(),
-                        &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)]
-                    )
-                );
+                let handle_fund_tx_args = &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)];
+                let _ = handle_fund_tx(
+                    self_sender.clone(),
+                    &temporary_channel_id,
+                    us.clone(),
+                    handle_fund_tx_args 
+                ).await;
             },
             Event::PaymentReceived { payment_hash, amt } => {
                 let images = us.payment_preimages.lock().unwrap();
@@ -154,7 +155,7 @@ fn handle_receiver<T: Larva>(
         us.channel_manager.write(&mut f).unwrap();
     }
     fs::rename(&tmp_filename, &filename).unwrap();
-    future::Either::Right(future::ok(()))
+    Ok(())
 }
 
 pub struct EventHandler<T: Larva> {
