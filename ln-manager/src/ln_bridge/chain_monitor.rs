@@ -205,14 +205,12 @@ fn find_fork_step(
         || target_header_opt.as_ref().unwrap().1.height < current_header.height
     {
         // currentheader--
-        debug!("before try_send");
         let send_res = steps_tx.try_send(ForkStep::ConnectBlock((
             current_header.previousblockhash.clone(),
             current_header.height - 1,
         )));
         match send_res {
             Ok(_) => {
-                debug!("try send ok");
                 // Spawn a future onto the runtime
                 thread::spawn(move || {
                     let mut rt = Runtime::new().unwrap();
@@ -240,7 +238,6 @@ fn find_fork_step(
         let target_header = target_header_opt.unwrap().1;
         // Everything below needs to disconnect target, so go ahead and do that now
         let c_header = target_header.clone();
-        debug!("before try_send 1234" );
         let send_res = block_on(
             steps_tx
                 .send(ForkStep::DisconnectBlock(c_header.into()))
