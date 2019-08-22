@@ -6,14 +6,12 @@ use std::thread;
 
 use bitcoin;
 use serde_json;
-// use tokio_timer;
 
 use bitcoin_hashes::hex::ToHex;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 
 use futures::future;
 use futures::prelude::*;
-use futures::future::Future;
 use futures::channel::mpsc;
 use futures::{StreamExt};
 use futures::executor::block_on;
@@ -148,7 +146,6 @@ impl<T> ChainBroadcaster<T> {
         }
 
         // TODO: There is nothing to rebroadcast
-        
         // let actions = txn.iter().map(|(_, tx)| {
         //     let tx_ser = format!("\"{}\"", &encode::serialize_hex(&tx.clone()));
         //     let tx_ser = [&tx_ser[..]];
@@ -156,7 +153,6 @@ impl<T> ChainBroadcaster<T> {
         //         self.rpc_client.make_rpc_call("sendrawtransaction", &tx_ser, true).await;
         //     }
         // });
-
         // future::join_all(actions).await;
     }
 }
@@ -239,8 +235,7 @@ fn find_fork_step(
         // Everything below needs to disconnect target, so go ahead and do that now
         let c_header = target_header.clone();
         let send_res = block_on(
-            steps_tx
-                .send(ForkStep::DisconnectBlock(c_header.into()))
+            steps_tx.send(ForkStep::DisconnectBlock(c_header.into()))
         );
         if let Ok(_) = send_res {
             // send err match

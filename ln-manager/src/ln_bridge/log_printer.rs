@@ -18,7 +18,7 @@ impl Logger for LogPrinter {
             )
         {
             if !record.args.to_string().contains("DEBUG") {
-                debug!(
+                warn!(
                     "{:<5} [{} : {}, {}] {}",
                     record.level.to_string(),
                     record.module_path,

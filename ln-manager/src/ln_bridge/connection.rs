@@ -76,6 +76,7 @@ impl Connection {
                     );
                     match peer_manager.read_event(&mut sd, pending_read) {
                         Ok(pause_read) => {
+                            warn!(">>>>>>>>>>>> read_event, {}", &pause_read);
                             if pause_read {
                                 let mut lock = this_ref.lock().unwrap();
                                 lock.read_paused = true;
@@ -90,7 +91,6 @@ impl Connection {
                         }
                     }
 
-                    warn!(">>> SEND FROM SCHEDULE READ");
                     if let Err(e) = this_ref.lock().unwrap().event_notify.try_send(()) {
                         // Ignore full errors as we just need them to poll after this point, so if the user
                         // hasn't received the last send yet, it doesn't matter.
