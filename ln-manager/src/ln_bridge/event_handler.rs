@@ -167,8 +167,7 @@ pub struct EventHandler<T: Larva> {
     channel_manager: Arc<channelmanager::ChannelManager>,
     monitor: Arc<channelmonitor::SimpleManyChannelMonitor<chain::transaction::OutPoint>>,
     broadcaster: Arc<dyn chain::chaininterface::BroadcasterInterface>,
-    txn_to_broadcast:
-    Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
+    txn_to_broadcast: Mutex<HashMap<chain::transaction::OutPoint, blockdata::transaction::Transaction>>,
     payment_preimages: Arc<Mutex<HashMap<PaymentHash, PaymentPreimage>>>,
 }
 

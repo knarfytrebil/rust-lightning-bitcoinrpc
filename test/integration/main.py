@@ -51,8 +51,8 @@ def get_env(test_version):
     }
     return environment
 
-def sleep(secs):
-    print_bold("sleep for next {} sec(s)".format(secs), " warn")
+def sleep(action, secs):
+    print_bold("{} in next {} sec(s)".format(action, secs), " warn")
     end = ""
     for i in range(0, secs):
         if i + 1 == secs:
@@ -150,8 +150,7 @@ def test():
     # Run Server
     s1 = run_server(1, server_build_dir, "debug", env)
     s2 = run_server(2, server_build_dir, "debug", env)
-
-    sleep(5)
+    sleep("wait to stablize", 5)
 
     """
     ██╗███╗   ██╗███████╗ ██████╗ 
@@ -181,7 +180,7 @@ def test():
     r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
     print_pass("got connection: {}".format(r3))
 
-    sleep(5)
+    sleep("wait to establish connection", 5)
     r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
     print_pass("got node #2 peers: {}".format(r4))
 
@@ -196,10 +195,10 @@ def test():
     r5 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
     print_pass("got channel: {}".format(r5))
 
-    sleep(5)
+    sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
     print_info(gen)
-    sleep(5)
+    sleep("wait to stablize", 5)
 
     r6 = run_cli(cli_build_dir, env, ["channel", "-l"])
     print_pass("got channel list: {}".format(r6))
@@ -241,6 +240,8 @@ def test():
  
     r16 = run_cli(cli_build_dir, env, ["invoice", "-p", r15["invoice"], "500"])
     print_error("pay invoice: {}".format(r16))
+
+    sleep("shut down", 5)
 
     s1.kill()
     s2.kill()
