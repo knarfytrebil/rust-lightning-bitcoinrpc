@@ -246,7 +246,6 @@ impl<T: Larva> LnManager<T> {
 
         let ln_manager = Self {
             rpc_client,
-            //
             network,
             router,
             event_notify,

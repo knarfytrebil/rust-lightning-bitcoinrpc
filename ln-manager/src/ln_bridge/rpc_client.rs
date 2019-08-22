@@ -7,7 +7,6 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin::blockdata::block::BlockHeader;
 
 use futures::{TryFutureExt, TryStreamExt};
-use futures::executor::block_on;
 
 use log::{info, error};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -59,13 +58,6 @@ impl RPCClient {
             id: AtomicUsize::new(0),
             client: hyper::Client::new(),
         }
-    }
-
-    pub fn sync_rpc_call(
-        &self,
-        method: &str, params: &[&str], may_fail: bool,
-    ) -> Result<serde_json::Value, ()> {
-        block_on(self.make_rpc_call(method, params, may_fail))
     }
 
     /// params entries must be pre-quoted if appropriate
@@ -145,34 +137,6 @@ impl RPCClient {
         let param = "\"".to_string() + header_hash + "\"";
         let p = &[&param[..]];
         let v = self.make_rpc_call("getblockheader", p, false).await;
-        let mut v = v.unwrap();
-        if v.is_object() {
-            if let None = v.get("previousblockhash") {
-                // Got a request for genesis block, add a dummy previousblockhash
-                v.as_object_mut().unwrap().insert(
-                    "previousblockhash".to_string(),
-                    serde_json::Value::String("".to_string()),
-                );
-            }
-        }
-        let deser_res: Result<GetHeaderResponse, _> = serde_json::from_value(v);
-        match deser_res {
-            Ok(resp) => Ok(resp),
-            Err(_) => {
-                error!("Got invalid header message from RPC server!");
-                Err(())
-            }
-        }
-    }
-
-    pub fn get_header(
-        &self,
-        header_hash: &str,
-    ) -> Result<GetHeaderResponse, ()> {
-        let param = "\"".to_string() + header_hash + "\"";
-        debug!("get header");
-        debug!("{:#?}", &param);
-        let v = self.sync_rpc_call("getblockheader", &[&param], false);
         let mut v = v.unwrap();
         if v.is_object() {
             if let None = v.get("previousblockhash") {

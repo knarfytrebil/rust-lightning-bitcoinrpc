@@ -48,11 +48,11 @@ async fn handle_fund_tx<T: Larva>(
     assert!(changepos == 0 || changepos == 1);
 
     let signed_tx_args = &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())[..]];
-    let signed_tx = us.rpc_client.sync_rpc_call(
+    let signed_tx = us.rpc_client.make_rpc_call(
         "signrawtransactionwithwallet",
         signed_tx_args,
         false
-    ).unwrap();
+    ).await.unwrap();
 
     assert_eq!(signed_tx["complete"].as_bool().unwrap(), true);
     let tx: blockdata::transaction::Transaction = encode::deserialize(&hex_to_vec(&signed_tx["hex"].as_str().unwrap()).unwrap()).unwrap();
