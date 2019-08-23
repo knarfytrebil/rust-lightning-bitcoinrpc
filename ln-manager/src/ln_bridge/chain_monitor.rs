@@ -142,7 +142,7 @@ impl<T> ChainBroadcaster<T> {
         let txn = self.txn_to_broadcast.lock().unwrap();
 
         for (_, tx) in txn.iter() {
-            warn!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>> rebroadcast called: {:?}", tx);
+            warn!("REBROADCAST UNPROCESSED: {:?}", tx);
         }
 
         // TODO: There is nothing to rebroadcast
@@ -160,7 +160,6 @@ impl<T> ChainBroadcaster<T> {
 impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroadcaster<T> {
     fn broadcast_transaction(&self, tx: &bitcoin::blockdata::transaction::Transaction) {
         self.txn_to_broadcast.lock().unwrap().insert(tx.txid(), tx.clone());
-        warn!(">>>>>>>>>>>>>>>>>>>>> broadcast called");
         let tx_ser = format!("\"{}\"", &encode::serialize_hex(tx));
         let async_client = self.rpc_client.clone();
         let _ = self.larva.clone().spawn_task(async move {
@@ -425,7 +424,6 @@ pub async fn spawn_chain_monitor(
                 let _ = future::join_all(actions).await;
                 let _ = FeeEstimator::update_values(fee_estimator, rpc_client).await;
                 let _ = event_notify.try_send(());
-                warn!(">>> SEND FROM CHAIN MONITOR interval");
                 chain_broadcaster.rebroadcast_txn().await;
                 Ok(())
             });

@@ -135,7 +135,6 @@ pub fn pay(
                         match channel_manager.send_payment(route, payment_hash) {
                             Ok(()) => {
                                 debug!("Sending {} msat", amt);
-                                warn!(">>> SEND FROM SEND PAYMENT");
                                 let _ = event_notify.try_send(());
                                 Ok(())
                             }

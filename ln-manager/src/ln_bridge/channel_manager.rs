@@ -63,7 +63,6 @@ impl Restorable<RestoreArgs, Arc<ChannelManager>> for ChannelManager {
                 for (outpoint, monitor) in args.monitors_loaded.iter() {
                     monitors_refs.insert(*outpoint, monitor);
                 }
-                warn!(">>>> Before read");
                 <(Hash, ChannelManager)>::read(&mut f, ChannelManagerReadArgs {
                     keys_manager: args.keys_manager,
                     fee_estimator: args.fee_estimator,

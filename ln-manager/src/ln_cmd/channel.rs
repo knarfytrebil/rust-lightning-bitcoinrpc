@@ -28,14 +28,12 @@ pub fn fund_channel (
             match channel_manager.create_channel(pubkey, value, push, 0) {
                 Ok(_) => { 
                     info!("Channel created, {} sending open_channel ...", pubkey_str); 
-                    warn!("SEND FROM fund channel"); 
                     let _ = event_notify.try_send(());
                     Ok(String::from(pubkey_str))
                 }
                 Err(e) => { 
                     let err_str = format!("Failed to open channel: {:?}!", e);
-                    warn!("{}", &err_str);
-                    warn!("SEND FROM fund channel failed"); 
+                    debug!("{}", &err_str);
                     let _ = event_notify.try_send(());
                     Err(err_str)
                 }
@@ -43,7 +41,7 @@ pub fn fund_channel (
         }
         None => { 
             let err_str = "Invalid public key for remote node.";
-            warn!("{}", &err_str);
+            debug!("{}", &err_str);
             Err(err_str.to_string())
         }
     }
@@ -62,22 +60,21 @@ pub fn close(
             debug!("called close");
             match channel_manager.close_channel(&channel_id) {
                 Ok(()) => {
-                    warn!("SEND FROM close channel"); 
                     let _ = event_notify.try_send(());
                     info!("Channel closing: {}", &ch_id);
                     Ok(ch_id.to_string())
                 }
                 Err(e) => { 
-                    warn!("Failed to close channel: {:?}", e);
+                    debug!("Failed to close channel: {:?}", e);
                     Err(format!("Channel Close Failure: {:?}", e).to_string())
                 }
             }
         } else {
-            warn!("Invalid channel_id ...");
+            debug!("Invalid channel_id ...");
             Err(format!("Invalid channel_id"))
         }
     } else {
-        warn!("Channel id has invalid length ...");
+        debug!("Channel id has invalid length ...");
         Err(format!("Channel id has invalid length ..."))
     }
 }
