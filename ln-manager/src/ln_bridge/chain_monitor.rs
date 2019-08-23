@@ -141,8 +141,9 @@ impl<T> ChainBroadcaster<T> {
     async fn rebroadcast_txn(&self) {
         let txn = self.txn_to_broadcast.lock().unwrap();
 
+        warn!("REBROADCAST UNPROCESSED");
         for (_, tx) in txn.iter() {
-            warn!("REBROADCAST UNPROCESSED: {:?}", tx);
+            debug!("REBROADCAST UNPROCESSED: {:?}", tx);
         }
 
         // TODO: There is nothing to rebroadcast
