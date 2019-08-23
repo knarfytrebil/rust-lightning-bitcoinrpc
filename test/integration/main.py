@@ -250,7 +250,6 @@ def test():
     print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
- 
     r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"], "500"])
     print_error("pay invoice: {}".format(r16))
 
