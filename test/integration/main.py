@@ -199,7 +199,7 @@ def test():
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
-    print_info(gen)
+    print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
     r6 = run_cli(cli_build_dir, env, ["channel", "-l"])
@@ -231,7 +231,7 @@ def test():
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
-    print_info(gen)
+    print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
     """ 
