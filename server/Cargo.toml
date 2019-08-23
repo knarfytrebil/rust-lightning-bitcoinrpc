@@ -10,6 +10,7 @@ bitcoin = "0.18"
 bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.3"
 lightning = "0.0.9"
+# lightning = { path = "../../bitcoin/rust-lightning/" } 
 lightning-net-tokio = "0.0.1"
 lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invoice.git", branch = "master" }
 secp256k1 = "0.12"

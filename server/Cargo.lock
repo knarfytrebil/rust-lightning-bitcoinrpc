@@ -691,6 +691,16 @@ checksum = "3262021842bf00fe07dbd6cf34ff25c99d7a7ebef8deea84db72be3ea3bb0aff"
 [[package]]
 name = "lightning"
 version = "0.0.9"
+dependencies = [
+ "bitcoin",
+ "bitcoin_hashes",
+ "rand 0.4.6",
+ "secp256k1",
+]
+
+[[package]]
+name = "lightning"
+version = "0.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5da1be02360e590f2713df7faf88a92fa255293ae79161a9ab19bc92a2f2069"
 dependencies = [
@@ -732,7 +742,7 @@ dependencies = [
  "bitcoin_hashes",
  "bytes",
  "futures",
- "lightning",
+ "lightning 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1",
  "tokio 0.1.22",
  "tokio-codec 0.1.1",
@@ -769,7 +779,7 @@ dependencies = [
  "futures-preview",
  "futures-timer 0.3.0",
  "hyper 0.13.0-a.0",
- "lightning",
+ "lightning 0.0.9",
  "lightning-invoice 0.2.0 (git+https://github.com/knarfytrebil/rust-lightning-invoice.git)",
  "log",
  "num-derive",
@@ -1317,7 +1327,7 @@ dependencies = [
  "failure",
  "futures-preview",
  "hyper 0.12.32",
- "lightning",
+ "lightning 0.0.9",
  "lightning-invoice 0.2.0 (git+https://github.com/rust-bitcoin/rust-lightning-invoice.git)",
  "lightning-net-tokio",
  "ln-manager",
