@@ -691,6 +691,7 @@ checksum = "3262021842bf00fe07dbd6cf34ff25c99d7a7ebef8deea84db72be3ea3bb0aff"
 [[package]]
 name = "lightning"
 version = "0.0.9"
+source = "git+https://github.com/rust-bitcoin/rust-lightning.git?rev=02feaeb#02feaebc3c1bc8165c495b80bf1e5c5f4e97e5da"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes",
@@ -779,7 +780,7 @@ dependencies = [
  "futures-preview",
  "futures-timer 0.3.0",
  "hyper 0.13.0-a.0",
- "lightning 0.0.9",
+ "lightning 0.0.9 (git+https://github.com/rust-bitcoin/rust-lightning.git?rev=02feaeb)",
  "lightning-invoice 0.2.0 (git+https://github.com/knarfytrebil/rust-lightning-invoice.git)",
  "log",
  "num-derive",
@@ -1327,7 +1328,7 @@ dependencies = [
  "failure",
  "futures-preview",
  "hyper 0.12.32",
- "lightning 0.0.9",
+ "lightning 0.0.9 (git+https://github.com/rust-bitcoin/rust-lightning.git?rev=02feaeb)",
  "lightning-invoice 0.2.0 (git+https://github.com/rust-bitcoin/rust-lightning-invoice.git)",
  "lightning-net-tokio",
  "ln-manager",
