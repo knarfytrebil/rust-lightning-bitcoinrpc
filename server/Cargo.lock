@@ -714,17 +714,6 @@ dependencies = [
 [[package]]
 name = "lightning-invoice"
 version = "0.2.0"
-source = "git+https://github.com/knarfytrebil/rust-lightning-invoice.git#a684ff4b3ce63c4e47344ff9f2892029bb18bd0b"
-dependencies = [
- "bech32 0.6.0",
- "bitcoin_hashes",
- "num-traits 0.2.8",
- "secp256k1",
-]
-
-[[package]]
-name = "lightning-invoice"
-version = "0.2.0"
 source = "git+https://github.com/rust-bitcoin/rust-lightning-invoice.git#f906c44b0349d6ce0fe4f074de84817061261270"
 dependencies = [
  "bech32 0.6.0",
@@ -781,7 +770,7 @@ dependencies = [
  "futures-timer 0.3.0",
  "hyper 0.13.0-a.0",
  "lightning 0.0.9 (git+https://github.com/rust-bitcoin/rust-lightning.git?rev=02feaeb)",
- "lightning-invoice 0.2.0 (git+https://github.com/knarfytrebil/rust-lightning-invoice.git)",
+ "lightning-invoice",
  "log",
  "num-derive",
  "num-traits 0.2.8",
@@ -1329,7 +1318,7 @@ dependencies = [
  "futures-preview",
  "hyper 0.12.32",
  "lightning 0.0.9 (git+https://github.com/rust-bitcoin/rust-lightning.git?rev=02feaeb)",
- "lightning-invoice 0.2.0 (git+https://github.com/rust-bitcoin/rust-lightning-invoice.git)",
+ "lightning-invoice",
  "lightning-net-tokio",
  "ln-manager",
  "log",

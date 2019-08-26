@@ -11,7 +11,8 @@ bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.3"
 lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", rev = "02feaeb" }
 # lightning = { path = "../../bitcoin/rust-lightning/" }
-lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", branch = "master" }
+# lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", branch = "master" }
+lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invoice.git", branch = "master" }
 secp256k1 = "0.12"
 hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
 tokio-io = { git = "https://github.com/tokio-rs/tokio.git" }
