@@ -125,8 +125,9 @@ pub fn pay(
                                 Ok(())
                             }
                             Err(e) => {
-                                debug!("Failed to send HTLC: {:?}", e);
-                                Err("Failed to send HLTC".to_string())
+                                let error = format!("Failed to send HTLC: {:?}", e);
+                                debug!("{}", error);
+                                Err(error)
                             }
                         }
                     }

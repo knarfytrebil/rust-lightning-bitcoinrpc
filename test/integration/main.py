@@ -232,31 +232,31 @@ def test():
     r61 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
     print_pass("got channel list: {}".format(r61))
 
-    r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
-    print_pass("channel killed: {}".format(r8))
+    # r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+    # print_pass("channel killed: {}".format(r8))
 
-    r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    print_pass("got channel list: {}".format(r9))
+    # r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+    # print_pass("got channel list: {}".format(r9))
 
-    r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
-    print_pass("got channel: {}".format(r10))
+    # r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
+    # print_pass("got channel: {}".format(r10))
 
-    r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r11))
+    # r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    # print_pass("got channel list node #2: {}".format(r11))
 
-    r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
-    print_pass("channel killall executed node #2: {}".format(r12))
+    # r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
+    # print_pass("channel killall executed node #2: {}".format(r12))
 
-    r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r13))
+    # r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    # print_pass("got channel list node #2: {}".format(r13))
 
-    r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
-    print_pass("got channel: {}".format(r14))
+    # r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
+    # print_pass("got channel: {}".format(r14))
 
-    sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [6])
-    print_info(json.dumps(gen, indent=4, sort_keys=True))
-    sleep("wait to stablize", 5)
+    # sleep("generate blocks", 5)
+    # gen = bitcoin_cli.req("generate", [10])
+    # print_info(json.dumps(gen, indent=4, sort_keys=True))
+    # sleep("wait to stablize", 5)
 
     """ 
     ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗
@@ -266,31 +266,37 @@ def test():
     ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
     ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
     """
-    r140 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r140))
+    # r140 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    # print_pass("got channel list node #2: {}".format(r140))
 
-    r141 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r141))
+    # r141 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+    # print_pass("got channel list node #2: {}".format(r141))
 
-    r142 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "live"])
-    print_pass("got channel list node #2: {}".format(r142))
+    # r142 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "live"])
+    # print_pass("got channel list node #2: {}".format(r142))
 
-    r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
-    print_pass("got channel list node #2: {}".format(r143))
+    # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
+    # print_pass("got channel list node #2: {}".format(r143))
 
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "5000"])
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "50000"])
     print_pass("got invoice: {}".format(r15))
 
     sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [6])
+    gen = bitcoin_cli.req("generate", [10])
     print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
-    r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"], "500"])
+    r151 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+    print_pass("got channel list: {}".format(r151))
+
+    r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    print_pass("got channel list node #2: {}".format(r152))
+
+    r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"], "400000"])
     print_error("pay invoice: {}".format(r16))
 
     sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [6])
+    gen = bitcoin_cli.req("generate", [10])
     print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("shut down", 5)
 
