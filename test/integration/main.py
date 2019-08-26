@@ -78,7 +78,6 @@ def run_server(server_id, build_dir, version, env):
     conf = "{}{}/".format(env["conf"]["server"]["dir"],server_id)
     subprocess.run(["cp", "-r", conf, "{}{}".format(build_dir, server_id)])
 
-
     data = build_dir + "ln/data_{}/".format(server_id)
 
     print_info("preparing local storage files: {}".format(data))
