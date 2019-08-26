@@ -4,36 +4,17 @@ use futures::channel::mpsc;
 use lightning::chain::keysinterface::{KeysInterface, KeysManager};
 use lightning::ln::channelmanager::{ChannelManager, PaymentHash, PaymentPreimage};
 use lightning::ln::router;
-use lightning_invoice::Currency;
 use lightning_invoice::Invoice;
 use lightning_invoice::MinFinalCltvExpiry;
-use crate::ln_bridge::utils::{hex_str, slice_to_be64};
+use secp256k1::{All, Secp256k1};
 use rand::{thread_rng, Rng};
 use std;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use secp256k1::{All, Secp256k1};
-
-// convert currency to network
-#[allow(dead_code)]
-fn to_network(currency: Currency) -> Network {
-    match currency {
-        Currency::Bitcoin => Network::Bitcoin,
-        Currency::BitcoinTestnet => Network::Testnet,
-        Currency::Regtest => Network::Regtest,
-    }
-}
-
-#[allow(dead_code)]
-fn to_currency(network: Network) -> Currency {
-    match network {
-        Network::Bitcoin => Currency::Bitcoin,
-        Network::Testnet => Currency::BitcoinTestnet,
-        Network::Regtest => Currency::Regtest,
-    }
-}
+use crate::ln_bridge::utils::{hex_str, slice_to_be64};
+use crate::utils::{to_network, to_currency};
 
 pub trait InvoiceC {
     fn pay(&self, args: Vec<String>) -> Result<(), String>;

@@ -23,6 +23,7 @@ use super::connection::SocketDescriptor;
 use super::utils::{hex_to_vec, hex_str};
 use super::rpc_client::RPCClient;
 use crate::executor::Larva;
+use crate::utils::{compact_btc_to_bech32};
 use log::{info};
 
 async fn handle_fund_tx<T: Larva>(
@@ -77,11 +78,9 @@ async fn handle_events<T: Larva>(
     for event in events {
         match event {
             Event::FundingGenerationReady { temporary_channel_id, channel_value_satoshis, output_script, .. } => {
-                let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], match us.network {
-                    constants::Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
-                    constants::Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
-                    constants::Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
-                }).expect("LN funding tx should always be to a SegWit output").to_address();
+                let bech_32_network = compact_btc_to_bech32(us.network);
+                let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], bech_32_network)
+                    .expect("LN funding tx should always be to a SegWit output").to_address();
                 let handle_fund_tx_args = &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)];
                 let _ = handle_fund_tx(
                     self_sender.clone(),

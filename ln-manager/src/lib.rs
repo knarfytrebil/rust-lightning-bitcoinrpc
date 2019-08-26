@@ -31,6 +31,7 @@ extern crate serde_derive;
 pub mod executor;
 pub mod ln_bridge;
 pub mod ln_cmd;
+pub mod utils;
 
 use std::collections::HashMap;
 use std::fs;
