@@ -9,7 +9,7 @@ pub trait ChannelC {
     fn fund_channel(&self, line: Vec<String>) -> Result<String, String>;
     fn close(&self, line: String) -> Result<String, String>;
     fn force_close_all(&self);
-    fn channel_list(&self) -> Vec<String>;
+    fn channel_list(&self, mode: &str) -> Vec<String>;
 }
 
 // fund channel
@@ -85,8 +85,11 @@ pub fn force_close_all(channel_manager: &Arc<ChannelManager>) {
 }
 
 // List existing channels
-pub fn channel_list(channel_manager: &Arc<ChannelManager>) -> Vec<String> {
-    let channels = channel_manager.list_channels();
+pub fn channel_list( channel_manager: &Arc<ChannelManager>, mode: &str) -> Vec<String> {
+    let channels = match mode {
+        "live" => { channel_manager.list_usable_channels() }
+        "all" | _ => { channel_manager.list_channels() }
+    };
     channels.into_iter().map(|channel| {
         let (id, confirmed) = match channel.short_channel_id {
             Some(short_id) => { (format!("{}",short_id), true) }

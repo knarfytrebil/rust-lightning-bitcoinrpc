@@ -110,6 +110,11 @@ def run_cli(build_dir, env, cmd):
     cli_bin =  build_dir + env["cli"]["bin"] 
     return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
 
+def fund(addr, amount, cli):
+    res = cli.req("sendtoaddress", [addr, amount])
+    print_info("funded {}BTC to {}, tx_id: {}".format(amount, addr, res['result']))
+
+
 class BitcoinClient:
     def __init__(self, rpc_url):
         (credential, rpc_url) = rpc_url.split("@")
@@ -143,6 +148,11 @@ def test():
     # Build Cli
     cli_build_dir = build("cli", "debug", env)
 
+    # wipe data
+    data_dir = server_build_dir + "ln"
+    print_info("wiping data: {}".format(data_dir))
+    subprocess.run(["rm", "-rf", data_dir])  
+
     # Establish Bitcoind RPC
     bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19001")
     info = bitcoin_cli.req("getblockchaininfo", [])
@@ -164,7 +174,19 @@ def test():
     """
     r0 = run_cli(cli_build_dir, env, ["info", "-a"])
     print_pass("got node #1 addresses: {}".format(r0))
-   
+
+    r01 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-a"])
+    print_pass("got node #2 addresses: {}".format(r01))
+
+    addrs = r0['imported_addresses'] + r01['imported_addresses']
+    for addr in addrs:
+        fund(addr, 0.1, bitcoin_cli)
+
+    sleep("generate blocks", 5)
+    gen = bitcoin_cli.req("generate", [10])
+    print_info(json.dumps(gen, indent=4, sort_keys=True))
+    sleep("wait to stablize", 5)
+
     r1 = run_cli(cli_build_dir, env, ["info", "-n"])
     print_pass("got node #1 public key: {}".format(r1["node_id"]))
 
@@ -202,28 +224,28 @@ def test():
     print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
-    r6 = run_cli(cli_build_dir, env, ["channel", "-l"])
+    r6 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
     print_pass("got channel list: {}".format(r6))
 
-    r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r7))
 
     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
     print_pass("channel killed: {}".format(r8))
 
-    r9 = run_cli(cli_build_dir, env, ["channel", "-l"])
+    r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
     print_pass("got channel list: {}".format(r9))
 
     r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
     print_pass("got channel: {}".format(r10))
 
-    r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r11))
 
     r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
     print_pass("channel killall executed node #2: {}".format(r12))
 
-    r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l"])
+    r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r13))
 
     r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
@@ -242,6 +264,18 @@ def test():
     ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
     ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
     """
+    r140 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    print_pass("got channel list node #2: {}".format(r140))
+
+    r141 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+    print_pass("got channel list node #2: {}".format(r141))
+
+    r142 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "live"])
+    print_pass("got channel list node #2: {}".format(r142))
+
+    r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
+    print_pass("got channel list node #2: {}".format(r143))
+
     r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "5000"])
     print_pass("got invoice: {}".format(r15))
 

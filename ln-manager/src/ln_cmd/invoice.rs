@@ -101,6 +101,11 @@ pub fn pay(
                     debug!("Invoice had garbage final cltv");
                     fail_return!();
                 }
+                
+                info!("invoice route length: {}", invoice.routes().len());
+                let usable_channels_len = &channel_manager.list_usable_channels().len();
+                info!("usable channel length: {}", usable_channels_len);
+                
                 match router.get_route(
                     &invoice.recover_payee_pub_key(),
                     Some(&channel_manager.list_usable_channels()),
@@ -126,7 +131,7 @@ pub fn pay(
                         }
                     }
                     Err(e) => {
-                        debug!("Failed to find route: {}", e.err);
+                        info!("Failed to find route: {}", e.err);
                         Err("Failed to find route".to_string())
                     }
                 }

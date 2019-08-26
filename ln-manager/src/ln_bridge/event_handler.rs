@@ -45,7 +45,9 @@ async fn handle_fund_tx<T: Larva>(
         false
     ).await.unwrap();
     
+    info!("funded_tx: {}", &funded_tx);
     let changepos = funded_tx["changepos"].as_i64().unwrap();
+    info!("change pos: {}", &changepos);
     assert!(changepos == 0 || changepos == 1);
 
     let signed_tx_args = &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())[..]];

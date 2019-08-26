@@ -86,8 +86,8 @@ fn handle_msg(
                 ln_mgr.force_close_all();
                 protocol::ResponseFuncs::ChannelCloseAll
             }
-            protocol::RequestFuncs::ChannelList => {
-                protocol::ResponseFuncs::ChannelList(ln_mgr.channel_list())
+            protocol::RequestFuncs::ChannelList(mode) => {
+                protocol::ResponseFuncs::ChannelList(ln_mgr.channel_list(&mode))
             }
             protocol::RequestFuncs::InvoiceCreate(amount) => {
                 match ln_mgr.create_invoice(amount) {

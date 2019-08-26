@@ -16,8 +16,8 @@ macro_rules! impl_command {
             fn force_close_all(&self) {
                 channel::force_close_all(&self.channel_manager)
             }
-            fn channel_list(&self) -> Vec<String> {
-                channel::channel_list(&self.channel_manager)
+            fn channel_list(&self, mode: &str) -> Vec<String> {
+                channel::channel_list(&self.channel_manager, mode)
             }
         }
         impl<T: Larva> invoice::InvoiceC for $item<T> {

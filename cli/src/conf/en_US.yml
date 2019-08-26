@@ -113,8 +113,10 @@ subcommands:
             - list:
                 long: list
                 short: l
-                takes_value: false
-                help: rbcli channel -l
+                takes_value: true 
+                value_name: MODE
+                help: rbcli channel -l <mode>
+
     - peer:
         about: "connect / list lightning peer\n
         \n

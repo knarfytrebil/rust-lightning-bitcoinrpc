@@ -10,7 +10,7 @@ pub enum RequestFuncs {
     ChannelCreate(Vec<String>),
     ChannelClose(String),
     ChannelCloseAll,
-    ChannelList,
+    ChannelList(String),
     PeerList,
     InvoiceCreate(String),
     InvoicePay(Vec<String>),
@@ -107,7 +107,11 @@ impl FromStr for RequestFuncs {
                         Ok(RequestFuncs::ChannelCloseAll)
                     }
                     "list" => {
-                        Ok(RequestFuncs::ChannelList)
+                        if cmd_value.len() != 3 {
+                            return Err(ProtocalParseError{ msg: String::from("Insufficient Arguments") });
+                        }
+                        let mode = cmd_value[2].to_string();
+                        Ok(RequestFuncs::ChannelList(mode))
                     }
                     _ => {
                         Err(ProtocalParseError{ msg: String::from("Invalid Argument") })
