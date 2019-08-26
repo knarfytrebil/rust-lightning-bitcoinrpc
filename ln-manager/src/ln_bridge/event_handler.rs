@@ -29,17 +29,17 @@ use log::{info};
 async fn handle_fund_tx<T: Larva>(
     mut self_sender: mpsc::Sender<()>,
     &temporary_channel_id: &[u8; 32],
-    us: Arc<EventHandler<T>>,
+    this: Arc<EventHandler<T>>,
     value: &[&str; 2]
 ) {
-    let tx_hex = us.rpc_client.make_rpc_call(
+    let tx_hex = this.rpc_client.make_rpc_call(
         "createrawtransaction",
         value,
         false
     ).await.unwrap();
 
     let funded_tx_args = &[&format!("\"{}\"", tx_hex.as_str().unwrap())[..]];
-    let funded_tx = us.rpc_client.make_rpc_call(
+    let funded_tx = this.rpc_client.make_rpc_call(
         "fundrawtransaction",
         funded_tx_args,
         false
@@ -49,7 +49,7 @@ async fn handle_fund_tx<T: Larva>(
     assert!(changepos == 0 || changepos == 1);
 
     let signed_tx_args = &[&format!("\"{}\"", funded_tx["hex"].as_str().unwrap())[..]];
-    let signed_tx = us.rpc_client.make_rpc_call(
+    let signed_tx = this.rpc_client.make_rpc_call(
         "signrawtransactionwithwallet",
         signed_tx_args,
         false
@@ -61,62 +61,62 @@ async fn handle_fund_tx<T: Larva>(
         txid: tx.txid(),
         index: if changepos == 0 { 1 } else { 0 },
     };
-    us.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
-    us.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
+    this.channel_manager.funding_transaction_generated(&temporary_channel_id, outpoint);
+    this.txn_to_broadcast.lock().unwrap().insert(outpoint, tx);
     let _ = self_sender.try_send(());
     info!("Generated funding tx!");
 }
 
 async fn handle_events<T: Larva>(
-    us: &Arc<EventHandler<T>>,
+    this: &Arc<EventHandler<T>>,
     self_sender: &mpsc::Sender<()>,
     larva: &impl Larva,
 ) {
-    us.peer_manager.process_events();
-    let mut events = us.channel_manager.get_and_clear_pending_events();
-    events.append(&mut us.monitor.get_and_clear_pending_events());
+    this.peer_manager.process_events();
+    let mut events = this.channel_manager.get_and_clear_pending_events();
+    events.append(&mut this.monitor.get_and_clear_pending_events());
     for event in events {
         match event {
             Event::FundingGenerationReady { temporary_channel_id, channel_value_satoshis, output_script, .. } => {
-                let bech_32_network = compact_btc_to_bech32(us.network);
+                let bech_32_network = compact_btc_to_bech32(this.network);
                 let addr = bitcoin_bech32::WitnessProgram::from_scriptpubkey(&output_script[..], bech_32_network)
                     .expect("LN funding tx should always be to a SegWit output").to_address();
                 let handle_fund_tx_args = &["[]", &format!("{{\"{}\": {}}}", addr, channel_value_satoshis as f64 / 1_000_000_00.0)];
                 let _ = handle_fund_tx(
                     self_sender.clone(),
                     &temporary_channel_id,
-                    us.clone(),
+                    this.clone(),
                     handle_fund_tx_args 
                 ).await;
             },
             Event::PaymentReceived { payment_hash, amt } => {
-                let images = us.payment_preimages.lock().unwrap();
+                let images = this.payment_preimages.lock().unwrap();
                 if let Some(payment_preimage) = images.get(&payment_hash) {
-                    if us.channel_manager.claim_funds(payment_preimage.clone()) {
+                    if this.channel_manager.claim_funds(payment_preimage.clone()) {
                         info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
                     } else {
                         info!("Failed to claim money we were told we had?");
                     }
                 } else {
-                    us.channel_manager.fail_htlc_backwards(&payment_hash);
+                    this.channel_manager.fail_htlc_backwards(&payment_hash);
                     info!("Received payment but we didn't know the preimage :(");
                 }
                 let mut sender = self_sender.clone();
                 let _ = sender.try_send(());
             },
             Event::PendingHTLCsForwardable { time_forwardable } => {
-                let us = us.clone();
+                let this = this.clone();
                 let mut sender = self_sender.clone();
                 let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
-                    us.channel_manager.process_pending_htlc_forwards();
+                    this.channel_manager.process_pending_htlc_forwards();
                     let _ = sender.try_send(());
                     future::ok(())
                 })));
             },
             Event::FundingBroadcastSafe { funding_txo, .. } => {
-                let mut txn = us.txn_to_broadcast.lock().unwrap();
+                let mut txn = this.txn_to_broadcast.lock().unwrap();
                 let tx = txn.remove(&funding_txo).unwrap();
-                us.broadcaster.broadcast_transaction(&tx);
+                this.broadcaster.broadcast_transaction(&tx);
                 info!("Broadcast funding tx {}!", tx.txid());
             },
             Event::PaymentSent { payment_preimage } => {
@@ -145,12 +145,12 @@ async fn handle_events<T: Larva>(
         }
     }
 
-    let filename = format!("{}/manager_data", us.file_prefix);
+    let filename = format!("{}/manager_data", this.file_prefix);
     let tmp_filename = filename.clone() + ".tmp";
 
     {
         let mut f = fs::File::create(&tmp_filename).unwrap();
-        us.channel_manager.write(&mut f).unwrap();
+        this.channel_manager.write(&mut f).unwrap();
     }
     fs::rename(&tmp_filename, &filename).unwrap();
 }
