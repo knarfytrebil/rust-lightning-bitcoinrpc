@@ -229,6 +229,9 @@ def test():
     r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r7))
 
+    r61 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
+    print_pass("got channel list: {}".format(r61))
+
     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
     print_pass("channel killed: {}".format(r8))
 
