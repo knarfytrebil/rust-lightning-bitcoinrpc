@@ -215,7 +215,7 @@ def test():
     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     """
-    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "100000", "5000"])
+    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "1000000", "50"])
     print_pass("got channel: {}".format(r5))
 
     sleep("generate blocks", 5)
@@ -278,7 +278,7 @@ def test():
     # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
     # print_pass("got channel list node #2: {}".format(r143))
 
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "50000"])
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10020000"])
     print_pass("got invoice: {}".format(r15))
 
     sleep("generate blocks", 5)
@@ -292,7 +292,7 @@ def test():
     r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r152))
 
-    r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"], "400000"])
+    r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
     print_error("pay invoice: {}".format(r16))
 
     sleep("generate blocks", 5)
