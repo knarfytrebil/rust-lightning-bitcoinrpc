@@ -36,16 +36,13 @@ pub fn json(resp: protocol::ResponseFuncs) {
                 "channels": channels 
             })
         }
+        protocol::ResponseFuncs::InvoicePay => {
+            json!({ "response": "Invoice Paid" })
+        }
         protocol::ResponseFuncs::Error(e) => {
             json!({ 
                 "response": "Error",
                 "error": e 
-            })
-        }
-        _ => {
-            json!({ 
-                "response": "Error",
-                "error": "Unknwon Protocol" 
             })
         }
     };

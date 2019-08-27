@@ -1,6 +1,6 @@
 import os, datetime, time
 import subprocess, json
-import requests
+import requests 
 from requests.auth import HTTPBasicAuth
 
 # Print Messages
@@ -215,7 +215,7 @@ def test():
     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     """
-    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "1000000", "50"])
+    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "2000", "50"])
     print_pass("got channel: {}".format(r5))
 
     sleep("generate blocks", 5)
@@ -278,7 +278,7 @@ def test():
     # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
     # print_pass("got channel list node #2: {}".format(r143))
 
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10020000"])
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10001"])
     print_pass("got invoice: {}".format(r15))
 
     sleep("generate blocks", 5)
@@ -292,8 +292,10 @@ def test():
     r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r152))
 
+    print_info(json.dumps(r15, indent=4, sort_keys=True))
+
     r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
-    print_error("pay invoice: {}".format(r16))
+    print_info("pay invoice: {}".format(r16))
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
