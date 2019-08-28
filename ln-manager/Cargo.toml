@@ -6,13 +6,14 @@ build = "build.rs"
 edition = "2018"
 
 [dependencies]
-bitcoin = "0.18"
+bitcoin = "0.20"
 bitcoin-bech32 = "0.7"
-bitcoin_hashes = "0.3"
+bitcoin_hashes = "0.7"
 # lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", rev = "02feaeb" }
-lightning = { path = "../../bitcoin/rust-lightning" }
+# lightning = { path = "../../bitcoin/rust-lightning" }
+lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", branch = "master" }
 lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invoice.git", branch = "master" }
-secp256k1 = "0.12"
+secp256k1 = "0.15"
 hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
 tokio-io = { git = "https://github.com/tokio-rs/tokio.git" }
 tokio-fs = { git = "https://github.com/tokio-rs/tokio.git" }
@@ -37,4 +38,4 @@ runtime-tokio = "0.3.0-alpha.5"
 failure = "0.1.5"
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.0.35"

@@ -13,7 +13,6 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use futures::future;
 use futures::prelude::*;
 use futures::channel::mpsc;
-use futures::{StreamExt};
 use futures::executor::block_on;
 use futures_timer::Interval;
 
@@ -172,7 +171,7 @@ impl<T: Sync + Send + Larva> chaininterface::BroadcasterInterface for ChainBroad
 }
 
 enum ForkStep {
-    DisconnectBlock(bitcoin::blockdata::block::BlockHeader),
+    DisconnectBlock(bitcoin::blockdata::block::BlockHeader, u32),
     ConnectBlock((String, u32)),
 }
 
@@ -235,7 +234,7 @@ fn find_fork_step(
         // Everything below needs to disconnect target, so go ahead and do that now
         let c_header = target_header.clone();
         let send_res = block_on(
-            steps_tx.send(ForkStep::DisconnectBlock(c_header.into()))
+            steps_tx.send(ForkStep::DisconnectBlock(c_header.into(), c_header.height))
         );
         if let Ok(_) = send_res {
             // send err match
@@ -404,9 +403,9 @@ pub async fn spawn_chain_monitor(
                     let watcher = chain_watcher.clone();
                     async move {
                         match event {
-                            ForkStep::DisconnectBlock(ref header) => {
+                            ForkStep::DisconnectBlock(ref header, height) => {
                                 info!("Disconnecting block {}", header.bitcoin_hash().to_hex());
-                                watcher.block_disconnected(header);
+                                watcher.block_disconnected(header, height);
                             }
                             ForkStep::ConnectBlock((ref hash, height)) => {
                                 let block_height = height;

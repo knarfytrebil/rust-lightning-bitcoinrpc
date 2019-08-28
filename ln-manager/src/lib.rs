@@ -36,8 +36,9 @@ pub mod utils;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
-// use std::time::{Duration, Instant};
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use rand::Rng;
 use futures::future;
 use futures::channel::mpsc;
 use futures::{FutureExt, StreamExt};
@@ -102,7 +103,9 @@ impl<T: Larva> LnManager<T> {
 
         // Key Seed
         let our_node_seed = ln_bridge::key::get_key_seed(data_path.clone());
-        let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone()));
+
+        let (secs, nano) = get_seeds_from_time();
+        let keys = Arc::new(KeysManager::new(&our_node_seed, network, logger.clone(), secs, nano));
 
         let (import_key_1, import_key_2) = ln_bridge::key::get_import_secret_keys(network, &our_node_seed);
 
@@ -178,6 +181,7 @@ impl<T: Larva> LnManager<T> {
                 route_handler: router.clone(),
             },
             keys.get_node_secret(),
+            &rand::thread_rng().gen::<[u8; 32]>(),
             logger.clone(),
         ));
 
@@ -264,6 +268,13 @@ impl<T: Larva> LnManager<T> {
 
 }
 
+fn get_seeds_from_time() -> (u64, u32) {
+    let start = SystemTime::now();
+    let since_the_epoch = start.duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    (since_the_epoch.as_secs() as u64, since_the_epoch.subsec_nanos() as u32)
+}
+
 pub async fn get_network(
     rpc_client: &Arc<RPCClient>,
 ) -> Result<constants::Network, ()> {
@@ -280,4 +291,3 @@ pub async fn get_network(
         _ => panic!("Unknown Network")
     }
 }
-

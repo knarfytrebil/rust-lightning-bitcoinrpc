@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
+use std::time::{Instant};
 
 use crate::future;
 use futures::channel::mpsc;
@@ -109,7 +110,8 @@ async fn handle_events<T: Larva>(
             Event::PendingHTLCsForwardable { time_forwardable } => {
                 let this = this.clone();
                 let mut sender = self_sender.clone();
-                let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(time_forwardable).then(move |_| {
+                let deadline = Instant::now().checked_add(time_forwardable).unwrap();
+                let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(deadline).then(move |_| {
                     this.channel_manager.process_pending_htlc_forwards();
                     let _ = sender.try_send(());
                     future::ok(())

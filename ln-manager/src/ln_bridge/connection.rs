@@ -186,7 +186,7 @@ impl Connection {
             SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone())
         ) {
             if SocketDescriptor::new(us.clone(), peer_manager.clone(), larva.clone())
-                .send_data(&initial_send, 0, true) == initial_send.len() {
+                .send_data(&initial_send, true) == initial_send.len() {
 
                     Self::schedule_read(peer_manager, us, reader, larva);
                     info!("Outbound Connection Established {}", &their_node_id);
@@ -305,21 +305,20 @@ macro_rules! schedule_read {
 }
 
 impl<T: Larva> peer_handler::SocketDescriptor for SocketDescriptor<T> {
-    fn send_data(&mut self, data: &Vec<u8>, write_offset: usize, resume_read: bool) -> usize {
+    fn send_data(&mut self, data: &[u8], resume_read: bool) -> usize {
         let mut us = self.conn.lock().unwrap();
         if resume_read {
             let us_ref = self.clone();
             schedule_read!(us_ref);
         }
-        if data.len() == write_offset { return 0; }
         if us.writer.is_none() {
             us.read_paused = true;
             return 0;
         }
 
-        let mut bytes = bytes::BytesMut::with_capacity(data.len() - write_offset);
+        let mut bytes = bytes::BytesMut::with_capacity(data.len());
 
-        bytes.put(&data[write_offset..]);
+        bytes.put(&data[..]);
         // TODO AsyncSink
         let writer = us.writer.as_ref().unwrap();
         // TODO check logic
