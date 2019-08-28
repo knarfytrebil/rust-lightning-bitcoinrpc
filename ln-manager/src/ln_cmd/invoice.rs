@@ -69,7 +69,6 @@ pub fn pay(
                     }
                 };
 
-                info!("here ....");
                 if let Some(pubkey) = invoice.payee_pub_key() {
                     if *pubkey != invoice.recover_payee_pub_key() {
                         warn!(
@@ -123,13 +122,11 @@ pub fn pay(
                             .copy_from_slice(&invoice.payment_hash().into_inner()[..]);
                         match channel_manager.send_payment(route, payment_hash) {
                             Ok(()) => {
-                                info!("send message OK");
                                 info!("Sending {} msat", amt);
                                 let _ = event_notify.try_send(());
                                 Ok(())
                             }
                             Err(e) => {
-                                error!("Error");
                                 let error = format!("Failed to send HTLC: {:?}", e);
                                 debug!("{}", error);
                                 Err(error)

@@ -95,7 +95,7 @@ async fn handle_events<T: Larva>(
                 let images = this.payment_preimages.lock().unwrap();
                 if let Some(payment_preimage) = images.get(&payment_hash) {
                     if this.channel_manager.claim_funds(payment_preimage.clone()) {
-                        info!("Moneymoney! {} id {}", amt, hex_str(&payment_hash.0));
+                        info!("Payment received: {} msat id {}", amt, hex_str(&payment_hash.0));
                     } else {
                         info!("Failed to claim money we were told we had?");
                     }
@@ -122,7 +122,7 @@ async fn handle_events<T: Larva>(
                 info!("Broadcast funding tx {}!", tx.txid());
             },
             Event::PaymentSent { payment_preimage } => {
-                info!("Less money :(, proof: {}", hex_str(&payment_preimage.0));
+                info!("Payment Sent, proof: {}", hex_str(&payment_preimage.0));
             },
             Event::PaymentFailed { payment_hash, rejected_by_dest } => {
                 info!("{} failed id {}!", if rejected_by_dest { "Send" } else { "Route" }, hex_str(&payment_hash.0));
