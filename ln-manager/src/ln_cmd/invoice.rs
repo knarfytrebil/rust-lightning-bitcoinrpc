@@ -37,7 +37,6 @@ pub fn pay(
     let invoice_str = &args[0];
     match Invoice::from_str(invoice_str) {
         Ok(invoice) => {
-            info!("Into the Pay method");
             // Raw Invoice Generated Here
             let raw_invoice = invoice.clone().into_signed_raw();
             let invoice_network = to_network(invoice.currency());
@@ -115,7 +114,6 @@ pub fn pay(
                     final_cltv.0 as u32,
                 ) {
                     Ok(route) => {
-                        info!("Route OK");
                         let mut payment_hash = PaymentHash([0; 32]);
                         payment_hash
                             .0

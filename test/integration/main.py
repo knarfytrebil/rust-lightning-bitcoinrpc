@@ -287,8 +287,6 @@ def test():
     r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
     print_pass("got channel list node #2: {}".format(r152))
 
-    print_info(json.dumps(r15, indent=4, sort_keys=True))
-
     r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
     print_info("pay invoice: {}".format(r16))
 
