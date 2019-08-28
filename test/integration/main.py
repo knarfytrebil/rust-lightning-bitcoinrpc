@@ -215,7 +215,7 @@ def test():
     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     """
-    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "2000", "50"])
+    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "20000", "1002000"])
     print_pass("got channel: {}".format(r5))
 
     sleep("generate blocks", 5)
@@ -278,13 +278,8 @@ def test():
     # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
     # print_pass("got channel list node #2: {}".format(r143))
 
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10001"])
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10010"])
     print_pass("got invoice: {}".format(r15))
-
-    sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [10])
-    print_info(json.dumps(gen, indent=4, sort_keys=True))
-    sleep("wait to stablize", 5)
 
     r151 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
     print_pass("got channel list: {}".format(r151))

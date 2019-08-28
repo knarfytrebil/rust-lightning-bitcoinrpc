@@ -37,6 +37,7 @@ pub fn pay(
     let invoice_str = &args[0];
     match Invoice::from_str(invoice_str) {
         Ok(invoice) => {
+            info!("Into the Pay method");
             // Raw Invoice Generated Here
             let raw_invoice = invoice.clone().into_signed_raw();
             let invoice_network = to_network(invoice.currency());
@@ -51,26 +52,27 @@ pub fn pay(
                     }
                 }) {
                     if args.len() == 2 {
-                        debug!("Invoice had amount, you shouldn't specify one");
+                        warn!("Invoice had amount, you shouldn't specify one");
                     }
                     amt
                 } else {
                     if args.len() == 1 {
-                        debug!("Invoice didn't have an amount, you should specify one");
+                        warn!("Invoice didn't have an amount, you should specify one");
                         fail_return!();
                     }
                     match args[1].parse() {
                         Ok(amt) => amt,
                         Err(_) => {
-                            debug!("Provided amount was garbage");
+                            warn!("Provided amount was garbage");
                             fail_return!();
                         }
                     }
                 };
 
+                info!("here ....");
                 if let Some(pubkey) = invoice.payee_pub_key() {
                     if *pubkey != invoice.recover_payee_pub_key() {
-                        debug!(
+                        warn!(
                             "Invoice had non-equal duplicative target node_id (ie was malformed)"
                         );
                         fail_return!();
@@ -114,17 +116,20 @@ pub fn pay(
                     final_cltv.0 as u32,
                 ) {
                     Ok(route) => {
+                        info!("Route OK");
                         let mut payment_hash = PaymentHash([0; 32]);
                         payment_hash
                             .0
                             .copy_from_slice(&invoice.payment_hash().into_inner()[..]);
                         match channel_manager.send_payment(route, payment_hash) {
                             Ok(()) => {
-                                debug!("Sending {} msat", amt);
+                                info!("send message OK");
+                                info!("Sending {} msat", amt);
                                 let _ = event_notify.try_send(());
                                 Ok(())
                             }
                             Err(e) => {
+                                error!("Error");
                                 let error = format!("Failed to send HTLC: {:?}", e);
                                 debug!("{}", error);
                                 Err(error)
