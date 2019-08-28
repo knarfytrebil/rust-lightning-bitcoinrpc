@@ -179,7 +179,7 @@ def test():
 
     addrs = r0['imported_addresses'] + r01['imported_addresses']
     for addr in addrs:
-        fund(addr, 0.1, bitcoin_cli)
+        fund(addr, 0.5, bitcoin_cli)
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
@@ -214,7 +214,7 @@ def test():
     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     """
-    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "20000", "1002000"])
+    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "2000000", "100500000"])
     print_pass("got channel: {}".format(r5))
 
     sleep("generate blocks", 5)
@@ -276,7 +276,8 @@ def test():
     # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
     # print_pass("got channel list node #2: {}".format(r143))
 
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "10010"])
+    # Create Invoice: 1001 msat, which is 1.001 sat
+    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "1001000"])
     print_pass("got invoice: {}".format(r15))
 
     r151 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
@@ -292,7 +293,6 @@ def test():
 
     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
     print_pass("channel killed: {}".format(r8))
-
 
     sleep("generate blocks", 2)
     gen = bitcoin_cli.req("generate", [10])
