@@ -183,7 +183,6 @@ def test():
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
-    print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
     r1 = run_cli(cli_build_dir, env, ["info", "-n"])
@@ -220,7 +219,6 @@ def test():
 
     sleep("generate blocks", 5)
     gen = bitcoin_cli.req("generate", [10])
-    print_info(json.dumps(gen, indent=4, sort_keys=True))
     sleep("wait to stablize", 5)
 
     r6 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
@@ -290,9 +288,18 @@ def test():
     r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
     print_info("pay invoice: {}".format(r16))
 
-    sleep("generate blocks", 5)
+    sleep("close channel", 2)
+
+    r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+    print_pass("channel killed: {}".format(r8))
+
+
+    sleep("generate blocks", 2)
     gen = bitcoin_cli.req("generate", [10])
-    print_info(json.dumps(gen, indent=4, sort_keys=True))
+
+    r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+    print_pass("got channel list: {}".format(r9))
+
     sleep("shut down", 5)
 
     s1.kill()
