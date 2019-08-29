@@ -126,6 +126,7 @@ impl<T: Larva> LnManager<T> {
             ];
             async_client.make_rpc_call("importprivkey", k, false).map(|_| Ok(())).await
         });
+
         let async_client = rpc_client.clone();
         let _ = larva.clone().spawn_task(async move {
             let k = &[
