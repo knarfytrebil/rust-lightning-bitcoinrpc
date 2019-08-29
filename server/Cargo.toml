@@ -10,7 +10,8 @@ bitcoin = "0.20"
 bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.7"
 lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", branch = "master" }
-lightning-invoice = { path = "../../rust-lightning-invoice" }
+lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", rev = "8e8f5d5" }
+# lightning-invoice = { path = "../../rust-lightning-invoice" }
 secp256k1 = "0.15"
 hyper = "0.12"
 futures = { package = "futures-preview", version = "0.3.0-alpha.17", features = ["compat"] }
