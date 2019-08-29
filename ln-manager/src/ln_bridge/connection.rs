@@ -8,7 +8,7 @@ use futures::channel::mpsc;
 use secp256k1::key::PublicKey;
 
 // use tokio::timer::Delay;
-use tokio_tcp::TcpStream;
+use tokio::net::tcp::TcpStream;
 
 use lightning::ln::peer_handler;
 use lightning::ln::peer_handler::SocketDescriptor as LnSocketTrait;
