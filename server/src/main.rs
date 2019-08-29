@@ -10,7 +10,6 @@ extern crate failure;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;
-extern crate lightning_net_tokio;
 extern crate ln_manager;
 extern crate num_traits;
 extern crate rand;

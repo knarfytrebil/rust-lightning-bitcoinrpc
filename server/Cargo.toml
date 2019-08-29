@@ -6,15 +6,12 @@ build = "build.rs"
 edition = "2018"
 
 [dependencies]
-bitcoin = "0.18"
+bitcoin = "0.20"
 bitcoin-bech32 = "0.7"
-bitcoin_hashes = "0.3"
-# lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", rev = "02feaeb" }
-# lightning = { path = "../../bitcoin/rust-lightning" }
+bitcoin_hashes = "0.7"
 lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", branch = "master" }
-lightning-invoice = { git = "https://github.com/rust-bitcoin/rust-lightning-invoice.git", branch = "master" }
-lightning-net-tokio = "0.0.1"
-secp256k1 = "0.12"
+lightning-invoice = { path = "../../rust-lightning-invoice" }
+secp256k1 = "0.15"
 hyper = "0.12"
 futures = { package = "futures-preview", version = "0.3.0-alpha.17", features = ["compat"] }
 serde = "1"
