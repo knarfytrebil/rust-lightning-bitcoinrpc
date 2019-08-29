@@ -14,7 +14,7 @@ lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invo
 # lightning-invoice = { path = "../../rust-lightning-invoice" }
 secp256k1 = "0.15"
 hyper = "0.12"
-futures = { package = "futures-preview", version = "0.3.0-alpha.17", features = ["compat"] }
+futures = { package = "futures-preview", version = "0.3.0-alpha.18", features = ["compat"] }
 serde = "1"
 serde_json = "1"
 serde_derive = "1"
