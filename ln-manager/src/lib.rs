@@ -1,4 +1,3 @@
-#![feature(async_await)]
 #![feature(async_closure)]
 extern crate base64;
 extern crate bitcoin;
