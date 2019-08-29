@@ -225,34 +225,34 @@ class TestCases(unittest.TestCase):
         print_pass("got channel: {}".format(r5))
         self.generate_block(10)
         return
-    def test_3_1_channel_list(self):
-        r6 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
-        self.assertTrue(len(r6["channels"]) > 0)
-        print_pass("got channel list: {}".format(r6))
-        return
-    def test_3_2_node_2_channel_list(self):
-        r7 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-        print(len(r7["channels"]))
-        self.assertTrue(len(r7["channels"]) > 0)
-        print_pass("got channel list node #2: {}".format(r7))
-        return
-    def test_3_3_channel_live(self):
-        r61 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "live"])
-        #  self.assertTrue(len(r61["channels"]) > 0)
-        print_pass("got channel list: {}".format(r61))
-        return
-    def test_4_0_invoce(self):
-        r15 = run_cli(self.cli_build_dir, self.env, ["invoice", "-c", "1001000"])
-        print_pass("got invoice: {}".format(r15))
-        r16 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
-        print_info("pay invoice: {}".format(r16))
-        return
-    def test_4_1_check_channel(self):
-        r151 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
-        print_pass("got channel list: {}".format(r151))
-        r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-        print_pass("got channel list node #2: {}".format(r152))
-        return
+    # def test_3_1_channel_list(self):
+    #     r6 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+    #     self.assertTrue(len(r6["channels"]) > 0)
+    #     print_pass("got channel list: {}".format(r6))
+    #     return
+    # def test_3_2_node_2_channel_list(self):
+    #     r7 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    #     print(len(r7["channels"]))
+    #     self.assertTrue(len(r7["channels"]) > 0)
+    #     print_pass("got channel list node #2: {}".format(r7))
+    #     return
+    # def test_3_3_channel_live(self):
+    #     r61 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "live"])
+    #     #  self.assertTrue(len(r61["channels"]) > 0)
+    #     print_pass("got channel list: {}".format(r61))
+    #     return
+    # def test_4_0_invoce(self):
+    #     r15 = run_cli(self.cli_build_dir, self.env, ["invoice", "-c", "1001000"])
+    #     print_pass("got invoice: {}".format(r15))
+    #     r16 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
+    #     print_info("pay invoice: {}".format(r16))
+    #     return
+    # def test_4_1_check_channel(self):
+    #     r151 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+    #     print_pass("got channel list: {}".format(r151))
+    #     r152 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+    #     print_pass("got channel list node #2: {}".format(r152))
+    #     return
     # def test_5_0_kill_channel(self):
     #     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
     #     print_pass("channel killed: {}".format(r8))
