@@ -233,8 +233,9 @@ fn find_fork_step(
         let target_header = target_header_opt.unwrap().1;
         // Everything below needs to disconnect target, so go ahead and do that now
         let c_header = target_header.clone();
+        let c_height = target_header.clone().height;
         let send_res = block_on(
-            steps_tx.send(ForkStep::DisconnectBlock(c_header.into(), c_header.height))
+            steps_tx.send(ForkStep::DisconnectBlock(c_header.into(), c_height))
         );
         if let Ok(_) = send_res {
             // send err match
