@@ -1,6 +1,6 @@
-import os, datetime, time
+import os, datetime, time, unittest, signal
 import subprocess, json
-import requests 
+import requests
 from requests.auth import HTTPBasicAuth
 
 # Print Messages
@@ -31,7 +31,7 @@ def get_env(test_version):
 
     environment = {
         "working_dir": working_dir,
-        "server": { 
+        "server": {
             "bin": "rustbolt",
             "root": server_dir,
             "test": "{}target/{}/".format(server_dir,test_version) },
@@ -42,7 +42,7 @@ def get_env(test_version):
         },
         "conf": {
             "root" : conf_dir,
-            "server": { 
+            "server": {
                 "dir": "{}server/".format(conf_dir),
                 "ln": "ln.conf.toml",
                 "node": "node.conf.toml"
@@ -59,7 +59,7 @@ def sleep(action, secs):
             end = "\n"
         if i:
             print("{}...".format(secs-i), end=end, flush=True )
-        time.sleep(1)
+            time.sleep(1)
 
 def build(project, version, env):
     print_info("building {} version: {}".format(project, version))
@@ -71,31 +71,32 @@ def build(project, version, env):
     return env[project]["test"]
 
 def run_server(server_id, build_dir, version, env):
-    server_bin =  build_dir + env["server"]["bin"] 
+    server_bin =  build_dir + env["server"]["bin"]
 
     # Copy configuration files
     print_info("copying configuration files")
     conf = "{}{}/".format(env["conf"]["server"]["dir"],server_id)
+    subprocess.run(["rm", "-rf", "{}{}".format(build_dir, server_id)])
     subprocess.run(["cp", "-r", conf, "{}{}".format(build_dir, server_id)])
 
     data = build_dir + "ln/data_{}/".format(server_id)
 
     print_info("preparing local storage files: {}".format(data))
 
-    # Create data storage folder 
+    # Create data storage folder
     subprocess.run(["mkdir", "-p", data])
     os.chdir(build_dir)
 
-    # Run server 
+    # Run server
     print_info("run: { " + server_bin + " }")
     server = subprocess.Popen([
-        server_bin, 
+        server_bin,
         "{}{}/{}".format(build_dir, server_id, env["conf"]["server"]["ln"]),
         "{}{}/{}".format(build_dir, server_id, env["conf"]["server"]["node"]),
     ])
 
     if server.returncode != 0 and server.returncode != None:
-        return print_error("server run error") 
+        return print_error("server run error")
 
     print_pass("servre running:[PID]:{} [SERVER_ID]:{}".format(
         str(server.pid),
@@ -106,7 +107,7 @@ def run_server(server_id, build_dir, version, env):
 
 def run_cli(build_dir, env, cmd):
     print_exec("rbcli {}".format(" ".join(cmd)))
-    cli_bin =  build_dir + env["cli"]["bin"] 
+    cli_bin =  build_dir + env["cli"]["bin"]
     return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
 
 def fund(addr, amount, cli):
@@ -138,22 +139,141 @@ class BitcoinClient:
         self.payload["params"] = params
         return self.raw_request(self.rpc_url, data=json.dumps(self.payload), headers=self.headers)
 
+class TestCases(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        self.client = BitcoinClient("admin1:123@127.0.0.1:19011")
+        self.env = get_env("debug")
+        self.server_build_dir = build("server", "debug", self.env)
+        self.cli_build_dir = build("cli", "debug", self.env)
+
+        data_dir = self.server_build_dir + "ln"
+        print_info("wiping data: {}".format(data_dir))
+        subprocess.run(["rm", "-rf", data_dir])
+
+        self.ln_node_1 = run_server(1, self.server_build_dir, "debug", self.env)
+        self.ln_node_2 = run_server(2, self.server_build_dir, "debug", self.env)
+        def do_when_kill(signal, frame):
+            self.tearDownClass(self)
+            raise KeyboardInterrupt
+        signal.signal(signal.SIGINT, do_when_kill)
+        return
+    @classmethod
+    def tearDownClass(self):
+        self.ln_node_1.kill()
+        self.ln_node_2.kill()
+        # wipe data
+        if self.server_build_dir:
+            data_dir = self.server_build_dir + "ln"
+            print_info("wiping data: {}".format(data_dir))
+            subprocess.run(["rm", "-rf", data_dir])
+        return
+    def setUp(self):
+        sleep("wait to stablize", 3)
+        return
+    def tearDown(self):
+        return
+
+    def test_0_bitcoind_client(self):
+        info = self.client.req("getblockchaininfo", [])
+        self.assertEqual(info["error"], None, "failed to get blockchain info {}".format(info))
+        return
+
+    def generate_block(self, nums=1):
+        self.client.req("generate", [nums])
+        sleep("generate blocks", 5)
+        return
+    def test_1_info_node(self):
+        node_1 = run_cli(self.cli_build_dir, self.env, ["info", "-a"])
+        self.assertEqual(len(node_1["imported_addresses"]), 2, "imported error")
+        print_pass("got node #1 addresses: {}".format(node_1))
+        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "info", "-a"])
+        self.assertEqual(len(node_2["imported_addresses"]), 2, "imported error")
+        print_pass("got node #2 addresses: {}".format(node_2))
+        addrs = node_1['imported_addresses'] + node_2['imported_addresses']
+        for addr in addrs:
+            fund(addr, 0.5, self.client)
+        self.generate_block(10)
+        return
+    def test_1_info_pubkey(self):
+        node_1 = run_cli(self.cli_build_dir, self.env, ["info", "-n"])
+        self.assertIsNotNone(node_1["node_id"])
+        print_pass("got node #1 public key: {}".format(node_1["node_id"]))
+        self.__class__.node_id_1 = node_1["node_id"]
+        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "info", "-n"])
+        self.assertIsNotNone(node_2["node_id"])
+        print_pass("got node #2 public key: {}".format(node_2["node_id"]))
+        self.__class__.node_id_2 = node_2["node_id"]
+        return
+    def test_2_0_peer_connect(self):
+        connect = run_cli(
+            self.cli_build_dir, self.env,
+            ["peer", "-c", "{}@{}:{}".format(self.node_id_2, "127.0.0.1", "9736")]
+        )
+        self.assertIsNotNone(connect["response"])
+        print_pass("got connection: {}".format(connect))
+        return
+    def test_2_1_peers(self):
+        r4 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "peer", "-l"])
+        self.assertTrue(len(r4["peers"]) > 0)
+        print_pass("got node #2 peers: {}".format(r4))
+        return
+    def test_3_0_channel_connect(self):
+        r5 = run_cli(self.cli_build_dir, self.env, ["channel", "-c", self.node_id_2, "2000000", "100500000"])
+        self.assertIsNotNone(r5["channel"])
+        print_pass("got channel: {}".format(r5))
+        self.generate_block(10)
+        return
+    def test_3_1_channel_list(self):
+        r6 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        self.assertTrue(len(r6["channels"]) > 0)
+        print_pass("got channel list: {}".format(r6))
+        return
+    def test_3_2_node_2_channel_list(self):
+        r7 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+        print(len(r7["channels"]))
+        self.assertTrue(len(r7["channels"]) > 0)
+        print_pass("got channel list node #2: {}".format(r7))
+        return
+    def test_3_3_channel_live(self):
+        r61 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "live"])
+        #  self.assertTrue(len(r61["channels"]) > 0)
+        print_pass("got channel list: {}".format(r61))
+        return
+    def test_4_0_invoce(self):
+        r15 = run_cli(self.cli_build_dir, self.env, ["invoice", "-c", "1001000"])
+        print_pass("got invoice: {}".format(r15))
+        r16 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
+        print_info("pay invoice: {}".format(r16))
+        return
+    def test_4_1_check_channel(self):
+        r151 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        print_pass("got channel list: {}".format(r151))
+        r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+        print_pass("got channel list node #2: {}".format(r152))
+        return
+    # def test_5_0_kill_channel(self):
+    #     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+    #     print_pass("channel killed: {}".format(r8))
+    #     return
+
 def test():
     env = get_env("debug")
 
     # Build Lightning Server
     server_build_dir = build("server", "debug", env)
-    
+
     # Build Cli
     cli_build_dir = build("cli", "debug", env)
 
     # wipe data
     data_dir = server_build_dir + "ln"
     print_info("wiping data: {}".format(data_dir))
-    subprocess.run(["rm", "-rf", data_dir])  
+    subprocess.run(["rm", "-rf", data_dir])
 
     # Establish Bitcoind RPC
-    bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19001")
+    bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19011")
     info = bitcoin_cli.req("getblockchaininfo", [])
     print_info("current block height: {}".format(info["result"]["blocks"]))
     print_info("best block hash: {}".format(info["result"]["bestblockhash"]))
@@ -164,12 +284,12 @@ def test():
     sleep("wait to stablize", 5)
 
     """
-    ██╗███╗   ██╗███████╗ ██████╗ 
+    ██╗███╗   ██╗███████╗ ██████╗
     ██║████╗  ██║██╔════╝██╔═══██╗
     ██║██╔██╗ ██║█████╗  ██║   ██║
     ██║██║╚██╗██║██╔══╝  ██║   ██║
     ██║██║ ╚████║██║     ╚██████╔╝
-    ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝ 
+    ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
     """
     r0 = run_cli(cli_build_dir, env, ["info", "-a"])
     print_pass("got node #1 addresses: {}".format(r0))
@@ -192,7 +312,7 @@ def test():
     print_pass("got node #2 public key: {}".format(r2["node_id"]))
 
     """
-    ██████╗ ███████╗███████╗██████╗ 
+    ██████╗ ███████╗███████╗██████╗
     ██╔══██╗██╔════╝██╔════╝██╔══██╗
     ██████╔╝█████╗  █████╗  ██████╔╝
     ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗
@@ -207,10 +327,10 @@ def test():
     print_pass("got node #2 peers: {}".format(r4))
 
     """
-     ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗      
-    ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║     
-    ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║     
-    ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║     
+     ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗
+    ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║
+    ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║
+    ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║
     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
     """
@@ -256,11 +376,11 @@ def test():
     # print_info(json.dumps(gen, indent=4, sort_keys=True))
     # sleep("wait to stablize", 5)
 
-    """ 
+    """
     ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗
     ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝
-    ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗  
-    ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝  
+    ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗
+    ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝
     ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
     ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
     """
@@ -308,8 +428,9 @@ def test():
     # wipe data
     data_dir = server_build_dir + "ln"
     print_info("wiping data: {}".format(data_dir))
-    subprocess.run(["rm", "-rf", data_dir])  
+    subprocess.run(["rm", "-rf", data_dir])
 
 
 if __name__ == '__main__':
-    test()
+    # test()
+    unittest.main()
