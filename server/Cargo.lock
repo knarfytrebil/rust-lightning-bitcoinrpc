@@ -753,7 +753,6 @@ dependencies = [
  "tokio-codec 0.2.0",
  "tokio-fs 0.2.0",
  "tokio-io 0.2.0",
- "tokio-tcp 0.2.0",
  "tokio-timer 0.3.0",
 ]
 
