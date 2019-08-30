@@ -101,11 +101,11 @@ pub fn pay(
                     debug!("Invoice had garbage final cltv");
                     fail_return!();
                 }
-                
+
                 info!("invoice route length: {}", invoice.routes().len());
                 let usable_channels_len = &channel_manager.list_usable_channels().len();
                 info!("usable channel length: {}", usable_channels_len);
-                
+
                 match router.get_route(
                     &invoice.recover_payee_pub_key(),
                     Some(&channel_manager.list_usable_channels()),
@@ -176,12 +176,12 @@ pub fn create_invoice(
         //.route(chans)
         .amount_pico_btc(value.parse::<u64>().unwrap())
         .current_timestamp()
-        .build_signed(|msg_hash| { 
+        .build_signed(|msg_hash| {
             secp_ctx.sign_recoverable(msg_hash, &keys.get_node_secret())
         });
 
     match invoice_res {
-        Ok(invoice) => { 
+        Ok(invoice) => {
             Ok(invoice.to_string())
         }
         Err(e) => Err(format!("Error, {:#?}", e).to_string()),
