@@ -63,12 +63,10 @@ fn main() {
             Config::default(),
             File::create(&log_file_name).unwrap(),
         ),
-    ])
-    .unwrap();
+    ]).unwrap();
 
     info!("reading ln SETTING FILE - {:?}", ln_conf_arg);
     info!("reading node SETTING FILE - {:?}", node_conf_arg);
     info!("log printed to {:?}", log_file_name);
-
     ln_node::run(ln_conf, node_conf);
 }

@@ -178,7 +178,8 @@ class TestCases(unittest.TestCase):
     def test_0_bitcoind_client(self):
         info = self.client.req("getblockchaininfo", [])
         self.assertIsNone(info["error"], "failed to get blockchain info {}".format(info))
-        # self.generate_block(200)
+        if int(info["result"]["blocks"]) < 200:
+            self.generate_block(200)
         return
 
     def generate_block(self, nums=1):
