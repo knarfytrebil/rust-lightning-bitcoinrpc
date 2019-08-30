@@ -1,8 +1,8 @@
 extern crate futures;
 
+use futures::executor::LocalPool;
 use futures::future::Future;
 use futures::task::{Context, Poll};
-use futures::executor::LocalPool;
 use std::pin::Pin;
 
 pub type TaskFn = Fn(Vec<Arg>) -> Result<bool, String>;

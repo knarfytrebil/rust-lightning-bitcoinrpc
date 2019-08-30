@@ -5,9 +5,9 @@ use futures::future::Future;
 use futures::task::{Context, Poll};
 use futures::FutureExt;
 
+use crate::ln_node::settings::Settings as NodeSettings;
 use ln_manager::executor::Larva;
 use ln_manager::ln_bridge::settings::Settings as MgrSettings;
-use crate::ln_node::settings::Settings as NodeSettings;
 
 use std::pin::Pin;
 
@@ -60,11 +60,8 @@ pub struct Probe {
 
 impl Probe {
     pub fn new(exec: Executor) -> Self {
-        Probe {
-            exec: exec,
-        }
+        Probe { exec: exec }
     }
-    
 }
 
 impl Larva for Probe {

@@ -1,14 +1,14 @@
-use std::net::UdpSocket;
-use std::thread;
+use crate::lightning::chain::keysinterface::KeysInterface;
 use crate::ln_cmd::tasks::{Arg, Probe};
 use crate::ln_cmd::utils;
-use crate::ln_node::settings::Settings as NodeSettings;
-use crate::ln_manager::ln_cmd::peer::PeerC;
 use crate::ln_manager::ln_cmd::channel::ChannelC;
 use crate::ln_manager::ln_cmd::invoice::InvoiceC;
-use crate::lightning::chain::keysinterface::KeysInterface;
+use crate::ln_manager::ln_cmd::peer::PeerC;
+use crate::ln_node::settings::Settings as NodeSettings;
 use ln_manager::LnManager;
 use protocol;
+use std::net::UdpSocket;
+use std::thread;
 
 pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Result<(), String> {
     let node_conf: Option<&NodeSettings> = match &arg[0] {
@@ -22,8 +22,8 @@ pub async fn gen(arg: Vec<Arg>, _exec: Probe, ln_mgr: LnManager<Probe>) -> Resul
         let mut buf = [0u8; 1500];
         let sock = udp_socket.try_clone().expect("Failed to clone socket");
         match udp_socket.recv_from(&mut buf) {
-            Ok((sz, src)) => { 
-                handle_msg(sock, sz, src, buf, &ln_mgr); 
+            Ok((sz, src)) => {
+                handle_msg(sock, sz, src, buf, &ln_mgr);
             }
             Err(e) => {
                 error!("Couldn't receive a datagram: {}", e);
@@ -51,15 +51,13 @@ fn handle_msg(
         resp = match msg {
             protocol::RequestFuncs::GetAddresses => {
                 let addresses = utils::imported_addresses::get(
-                    ln_mgr.settings.lightning.lndata.clone(), 
-                    ln_mgr.network.clone()
+                    ln_mgr.settings.lightning.lndata.clone(),
+                    ln_mgr.network.clone(),
                 );
                 protocol::ResponseFuncs::GetAddresses(addresses)
             }
             protocol::RequestFuncs::GetNodeInfo => {
-                let node_info = utils::node_info::get(
-                    &ln_mgr.keys.get_node_secret()
-                );
+                let node_info = utils::node_info::get(&ln_mgr.keys.get_node_secret());
                 protocol::ResponseFuncs::GetNodeInfo(node_info)
             }
             protocol::RequestFuncs::PeerConnect(addr) => {
@@ -70,18 +68,14 @@ fn handle_msg(
                 let nodes = ln_mgr.list();
                 protocol::ResponseFuncs::PeerList(nodes)
             }
-            protocol::RequestFuncs::ChannelCreate(args) => {
-                match ln_mgr.fund_channel(args) {
-                    Ok(channel) => { protocol::ResponseFuncs::ChannelCreate(channel) },
-                    Err(e) => { protocol::ResponseFuncs::Error(e) }
-                }
-            }
-            protocol::RequestFuncs::ChannelClose(id) => {
-                match ln_mgr.close(id) {
-                    Ok(channel) => { protocol::ResponseFuncs::ChannelClose(channel) }
-                    Err(e) => { protocol::ResponseFuncs::Error(e) }
-                }
-            }
+            protocol::RequestFuncs::ChannelCreate(args) => match ln_mgr.fund_channel(args) {
+                Ok(channel) => protocol::ResponseFuncs::ChannelCreate(channel),
+                Err(e) => protocol::ResponseFuncs::Error(e),
+            },
+            protocol::RequestFuncs::ChannelClose(id) => match ln_mgr.close(id) {
+                Ok(channel) => protocol::ResponseFuncs::ChannelClose(channel),
+                Err(e) => protocol::ResponseFuncs::Error(e),
+            },
             protocol::RequestFuncs::ChannelCloseAll => {
                 ln_mgr.force_close_all();
                 protocol::ResponseFuncs::ChannelCloseAll
@@ -89,19 +83,14 @@ fn handle_msg(
             protocol::RequestFuncs::ChannelList(mode) => {
                 protocol::ResponseFuncs::ChannelList(ln_mgr.channel_list(&mode))
             }
-            protocol::RequestFuncs::InvoiceCreate(amount) => {
-                match ln_mgr.create_invoice(amount) {
-                    Ok(invoice_res) => { protocol::ResponseFuncs::InvoiceCreate(invoice_res) }
-                    Err(e) => { protocol::ResponseFuncs::Error(e) }
-                }
-            }
-            protocol::RequestFuncs::InvoicePay(args) => {
-                match ln_mgr.pay(args) {
-                    Ok(_) => { protocol::ResponseFuncs::InvoicePay }
-                    Err(e) => { protocol::ResponseFuncs::Error(e) }
-                }
-            }
-
+            protocol::RequestFuncs::InvoiceCreate(amount) => match ln_mgr.create_invoice(amount) {
+                Ok(invoice_res) => protocol::ResponseFuncs::InvoiceCreate(invoice_res),
+                Err(e) => protocol::ResponseFuncs::Error(e),
+            },
+            protocol::RequestFuncs::InvoicePay(args) => match ln_mgr.pay(args) {
+                Ok(_) => protocol::ResponseFuncs::InvoicePay,
+                Err(e) => protocol::ResponseFuncs::Error(e),
+            },
         }
     }
 

@@ -4,17 +4,17 @@ extern crate bitcoin_bech32;
 extern crate bitcoin_hashes;
 extern crate bytes;
 extern crate config;
-extern crate futures;
 extern crate failure;
+extern crate futures;
 extern crate hyper;
 extern crate lightning;
 extern crate lightning_invoice;
 extern crate ln_manager;
 extern crate num_traits;
+extern crate protocol;
 extern crate rand;
 extern crate secp256k1;
 extern crate serde_json;
-extern crate protocol;
 
 #[macro_use]
 extern crate log;
@@ -28,8 +28,8 @@ mod ln_cmd;
 mod ln_node;
 
 use std::env;
-use std::mem;
 use std::fs::File;
+use std::mem;
 
 use simplelog::*;
 
@@ -55,11 +55,16 @@ fn main() {
     let node_conf = NodeSettings::new(node_conf_arg).unwrap();
 
     let log_file_name = format!("server_{}.log", &node_conf.server.address);
-    
+
     CombinedLogger::init(vec![
         TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Mixed).unwrap(),
-        WriteLogger::new(LevelFilter::Debug, Config::default(), File::create(&log_file_name).unwrap()),
-    ]).unwrap();
+        WriteLogger::new(
+            LevelFilter::Debug,
+            Config::default(),
+            File::create(&log_file_name).unwrap(),
+        ),
+    ])
+    .unwrap();
 
     info!("reading ln SETTING FILE - {:?}", ln_conf_arg);
     info!("reading node SETTING FILE - {:?}", node_conf_arg);
