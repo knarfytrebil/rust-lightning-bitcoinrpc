@@ -210,27 +210,19 @@ impl Connection {
         let connect_timeout = futures_timer::Delay::new(Duration::from_secs(10)).then(|_| {
             future::ready(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
         });
-        let _ = larva.clone().spawn_task(futures::future::select(
-            TcpStream::connect(&addr), connect_timeout).then(move |either| {
-                match either {
-                    future::Either::Left((x, _)) => {
-                        if let Ok(stream) = x {
-                            Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream, larva);
-                            return future::ok(());
-                        } else {
-                            // TODO show err
-                            return future::err(());
-                        }
-                    },
-                    future::Either::Right((_, left)) => {
-                        let _ = left.map(|stream| {
-                            let stream = stream.unwrap();
-                            let _ = stream.shutdown(std::net::Shutdown::Both);
-                        });
-                        future::err(())
-                    },
+
+        let _ = larva.clone().spawn_task(async move {
+            match TcpStream::connect(addr).await {
+                Ok(stream) => {
+                    Connection::setup_outbound(peer_manager, event_notify, their_node_id, stream, larva);
+                    return Ok(());
+                },
+                Err(e) => {
+                    // TODO log e
+                    return Err(());
                 }
-            }));
+            }
+        });
     }
 }
 

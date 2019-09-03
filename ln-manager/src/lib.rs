@@ -203,12 +203,12 @@ impl<T: Larva> LnManager<T> {
 
         info!("Lightning Port binded on 0.0.0.0:{}", &settings.lightning.port);
         let setup_larva = larva.clone();
-        let listener =
-            tokio::net::tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
-            .unwrap();
+        let async_settings = settings.clone();
 
-        let _ = larva.clone().spawn_task(
-            listener
+        let _ = larva.clone().spawn_task(async move {
+            let addr = &format!("0.0.0.0:{}", async_settings.lightning.port);
+            let listener = tokio::net::tcp::TcpListener::bind(addr).await;
+            listener.unwrap()
                 .incoming()
                 .for_each(move |sock| {
                     info!("Got new inbound connection, waiting on them to start handshake...");
@@ -220,8 +220,9 @@ impl<T: Larva> LnManager<T> {
                     );
                     future::ready(())
                 })
-                .map(|_| Ok(())),
-        );
+                .map(|_| ()).await;
+            Ok(())
+        });
 
         let _ = larva.clone().spawn_task(
             async {
