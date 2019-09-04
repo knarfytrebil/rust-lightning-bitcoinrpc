@@ -4,6 +4,7 @@ use crate::ln_bridge::utils::{hex_str, hex_to_compressed_pubkey};
 
 use std::sync::Arc;
 use std::time::Duration;
+use std::net::ToSocketAddrs;
 use futures::channel::mpsc;
 use crate::executor::Larva;
 
@@ -24,8 +25,10 @@ pub fn connect<T: Larva>(
     match hex_to_compressed_pubkey(node.split_at(0).1) {
         Some(pk) => {
             if node.as_bytes()[33 * 2] == '@' as u8 {
-                let parse_res: Result<std::net::SocketAddr, _> = node.split_at(33 * 2 + 1).1.parse();
-                if let Ok(addr) = parse_res {
+                // let parse_res: Result<std::net::SocketAddr, _> = node.split_at(33 * 2 + 1).1.parse();
+                let str_node = node.split_at(33 * 2 + 1).1;
+                let parse_res = str_node.to_socket_addrs().unwrap().next();
+                if let Some(addr) = parse_res {
                     info!("Attempting to connect to {}...", addr);
                     match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
                         Ok(stream) => {
