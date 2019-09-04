@@ -54,10 +54,14 @@ pub fn connect<T: Larva>(
                     debug!("Couldn't parse host:port into a socket address");
                 }
             } else {
+                info!("Invalid line, should be c pubkey@host:port");
                 debug!("Invalid line, should be c pubkey@host:port");
             }
-        }
-        None => debug!("Bad PubKey for remote node"),
+        },
+        None => {
+            info!("Bad PubKey for remote node");
+            debug!("Bad PubKey for remote node");
+        },
     }
 }
 
