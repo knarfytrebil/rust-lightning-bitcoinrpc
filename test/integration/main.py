@@ -158,7 +158,7 @@ class TestCases(unittest.TestCase):
         print_info("wiping data: {}".format(data_dir))
         subprocess.run(["rm", "-rf", data_dir])
 
-        sleep("wait for node initialize...", 30)
+        sleep("wait for node initialize...", 10)
         info1 = self.client1.req("getblockchaininfo", [])
         print_info("checking client1 at setup...")
         print_info(info1)
@@ -233,6 +233,11 @@ class TestCases(unittest.TestCase):
         )
         print_pass("got connection: {}".format(connect))
         self.assertIsNotNone(connect["response"])
+        sleep("wait peer -c", 5)
+        r4 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "peer", "-l"])
+        print_pass("got node #1 peers: {}".format(r4))
+        r41 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "peer", "-l"])
+        print_pass("got node #2 peers: {}".format(r41))
         return
     def test_2_1_peers(self):
         r4 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "peer", "-l"])
