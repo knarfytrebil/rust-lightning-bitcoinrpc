@@ -149,6 +149,7 @@ class TestCases(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self.client = BitcoinClient("admin1:123@regtest-0:19001")
+        self.client1 = BitcoinClient("admin1:123@regtest-1:19011")
         self.env = get_env("debug")
         self.server_build_dir = build("server", "debug", self.env)
         self.cli_build_dir = build("cli", "debug", self.env)
@@ -181,10 +182,16 @@ class TestCases(unittest.TestCase):
         return
 
     def test_0_bitcoind_client(self):
+        print_info("checking node_0 bitcoind")
         info = self.client.req("getblockchaininfo", [])
+        print_info(info)
         self.assertIsNone(info["error"], "failed to get blockchain info {}".format(info))
+        info1 = self.client1.req("getblockchaininfo", [])
+        print_info(info1)
+        self.assertIsNone(info1["error"], "failed to get blockchain info 1: {}".format(info1))
         if int(info["result"]["blocks"]) < 200:
             self.generate_block(200)
+            sleep("waiting for 200 blocks", 10)
         return
 
     def generate_block(self, nums=1):
