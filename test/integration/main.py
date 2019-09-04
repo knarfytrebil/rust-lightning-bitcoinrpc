@@ -216,7 +216,7 @@ class TestCases(unittest.TestCase):
     def test_2_0_peer_connect(self):
         connect = run_cli(
             self.cli_build_dir, self.env,
-            ["peer", "-c", "{}@{}:{}".format(self.node_id_2, HOST, "9736")]
+            ["-n", "{}:8123".format(HOST), "peer", "-c", "{}@{}:{}".format(self.node_id_2, HOST, "9736")]
         )
         print_pass("got connection: {}".format(connect))
         self.assertIsNotNone(connect["response"])
@@ -227,14 +227,14 @@ class TestCases(unittest.TestCase):
         self.assertTrue(len(r4["peers"]) > 0)
         return
     def test_3_0_channel_connect(self):
-        r5 = run_cli(self.cli_build_dir, self.env, ["channel", "-c", self.node_id_2, "2000000", "100500000"])
+        r5 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-c", self.node_id_2, "2000000", "100500000"])
         print_pass("got channel: {}".format(r5))
         self.assertIsNotNone(r5["channel"])
         sleep("generate blocks", 5)
         self.generate_block(10)
         return
     def test_3_1_channel_list(self):
-        r6 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        r6 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list: {}".format(r6))
         self.assertTrue(len(r6["channels"]) > 0)
         return
@@ -244,15 +244,15 @@ class TestCases(unittest.TestCase):
         self.assertTrue(len(r7["channels"]) > 0)
         return
     def test_3_3_channel_not_live(self):
-        r61 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "live"])
+        r61 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-l", "live"])
         print_pass("got channel list: {}".format(r61))
         # self.assertTrue(len(r61["channels"]) == 0)
         return
     def test_4_0_invoce(self):
-        r15 = run_cli(self.cli_build_dir, self.env, ["invoice", "-c", "1001000"])
+        r15 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "invoice", "-c", "1001000"])
         print_pass("got invoice: {}".format(r15))
         self.assertTrue("error" not in r15)
-        r151 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        r151 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list: {}".format(r151))
         self.assertTrue("error" not in r151)
         r152 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "channel", "-l", "all"])
@@ -266,11 +266,11 @@ class TestCases(unittest.TestCase):
     def test_4_1_check_channel(self):
         return
     def test_5_0_kill_channel(self):
-        r6 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        r6 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list: {}".format(r6))
-        r8 = run_cli(self.cli_build_dir, self.env, ["channel", "-k", r6["channels"][0]["id"]])
+        r8 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-k", r6["channels"][0]["id"]])
         print_pass("channel killed: {}".format(r8))
-        r9 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
+        r9 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list: {}".format(r9))
         self.assertTrue("error" not in r8)
         return
