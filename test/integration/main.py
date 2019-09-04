@@ -24,7 +24,7 @@ def print_error(message):
     print("{} \x1b[1;31m[ERROR]\x1b[0m {} ... ".format(get_now(), message))
 
 def get_env(test_version):
-    working_dir = os.getcwd() + "/../../"
+    working_dir = os.getcwd() + "/"
     server_dir = working_dir + "server/"
     client_dir = working_dir + "cli/"
     conf_dir = working_dir + "test/conf/"
@@ -64,9 +64,11 @@ def sleep(action, secs):
 def build(project, version, env):
     print_info("building {} version: {}".format(project, version))
     os.chdir(env[project]["root"])
-
-    if subprocess.run(["cargo", "build"]).returncode != 0:
-        return print_error("build Error")
+    # TODO only for circle-ci cargo path now
+    result = subprocess.run(["/root/.cargo/bin/cargo", "build"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if result.returncode != 0:
+        print_error(result.stderr)
+        raise Exception("Build Error")
     print_pass("build success, {} is ready".format(project))
     return env[project]["test"]
 
@@ -139,11 +141,14 @@ class BitcoinClient:
         self.payload["params"] = params
         return self.raw_request(self.rpc_url, data=json.dumps(self.payload), headers=self.headers)
 
+# TODO only for docker-compose
+HOST = "lightning"
+# not a real unittest, only for count cases
 class TestCases(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.client = BitcoinClient("admin1:123@127.0.0.1:19001")
+        self.client = BitcoinClient("admin1:123@regtest-0:19001")
         self.env = get_env("debug")
         self.server_build_dir = build("server", "debug", self.env)
         self.cli_build_dir = build("cli", "debug", self.env)
@@ -187,10 +192,10 @@ class TestCases(unittest.TestCase):
         sleep("generate blocks", 5)
         return
     def test_1_info_node(self):
-        node_1 = run_cli(self.cli_build_dir, self.env, ["info", "-a"])
+        node_1 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "info", "-a"])
         self.assertEqual(len(node_1["imported_addresses"]), 2, "imported error")
         print_pass("got node #1 addresses: {}".format(node_1))
-        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "info", "-a"])
+        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "info", "-a"])
         self.assertEqual(len(node_2["imported_addresses"]), 2, "imported error")
         print_pass("got node #2 addresses: {}".format(node_2))
         addrs = node_1['imported_addresses'] + node_2['imported_addresses']
@@ -199,11 +204,11 @@ class TestCases(unittest.TestCase):
         self.generate_block(10)
         return
     def test_1_info_pubkey(self):
-        node_1 = run_cli(self.cli_build_dir, self.env, ["info", "-n"])
+        node_1 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "info", "-n"])
         print_pass("got node #1 public key: {}".format(node_1["node_id"]))
         self.assertIsNotNone(node_1["node_id"])
         self.__class__.node_id_1 = node_1["node_id"]
-        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "info", "-n"])
+        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "info", "-n"])
         print_pass("got node #2 public key: {}".format(node_2["node_id"]))
         self.assertIsNotNone(node_2["node_id"])
         self.__class__.node_id_2 = node_2["node_id"]
@@ -211,13 +216,13 @@ class TestCases(unittest.TestCase):
     def test_2_0_peer_connect(self):
         connect = run_cli(
             self.cli_build_dir, self.env,
-            ["peer", "-c", "{}@{}:{}".format(self.node_id_2, "127.0.0.1", "9736")]
+            ["peer", "-c", "{}@{}:{}".format(self.node_id_2, HOST, "9736")]
         )
         print_pass("got connection: {}".format(connect))
         self.assertIsNotNone(connect["response"])
         return
     def test_2_1_peers(self):
-        r4 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "peer", "-l"])
+        r4 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "peer", "-l"])
         print_pass("got node #2 peers: {}".format(r4))
         self.assertTrue(len(r4["peers"]) > 0)
         return
@@ -234,7 +239,7 @@ class TestCases(unittest.TestCase):
         self.assertTrue(len(r6["channels"]) > 0)
         return
     def test_3_2_node_2_channel_list(self):
-        r7 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+        r7 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list node #2: {}".format(r7))
         self.assertTrue(len(r7["channels"]) > 0)
         return
@@ -250,11 +255,11 @@ class TestCases(unittest.TestCase):
         r151 = run_cli(self.cli_build_dir, self.env, ["channel", "-l", "all"])
         print_pass("got channel list: {}".format(r151))
         self.assertTrue("error" not in r151)
-        r152 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+        r152 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "channel", "-l", "all"])
         print_pass("got channel list node #2: {}".format(r152))
         self.assertTrue("error" not in r152)
         self.generate_block(10)
-        r16 = run_cli(self.cli_build_dir, self.env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
+        r16 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "invoice", "-p", r15["invoice"]])
         print_info("pay invoice: {}".format(r16))
         self.assertTrue("error" not in r16)
         return
@@ -270,177 +275,177 @@ class TestCases(unittest.TestCase):
         self.assertTrue("error" not in r8)
         return
 
-def test():
-    env = get_env("debug")
+# def test():
+#     env = get_env("debug")
 
-    # Build Lightning Server
-    server_build_dir = build("server", "debug", env)
+#     # Build Lightning Server
+#     server_build_dir = build("server", "debug", env)
 
-    # Build Cli
-    cli_build_dir = build("cli", "debug", env)
+#     # Build Cli
+#     cli_build_dir = build("cli", "debug", env)
 
-    # wipe data
-    data_dir = server_build_dir + "ln"
-    print_info("wiping data: {}".format(data_dir))
-    subprocess.run(["rm", "-rf", data_dir])
+#     # wipe data
+#     data_dir = server_build_dir + "ln"
+#     print_info("wiping data: {}".format(data_dir))
+#     subprocess.run(["rm", "-rf", data_dir])
 
-    # Establish Bitcoind RPC
-    bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19011")
-    info = bitcoin_cli.req("getblockchaininfo", [])
-    print_info("current block height: {}".format(info["result"]["blocks"]))
-    print_info("best block hash: {}".format(info["result"]["bestblockhash"]))
+#     # Establish Bitcoind RPC
+#     bitcoin_cli = BitcoinClient("admin1:123@127.0.0.1:19011")
+#     info = bitcoin_cli.req("getblockchaininfo", [])
+#     print_info("current block height: {}".format(info["result"]["blocks"]))
+#     print_info("best block hash: {}".format(info["result"]["bestblockhash"]))
 
-    # Run Server
-    s1 = run_server(1, server_build_dir, "debug", env)
-    s2 = run_server(2, server_build_dir, "debug", env)
-    sleep("wait to stablize", 5)
+#     # Run Server
+#     s1 = run_server(1, server_build_dir, "debug", env)
+#     s2 = run_server(2, server_build_dir, "debug", env)
+#     sleep("wait to stablize", 5)
 
-    """
-    ██╗███╗   ██╗███████╗ ██████╗
-    ██║████╗  ██║██╔════╝██╔═══██╗
-    ██║██╔██╗ ██║█████╗  ██║   ██║
-    ██║██║╚██╗██║██╔══╝  ██║   ██║
-    ██║██║ ╚████║██║     ╚██████╔╝
-    ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
-    """
-    r0 = run_cli(cli_build_dir, env, ["info", "-a"])
-    print_pass("got node #1 addresses: {}".format(r0))
+#     """
+#     ██╗███╗   ██╗███████╗ ██████╗
+#     ██║████╗  ██║██╔════╝██╔═══██╗
+#     ██║██╔██╗ ██║█████╗  ██║   ██║
+#     ██║██║╚██╗██║██╔══╝  ██║   ██║
+#     ██║██║ ╚████║██║     ╚██████╔╝
+#     ╚═╝╚═╝  ╚═══╝╚═╝      ╚═════╝
+#     """
+#     r0 = run_cli(cli_build_dir, env, ["info", "-a"])
+#     print_pass("got node #1 addresses: {}".format(r0))
 
-    r01 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-a"])
-    print_pass("got node #2 addresses: {}".format(r01))
+#     r01 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-a"])
+#     print_pass("got node #2 addresses: {}".format(r01))
 
-    addrs = r0['imported_addresses'] + r01['imported_addresses']
-    for addr in addrs:
-        fund(addr, 0.5, bitcoin_cli)
+#     addrs = r0['imported_addresses'] + r01['imported_addresses']
+#     for addr in addrs:
+#         fund(addr, 0.5, bitcoin_cli)
 
-    sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [10])
-    sleep("wait to stablize", 5)
+#     sleep("generate blocks", 5)
+#     gen = bitcoin_cli.req("generate", [10])
+#     sleep("wait to stablize", 5)
 
-    r1 = run_cli(cli_build_dir, env, ["info", "-n"])
-    print_pass("got node #1 public key: {}".format(r1["node_id"]))
+#     r1 = run_cli(cli_build_dir, env, ["info", "-n"])
+#     print_pass("got node #1 public key: {}".format(r1["node_id"]))
 
-    r2 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-n"])
-    print_pass("got node #2 public key: {}".format(r2["node_id"]))
+#     r2 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "info", "-n"])
+#     print_pass("got node #2 public key: {}".format(r2["node_id"]))
 
-    """
-    ██████╗ ███████╗███████╗██████╗
-    ██╔══██╗██╔════╝██╔════╝██╔══██╗
-    ██████╔╝█████╗  █████╗  ██████╔╝
-    ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗
-    ██║     ███████╗███████╗██║  ██║
-    ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
-    """
-    r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
-    print_pass("got connection: {}".format(r3))
+#     """
+#     ██████╗ ███████╗███████╗██████╗
+#     ██╔══██╗██╔════╝██╔════╝██╔══██╗
+#     ██████╔╝█████╗  █████╗  ██████╔╝
+#     ██╔═══╝ ██╔══╝  ██╔══╝  ██╔══██╗
+#     ██║     ███████╗███████╗██║  ██║
+#     ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
+#     """
+#     r3 = run_cli(cli_build_dir, env, ["peer", "-c", "{}@{}:{}".format(r2["node_id"], "127.0.0.1", "9736")])
+#     print_pass("got connection: {}".format(r3))
 
-    sleep("wait to establish connection", 5)
-    r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
-    print_pass("got node #2 peers: {}".format(r4))
+#     sleep("wait to establish connection", 5)
+#     r4 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "peer", "-l"])
+#     print_pass("got node #2 peers: {}".format(r4))
 
-    """
-     ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗
-    ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║
-    ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║
-    ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║
-    ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
-     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
-    """
-    r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "2000000", "100500000"])
-    print_pass("got channel: {}".format(r5))
+#     """
+#      ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗
+#     ██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║
+#     ██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║
+#     ██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║
+#     ╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
+#      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
+#     """
+#     r5 = run_cli(cli_build_dir, env, ["channel", "-c", r2["node_id"], "2000000", "100500000"])
+#     print_pass("got channel: {}".format(r5))
 
-    sleep("generate blocks", 5)
-    gen = bitcoin_cli.req("generate", [10])
-    sleep("wait to stablize", 5)
+#     sleep("generate blocks", 5)
+#     gen = bitcoin_cli.req("generate", [10])
+#     sleep("wait to stablize", 5)
 
-    r6 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    print_pass("got channel list: {}".format(r6))
+#     r6 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+#     print_pass("got channel list: {}".format(r6))
 
-    r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r7))
+#     r7 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+#     print_pass("got channel list node #2: {}".format(r7))
 
-    r61 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
-    print_pass("got channel list: {}".format(r61))
+#     r61 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
+#     print_pass("got channel list: {}".format(r61))
 
-    # r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
-    # print_pass("channel killed: {}".format(r8))
+#     # r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+#     # print_pass("channel killed: {}".format(r8))
 
-    # r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    # print_pass("got channel list: {}".format(r9))
+#     # r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+#     # print_pass("got channel list: {}".format(r9))
 
-    # r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
-    # print_pass("got channel: {}".format(r10))
+#     # r10 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-c", r2["node_id"], "100000", "5000"])
+#     # print_pass("got channel: {}".format(r10))
 
-    # r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    # print_pass("got channel list node #2: {}".format(r11))
+#     # r11 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+#     # print_pass("got channel list node #2: {}".format(r11))
 
-    # r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
-    # print_pass("channel killall executed node #2: {}".format(r12))
+#     # r12 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-x"])
+#     # print_pass("channel killall executed node #2: {}".format(r12))
 
-    # r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    # print_pass("got channel list node #2: {}".format(r13))
+#     # r13 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+#     # print_pass("got channel list node #2: {}".format(r13))
 
-    # r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
-    # print_pass("got channel: {}".format(r14))
+#     # r14 = run_cli(cli_build_dir, env, ["channel", "-c", r1["node_id"], "100000", "5000"])
+#     # print_pass("got channel: {}".format(r14))
 
-    # sleep("generate blocks", 5)
-    # gen = bitcoin_cli.req("generate", [10])
-    # print_info(json.dumps(gen, indent=4, sort_keys=True))
-    # sleep("wait to stablize", 5)
+#     # sleep("generate blocks", 5)
+#     # gen = bitcoin_cli.req("generate", [10])
+#     # print_info(json.dumps(gen, indent=4, sort_keys=True))
+#     # sleep("wait to stablize", 5)
 
-    """
-    ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗
-    ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝
-    ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗
-    ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝
-    ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
-    ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
-    """
-    # r140 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    # print_pass("got channel list node #2: {}".format(r140))
+#     """
+#     ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗
+#     ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝
+#     ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗
+#     ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝
+#     ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗
+#     ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝
+#     """
+#     # r140 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+#     # print_pass("got channel list node #2: {}".format(r140))
 
-    # r141 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    # print_pass("got channel list node #2: {}".format(r141))
+#     # r141 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+#     # print_pass("got channel list node #2: {}".format(r141))
 
-    # r142 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "live"])
-    # print_pass("got channel list node #2: {}".format(r142))
+#     # r142 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "live"])
+#     # print_pass("got channel list node #2: {}".format(r142))
 
-    # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
-    # print_pass("got channel list node #2: {}".format(r143))
+#     # r143 = run_cli(cli_build_dir, env, ["channel", "-l", "live"])
+#     # print_pass("got channel list node #2: {}".format(r143))
 
-    # Create Invoice: 1001 msat, which is 1.001 sat
-    r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "1001000"])
-    print_pass("got invoice: {}".format(r15))
+#     # Create Invoice: 1001 msat, which is 1.001 sat
+#     r15 = run_cli(cli_build_dir, env, ["invoice", "-c", "1001000"])
+#     print_pass("got invoice: {}".format(r15))
 
-    r151 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    print_pass("got channel list: {}".format(r151))
+#     r151 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+#     print_pass("got channel list: {}".format(r151))
 
-    r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
-    print_pass("got channel list node #2: {}".format(r152))
+#     r152 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "channel", "-l", "all"])
+#     print_pass("got channel list node #2: {}".format(r152))
 
-    r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
-    print_info("pay invoice: {}".format(r16))
+#     r16 = run_cli(cli_build_dir, env, ["-n", "127.0.0.1:8124", "invoice", "-p", r15["invoice"]])
+#     print_info("pay invoice: {}".format(r16))
 
-    sleep("close channel", 2)
+#     sleep("close channel", 2)
 
-    r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
-    print_pass("channel killed: {}".format(r8))
+#     r8 = run_cli(cli_build_dir, env, ["channel", "-k", r6["channels"][0]["id"]])
+#     print_pass("channel killed: {}".format(r8))
 
-    sleep("generate blocks", 2)
-    gen = bitcoin_cli.req("generate", [10])
+#     sleep("generate blocks", 2)
+#     gen = bitcoin_cli.req("generate", [10])
 
-    r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
-    print_pass("got channel list: {}".format(r9))
+#     r9 = run_cli(cli_build_dir, env, ["channel", "-l", "all"])
+#     print_pass("got channel list: {}".format(r9))
 
-    sleep("shut down", 5)
+#     sleep("shut down", 5)
 
-    s1.kill()
-    s2.kill()
+#     s1.kill()
+#     s2.kill()
 
-    # wipe data
-    data_dir = server_build_dir + "ln"
-    print_info("wiping data: {}".format(data_dir))
-    subprocess.run(["rm", "-rf", data_dir])
+#     # wipe data
+#     data_dir = server_build_dir + "ln"
+#     print_info("wiping data: {}".format(data_dir))
+#     subprocess.run(["rm", "-rf", data_dir])
 
 
 if __name__ == '__main__':

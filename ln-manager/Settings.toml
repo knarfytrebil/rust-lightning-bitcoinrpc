@@ -2,4 +2,4 @@
 port = 9735
 lndata = "/ln/data"
 [Bitcoind]
-rpc_url = "user:pwd@127.0.0.1:18332"
+rpc_url = "admin1:123@regtest-0:19001"
