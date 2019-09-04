@@ -19,6 +19,7 @@ pub fn connect<T: Larva>(
     event_notify: mpsc::Sender<()>,
     larva: T,
 ) {
+    info!("peer do connect node: {}", node);
     // TODO: hard code split offset
     match hex_to_compressed_pubkey(node.split_at(0).1) {
         Some(pk) => {
