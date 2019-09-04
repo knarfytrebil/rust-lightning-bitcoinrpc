@@ -143,6 +143,7 @@ class BitcoinClient:
 
 # TODO only for docker-compose
 HOST = "lightning"
+LOCALHOST = "127.0.0.1"
 # not a real unittest, only for count cases
 class TestCases(unittest.TestCase):
 
@@ -229,7 +230,7 @@ class TestCases(unittest.TestCase):
     def test_2_0_peer_connect(self):
         connect = run_cli(
             self.cli_build_dir, self.env,
-            ["-n", "{}:8123".format(HOST), "peer", "-c", "{}@{}:{}".format(self.node_id_2, HOST, "9736")]
+            ["-n", "{}:8123".format(HOST), "peer", "-c", "{}@{}:{}".format(self.node_id_2, LOCAL_HOST, "9736")]
         )
         print_pass("got connection: {}".format(connect))
         self.assertIsNotNone(connect["response"])
