@@ -44,7 +44,7 @@ pub fn react(command: &str, sub_command: &str, matches: &clap::ArgMatches, sub_m
     };
 
     let socket =
-        UdpSocket::bind("lightning:5000")
+        UdpSocket::bind("0.0.0.0:5000")
         .expect("Could not bind client socket");
 
     socket
