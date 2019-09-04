@@ -214,6 +214,7 @@ class TestCases(unittest.TestCase):
         for addr in addrs:
             fund(addr, 0.5, self.client)
         self.generate_block(10)
+        sleep("waiting for funded block", 10)
         return
     def test_1_info_pubkey(self):
         node_1 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "info", "-n"])
