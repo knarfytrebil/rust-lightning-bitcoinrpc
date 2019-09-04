@@ -30,6 +30,7 @@ pub fn connect<T: Larva>(
                     info!("Attempting to connect to {}...", addr);
                     match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
                         Ok(stream) => {
+                            info!("connected, initiating handshake!");
                             debug!("connected, initiating handshake!");
                             let peer_manager = peer_manager.clone();
                             Connection::setup_outbound(
@@ -44,10 +45,12 @@ pub fn connect<T: Larva>(
                             );
                         }
                         Err(e) => {
+                            info!("connection failed {:?}!", e);
                             debug!("connection failed {:?}!", e);
                         }
                     }
                 } else {
+                    info!("Couldn't parse host:port into a socket address");
                     debug!("Couldn't parse host:port into a socket address");
                 }
             } else {
