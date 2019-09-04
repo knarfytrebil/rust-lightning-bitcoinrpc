@@ -158,8 +158,9 @@ class TestCases(unittest.TestCase):
         print_info("wiping data: {}".format(data_dir))
         subprocess.run(["rm", "-rf", data_dir])
 
-        self.ln_node_1 = run_server(1, self.server_build_dir, "debug", self.env)
         self.ln_node_2 = run_server(2, self.server_build_dir, "debug", self.env)
+        self.ln_node_1 = run_server(1, self.server_build_dir, "debug", self.env)
+
         def do_when_kill(signal, frame):
             self.tearDownClass(self)
             raise KeyboardInterrupt
