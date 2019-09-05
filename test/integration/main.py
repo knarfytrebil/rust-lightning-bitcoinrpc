@@ -151,6 +151,43 @@ class TestCases(unittest.TestCase):
         self.client = BitcoinClient("admin1:123@regtest-0:19001")
         self.client1 = BitcoinClient("admin1:123@regtest-1:19011")
         self.env = get_env("debug")
+        print_info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> magic")
+        self.server_build_dir = build("server", "debug", self.env)
+        self.cli_build_dir = build("cli", "debug", self.env)
+
+        data_dir = self.server_build_dir + "ln"
+        print_info("wiping data: {}".format(data_dir))
+        subprocess.run(["rm", "-rf", data_dir])
+
+        sleep("wait for node initialize...", 10)
+        info1 = self.client1.req("getblockchaininfo", [])
+        print_info("checking client1 at setup...")
+        print_info(info1)
+        self.ln_node_1 = run_server(1, self.server_build_dir, "debug", self.env)
+        self.ln_node_2 = run_server(2, self.server_build_dir, "debug", self.env)
+
+        print_info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> fund shutdown")
+        sleep("wait for a long time", 20)
+        self.client.req("generate", [200])
+        sleep("wait", 10)
+        node_1 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(HOST), "info", "-a"])
+        node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(HOST), "info", "-a"])
+        addrs = node_1['imported_addresses'] + node_2['imported_addresses']
+        for addr in addrs:
+            fund(addr, 0.5, self.client)
+        sleep("wait fund", 10)
+        self.client.req("generate", [10])
+        sleep("wait generate", 10)
+        self.ln_node_1.kill()
+        self.ln_node_2.kill()
+        # wipe data
+        if self.server_build_dir:
+            data_dir = self.server_build_dir + "ln"
+            print_info("wiping data: {}".format(data_dir))
+            subprocess.run(["rm", "-rf", data_dir])
+        sleep("wait kill", 3)
+
+        print_info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> restart")
         self.server_build_dir = build("server", "debug", self.env)
         self.cli_build_dir = build("cli", "debug", self.env)
 
