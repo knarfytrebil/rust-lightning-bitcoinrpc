@@ -1,0 +1,36 @@
+version: "3"
+services:
+  regtest-0:
+    image: kylemanna/bitcoind
+    command: bitcoind -regtest -dnsseed -server -listen -rest -rpcbind=0.0.0.0:19001 -rpcuser=admin1 -rpcpassword=123 -rpcport=19001 -rpcallowip=0.0.0.0/0 -deprecatedrpc=generate -disablewallet=0 -addnode=regtest-1:18444 -addnode=regtest-2:18444
+    expose:
+      - "18444"
+  regtest-1:
+    image: kylemanna/bitcoind
+    command: bitcoind -regtest -dnsseed -server -listen -rest -rpcbind=0.0.0.0:19011 -rpcuser=admin1 -rpcpassword=123 -rpcport=19011 -rpcallowip=0.0.0.0/0 -deprecatedrpc=generate -disablewallet=0 -addnode=regtest-0:18444 -addnode=regtest-2:18444
+    expose:
+      - "18444"
+    depends_on:
+      - regtest-0
+      - regtest-2
+  regtest-2:
+    image: kylemanna/bitcoind
+    command: bitcoind -regtest -dnsseed -server -listen -rest -rpcbind=0.0.0.0:19021 -rpcuser=admin1 -rpcpassword=123 -rpcport=19021 -rpcallowip=0.0.0.0/0 -deprecatedrpc=generate -disablewallet=0 -addnode=regtest-0:18444 -addnode=regtest-1:18444
+    expose:
+      - "18444"
+    depends_on:
+      - regtest-0
+  lightning:
+    build: ../../
+    environment:
+      RUST_BACKTRACE: full
+      TERM: xterm
+    depends_on:
+      - regtest-0
+      - regtest-1
+      - regtest-2
+    # command: curl --retry 5 --retry-delay 5 --retry-connrefused --data-binary '{"jsonrpc":"2.0","id":"curltext","method":"getblockchaininfo","params":[]}' -H 'content-type:text/plain;' -vvv http://admin1:123@regtest-0:19001/
+    command: python3 /lightning/test/integration/main.py
+# integration_regtest-0_1 port 19001: Connection refused
+# Could not resolve host: regtest-0_1
+# Failed to connect to regtest-0 port 19001: Connection refused

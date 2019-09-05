@@ -1,0 +1,10 @@
+[package]
+name = "rbcli"
+version = "0.1.0"
+authors = ["Gunther Arcanus <gunther.arcanus@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+protocol = { path = "../protocol" }
+clap = { version = "~2.33.0", features = [ "yaml" ] }
+serde_json = "1"

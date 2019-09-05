@@ -1,0 +1,5 @@
+[Lightning]
+port = 9735
+lndata = "/ln/data"
+[Bitcoind]
+rpc_url = "admin1:123@regtest-0:19001"
