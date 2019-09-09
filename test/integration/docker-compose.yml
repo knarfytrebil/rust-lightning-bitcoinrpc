@@ -26,6 +26,11 @@ services:
       - regtest-0
   lightning:
     build: ../../
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
     environment:
       RUST_BACKTRACE: full
       TERM: xterm
