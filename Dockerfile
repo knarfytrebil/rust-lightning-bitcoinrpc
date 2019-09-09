@@ -1,15 +1,17 @@
 FROM jasongop/rust-wasm32:1.39.0-nightly as rustenv
+
 RUN set -x \
   && apt-get update \
   && apt-get install --no-install-recommends -y cmake jq python binutils-dev libcurl4-openssl-dev zlib1g-dev libdw-dev libiberty-dev \
   && source $HOME/.cargo/env \
   && cargo install cargo-kcov \
-  && cargo kcov --print-install-kcov-sh | sh 
+  && cargo kcov --print-install-kcov-sh | sh
 RUN set -x \
   && apt-get update \
   && apt-get install -y python3 python3-pip \
   && pip3 install --upgrade pip==19.2.3 \
   && mkdir -p /output/{server,cli}
+
 WORKDIR /lightning
 
 # # Install pre-build dependencies
@@ -40,14 +42,14 @@ RUN set -x \
   && source $HOME/.cargo/env \
   && cd /lightning/server \
   && if [ $BUILD_TYPE == "release" ]; then cargo build --release; else cargo build; fi \
-  && [ -d "target/$BUILD_TYPE" ] 
+  && [ -d "target/$BUILD_TYPE" ]
 
 # Build cli
 RUN set -x \
   && source $HOME/.cargo/env \
   && cd /lightning/cli \
   && if [ $BUILD_TYPE == "release" ]; then cargo build --release; else cargo build; fi \
-  && [ -d "target/$BUILD_TYPE" ] 
+  && [ -d "target/$BUILD_TYPE" ]
 
 # Run the test
 RUN set -x \

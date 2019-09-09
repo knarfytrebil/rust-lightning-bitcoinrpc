@@ -183,6 +183,7 @@ class TestCases(unittest.TestCase):
         self.client.req("generate", [200])
         node_1 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8123".format(self.env["host"]), "info", "-a"])
         node_2 = run_cli(self.cli_build_dir, self.env, ["-n", "{}:8124".format(self.env["host"]), "info", "-a"])
+
         addrs = node_1['imported_addresses'] + node_2['imported_addresses']
         for addr in addrs:
             fund(addr, 0.5, self.client)
