@@ -102,3 +102,9 @@ rbcli invoice -p <bolt11>
 
 ## Developers
 Pull requests are welcomed, and feel free to raise issues.
+
+### Testing
+```bash
+sudo docker-compose -f test/integration/docker-compose.yml down && 
+sudo docker-compose -f test/integration/docker-compose.yml up --exit-code-from lightning
+```
