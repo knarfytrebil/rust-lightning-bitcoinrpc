@@ -1,6 +1,8 @@
 FROM jasongop/rust-wasm32:1.39.0-nightly as rustenv
 
-RUN cargo install cargo-kcov \
+RUN set -x \
+  && source $HOME/.cargo/env \
+  && cargo install cargo-kcov \
   && cargo kcov --print-install-kcov-sh | sh 
 
 RUN set -x \
