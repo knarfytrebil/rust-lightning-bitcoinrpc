@@ -1,0 +1,5 @@
+* test
+
+#+BEGIN_SRC sh
+sudo docker-compose -f test/integration/docker-compose.yml down && sudo docker-compose -f test/integration/docker-compose.yml up --exit-code-from lightning
+#+END_SRC
