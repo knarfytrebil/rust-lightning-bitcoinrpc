@@ -1,6 +1,7 @@
 FROM jasongop/rust-wasm32:1.39.0-nightly as rustenv
 
-RUN apt-get install kcov
+RUN cargo install cargo-kcov \
+  && cargo kcov --print-install-kcov-sh | sh 
 
 RUN set -x \
 #  && apt-get update \
