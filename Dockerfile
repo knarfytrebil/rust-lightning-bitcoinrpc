@@ -51,7 +51,8 @@ RUN set -x \
   && source $HOME/.cargo/env \
   && cd /lightning/cli \
   && if [ $BUILD_TYPE == "release" ]; then cargo build --release; else cargo build; fi \
-  && [ -d "target/$BUILD_TYPE" ] && cp -r "/lightning/cli/target/$BUILD_TYPE/" /output/cli/$BUILD_TYPE
+  && [ -d "target/$BUILD_TYPE" ] && cp -r "/lightning/cli/target/$BUILD_TYPE/" /output/cli/$BUILD_TYPE \
+  && cargo kcov
 
 FROM python:3
 
@@ -69,8 +70,7 @@ COPY --from=rustenv /lightning/test ./test
 # and set env for python3 and cli
 ENV PATH=/app/cli/$VER:$PATH
 RUN cd test/integration \
-  && pip install --no-cache-dir -r requirements.txt \
-  && cargo kcov
+  && pip install --no-cache-dir -r requirements.txt
 
 # Run script
 CMD ["python3", "test/integration/main.py"]
