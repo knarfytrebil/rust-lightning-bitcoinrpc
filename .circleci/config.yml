@@ -22,4 +22,4 @@ jobs:
             name: docker-compose up
             command: |
               cd test/integration
-              docker-compose up --exit-code-from lightning
+              docker-compose up --security-opt seccomp=unconfined --exit-code-from lightning
