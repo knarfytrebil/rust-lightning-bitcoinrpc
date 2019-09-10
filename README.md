@@ -7,11 +7,16 @@
 ██║  ██║╚██████╔╝███████║   ██║   ██████╔╝╚██████╔╝███████╗██║   
 ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ╚═════╝  ╚═════╝ ╚══════╝╚═╝   
 ```
-__Experiemental Implementation of Lightining__ based on *rust-lightning-bitcoinrpc / rust-lightning*
+__Experiemental Implementation of Lightining__ based on 
+* [rust-lightning-bitcoinrpc](https://github.com/TheBlueMatt/rust-lightning-bitcoinrpc)
+* [rust-lightning](https://github.com/rust-bitcoin/rust-lightning)
+* [rust-lightning-invoice](https://github.com/rust-bitcoin/rust-lightning-invoice)
+
+### Caution: Currently the project is still unstable, please __DO NOT__ use this in production !
 
 ## Project Status
-[![CircleCI](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc.svg?style=shield)](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-
+[![CircleCI](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc.svg?style=shield)](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc) 
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shield)](http://makeapullrequest.com)
 
 The __rustbolt__ is an experimental implementation of a Lightning Network node in `rust`. `rustbolt` depends on `bitcoind`, and uses the rust-bitcoin set of Bitcoin libraries. In the current state `rustbolt` is capable of:
 * Creating channels.
