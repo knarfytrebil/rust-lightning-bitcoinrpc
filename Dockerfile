@@ -1,5 +1,7 @@
 FROM jasongop/rust-wasm32:1.39.0-nightly as rustenv
 
+RUN apt-get install kcov
+
 RUN set -x \
 #  && apt-get update \
 #  && apt-get install -y python3 python3-pip \
