@@ -12,7 +12,10 @@ __Experiemental Implementation of Lightining__ based on
 * [rust-lightning](https://github.com/rust-bitcoin/rust-lightning)
 * [rust-lightning-invoice](https://github.com/rust-bitcoin/rust-lightning-invoice)
 
-### Caution: Currently the project is still unstable, please __DO NOT__ use this in production !
+### Caution:
+```
+Currently the project is still unstable, please DO NOT use this in production !
+```
 
 ## Project Status
 [![CircleCI](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc.svg?style=shield)](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc) 
@@ -96,3 +99,6 @@ rbcli invoice -c 1001000
 # Pays an Invoice
 rbcli invoice -p <bolt11>
 ```
+
+## Developers
+Pull requests are welcomed, and feel free to raise issues.
