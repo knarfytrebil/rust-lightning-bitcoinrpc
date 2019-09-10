@@ -1,6 +1,9 @@
 FROM jasongop/rust-wasm32:1.39.0-nightly as rustenv
 
 RUN set -x \
+  && apt-get update 
+  && apt-get install --no-install-recommends -y \
+    cmake jq python binutils-dev libcurl4-openssl-dev zlib1g-dev libdw-dev libiberty-dev \
   && source $HOME/.cargo/env \
   && cargo install cargo-kcov \
   && cargo kcov --print-install-kcov-sh | sh 
