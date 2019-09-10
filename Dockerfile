@@ -70,7 +70,7 @@ COPY --from=rustenv /lightning/test ./test
 ENV PATH=/app/cli/$VER:$PATH
 RUN cd test/integration \
   && pip install --no-cache-dir -r requirements.txt \
-  && kcov
+  && cargo kcov
 
 # Run script
 CMD ["python3", "test/integration/main.py"]
