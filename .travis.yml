@@ -5,5 +5,4 @@ services:
     - docker
 
 script:
-    - docker-compose -f test/integration/docker-compose.yml up --security-opt seccomp=unconfined --exit-code-from lightning
-
+    - docker-compose --security-opt seccomp=unconfined --exit-code-from lightning -f test/integration/docker-compose.yml up
