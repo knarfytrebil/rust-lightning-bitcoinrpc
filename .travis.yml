@@ -9,10 +9,10 @@ env:
   - GITHUB_ADDR: "github.com/docker/compose/releases/download/"
 
 before_install:
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://${GITHUB_ADDR}${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
+    #  - sudo rm /usr/local/bin/docker-compose
+    #  - curl -L https://${GITHUB_ADDR}${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+    #  - chmod +x docker-compose
+    #  - sudo mv docker-compose /usr/local/bin
   - docker-compose -f test/integration/docker-compose.yml build
 
 script:
