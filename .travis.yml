@@ -13,10 +13,10 @@ before_install:
   - curl -L https://${GITHUB_ADDR}${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
-
-script:
   - docker-compose -f test/integration/docker-compose.yml build
 
+script:
+    - echo hello
     # jobs:
     #   include:
     #   - stage: build
