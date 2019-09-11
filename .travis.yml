@@ -1,17 +1,29 @@
 language: rust
 sudo: required
-rust:
-  - nightly # only supported version
-cache: cargo
+
+services:
+  - docker
+
+env:
+  - DOCKER_COMPOSE_VERSION: 1.19.0
+  - GITHUB_ADDR: "github.com/docker/compose/releases/download/"
+
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://${GITHUB_ADDR}${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
 
 jobs:
   include:
-  - stage: behave 
-    before_install:
-      - sudo apt-get -qq update
-      - sudo apt-get install -y binutils-dev libunwind8-dev
-    rust: nightly 
-    script: cd ln-manager && cargo build
+  - stage: build
+    script: cd test/integration && docker-compose build    
+    # - stage: behave 
+    # - before_install:
+    # -   - sudo apt-get -qq update
+    # -   - sudo apt-get install -y binutils-dev libunwind8-dev
+    # - rust: nightly 
+    # - script: cd ln-manager && cargo build
     #  - stage: coverage
     #    if: type = cron || type = push
     #    before_install:
