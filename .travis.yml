@@ -17,7 +17,7 @@ before_install:
 jobs:
   include:
   - stage: build
-    script: cd test/integration && docker-compose build    
+    script: docker-compose -f test/integration/docker-compose.yml build
     # - stage: behave 
     # - before_install:
     # -   - sudo apt-get -qq update
