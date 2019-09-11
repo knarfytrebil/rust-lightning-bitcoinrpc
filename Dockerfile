@@ -51,7 +51,8 @@ RUN set -x \
   && source $HOME/.cargo/env \
   && cd /lightning/cli \
   && if [ $BUILD_TYPE == "release" ]; then cargo build --release; else cargo build; fi \
-  && [ -d "target/$BUILD_TYPE" ] && cp -r "/lightning/cli/target/$BUILD_TYPE/" /output/cli/$BUILD_TYPE
+  && [ -d "target/$BUILD_TYPE" ] && cp -r "/lightning/cli/target/$BUILD_TYPE/" /output/cli/$BUILD_TYPE \
+  && echo "wtf"
 
 FROM python:3
 
