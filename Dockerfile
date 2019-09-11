@@ -72,4 +72,5 @@ RUN cd test/integration \
   && pip install --no-cache-dir -r requirements.txt
 
 # Run script
-CMD ["python3", "test/integration/main.py"]
+# CMD ["python3", "test/integration/main.py", "&&", "kcov"]
+CMD ["kcov"]
