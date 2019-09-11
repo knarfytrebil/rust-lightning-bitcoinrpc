@@ -52,7 +52,7 @@ RUN set -x \
   && cd /lightning/cli \
   && if [ $BUILD_TYPE == "release" ]; then cargo build --release; else cargo build; fi \
   && [ -d "target/$BUILD_TYPE" ] && cp -r "/lightning/cli/target/$BUILD_TYPE/" /output/cli/$BUILD_TYPE \
-  && cargo kcov
+  && kcov
 
 FROM python:3
 
