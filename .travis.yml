@@ -14,10 +14,13 @@ before_install:
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
 
-jobs:
-  include:
-  - stage: build
-    script: docker-compose -f test/integration/docker-compose.yml build
+script:
+  - docker-compose -f test/integration/docker-compose.yml build
+
+    # jobs:
+    #   include:
+    #   - stage: build
+    #     script: docker-compose -f test/integration/docker-compose.yml build
     # - stage: behave 
     # - before_install:
     # -   - sudo apt-get -qq update
