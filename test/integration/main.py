@@ -34,14 +34,12 @@ def get_env(test_version):
         "server": {
             "bin": "rustbolt",
             "root": server_dir,
-            # "test": "{}target/{}/".format(server_dir,test_version) },
-            "test":"{}{}/".format(server_dir,test_version)
+            "test": "{}target/{}/".format(server_dir,test_version) },
         },
         "cli": {
             "bin": "rbcli",
             "root": client_dir,
-            # "test": "{}target/{}/".format(client_dir,test_version),
-            "test": "{}{}/".format(client_dir,test_version)
+            "test": "{}target/{}/".format(client_dir,test_version),
         },
         "conf": {
             "root" : conf_dir,
