@@ -74,4 +74,4 @@ RUN cd test/integration \
 
 # Run script
 # CMD ["python3", "test/integration/main.py", "&&", "kcov"]
-CMD ["bash", ".travis-kcov.sh"]
+CMD ["bash", "/lightning/.travis-kcov.sh"]
