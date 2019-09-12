@@ -1,3 +1,3 @@
 echo $HOME
-which kcov
 ls $HOME/.cargo/bin
+$HOME/.cargo/bin/kcov
