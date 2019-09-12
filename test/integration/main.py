@@ -24,7 +24,7 @@ def print_error(message):
     print("{} \x1b[1;31m[ERROR]\x1b[0m {} ... ".format(get_now(), message))
 
 def get_env(test_version):
-    working_dir = "/app/"
+    working_dir = "/lightning/"
     server_dir = working_dir + "server/"
     client_dir = working_dir + "cli/"
     conf_dir = working_dir + "test/conf/"

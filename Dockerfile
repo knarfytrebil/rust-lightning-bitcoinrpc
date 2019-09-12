@@ -8,7 +8,7 @@ RUN set -x \
 RUN set -x \
   && apt-get update \
   && apt-get install -y python3 python3-pip \
-  && pip3 install --upgrade pip==9.0.3 \
+  && pip3 install --upgrade pip==19.2.3 \
   && mkdir -p /output/{server,cli}
 WORKDIR /lightning
 
