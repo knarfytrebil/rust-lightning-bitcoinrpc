@@ -29,8 +29,3 @@ services:
       - regtest-0
       - regtest-1
       - regtest-2
-    # command: curl --retry 5 --retry-delay 5 --retry-connrefused --data-binary '{"jsonrpc":"2.0","id":"curltext","method":"getblockchaininfo","params":[]}' -H 'content-type:text/plain;' -vvv http://admin1:123@regtest-0:19001/
-    command: python3 /lightning/test/integration/main.py
-# integration_regtest-0_1 port 19001: Connection refused
-# Could not resolve host: regtest-0_1
-# Failed to connect to regtest-0 port 19001: Connection refused

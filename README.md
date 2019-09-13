@@ -18,7 +18,7 @@ Currently the project is still unstable, please DO NOT use this in production !
 ```
 
 ## Project Status
-[![CircleCI](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc.svg?style=shield)](https://circleci.com/gh/knarfytrebil/rust-lightning-bitcoinrpc) 
+[![Build Status](https://travis-ci.org/knarfytrebil/rust-lightning-bitcoinrpc.svg?branch=coverage)](https://travis-ci.org/knarfytrebil/rust-lightning-bitcoinrpc)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shield)](http://makeapullrequest.com)
 
 The __rustbolt__ is an experimental implementation of a Lightning Network node in `rust`. `rustbolt` depends on `bitcoind`, and uses the rust-bitcoin set of Bitcoin libraries. In the current state `rustbolt` is capable of:
@@ -102,3 +102,9 @@ rbcli invoice -p <bolt11>
 
 ## Developers
 Pull requests are welcomed, and feel free to raise issues.
+
+### Testing
+```bash
+sudo docker-compose -f test/integration/docker-compose.yml down && 
+sudo docker-compose -f test/integration/docker-compose.yml up --exit-code-from lightning
+```
