@@ -1,6 +1,8 @@
 *.swp
 *.swo
+*.log
 ln/
+kcov/
 target/
 server/server*
 venv
