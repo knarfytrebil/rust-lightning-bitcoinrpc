@@ -13,8 +13,7 @@ fn node(mut args: Vec<Arg>, exec: Probe) -> Result<(), String> {
     let spawn_ln_mgr = ln_mgr::gen(ln_conf, executor.clone());
     let _ = exec.spawn_task(async move {
         let ln_mgr = spawn_ln_mgr.await?;
-        let spawn_udp_srv = udp_srv::gen(node_conf, executor.clone(), ln_mgr);
-        let _ = spawn_udp_srv.await;
+        let _ = udp_srv::gen(node_conf, executor.clone(), ln_mgr).await;
         Ok(())
     });
     Ok(())
