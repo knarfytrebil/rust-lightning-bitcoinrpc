@@ -124,7 +124,7 @@ def run_cli(build_dir, env, cmd):
     print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}coverage/ rbcli {}".format(env["working_dir"], " ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"]
     return json.loads(subprocess.check_output([
-        "{}/.cargo/bin/kcov", 
+        "{}/.cargo/bin/kcov".format(env["home"]), 
         "--coveralls-id={}".format(env["travis_job_id"]),
         "--exclude-pattern=/.cargo,/usr/lib ",
         "{}coverage/".format(env["working_dir"]), 
