@@ -27,6 +27,7 @@ def get_env(test_version):
     working_dir = os.getenv("WORKING_DIR")
     running_env = os.getenv("RUNNING_ENV")
     travis_job_id = os.getenv("TRAVIS_JOB_ID")
+    home = os.getenv("HOME")
     host = os.getenv("HOST")
     bitcoind_host = os.getenv("BITCOIND_HOST")
 
@@ -51,6 +52,7 @@ def get_env(test_version):
         "travis_job_id": travis_job_id,
         "host": host,
         "bitcoind_host": bitcoind_host,
+        "home": home,
         "server": {
             "bin": "rustbolt",
             "root": server_dir,
@@ -122,7 +124,7 @@ def run_cli(build_dir, env, cmd):
     print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}coverage/ rbcli {}".format(env["working_dir"], " ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"]
     return json.loads(subprocess.check_output([
-        "kcov", 
+        "{}/.cargo/bin/kcov", 
         "--coveralls-id={}".format(env["travis_job_id"]),
         "--exclude-pattern=/.cargo,/usr/lib ",
         "{}coverage/".format(env["working_dir"]), 
