@@ -26,7 +26,6 @@ def print_error(message):
 def get_env(test_version):
     working_dir = os.getenv("WORKING_DIR")
     running_env = os.getenv("RUNNING_ENV")
-    travis_job_id = os.getenv("TRAVIS_JOB_ID")
     home = os.getenv("HOME")
     host = os.getenv("HOST")
     bitcoind_host = os.getenv("BITCOIND_HOST")
@@ -49,7 +48,6 @@ def get_env(test_version):
 
     environment = {
         "working_dir": working_dir,
-        "travis_job_id": travis_job_id,
         "host": host,
         "bitcoind_host": bitcoind_host,
         "home": home,
