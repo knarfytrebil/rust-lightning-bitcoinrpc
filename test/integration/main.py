@@ -26,6 +26,7 @@ def print_error(message):
 def get_env(test_version):
     working_dir = os.getenv("WORKING_DIR")
     running_env = os.getenv("RUNNING_ENV")
+    travis_job_id = os.getenv("TRAVIS_JOB_ID")
     host = os.getenv("HOST")
     bitcoind_host = os.getenv("BITCOIND_HOST")
 
@@ -47,6 +48,7 @@ def get_env(test_version):
 
     environment = {
         "working_dir": working_dir,
+        "travis_job_id": travis_job_id,
         "host": host,
         "bitcoind_host": bitcoind_host,
         "server": {
@@ -117,9 +119,16 @@ def run_server(server_id, build_dir, version, env):
     return server
 
 def run_cli(build_dir, env, cmd):
-    print_exec("rbcli {}".format(" ".join(cmd)))
+    print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}coverage/ rbcli {}".format(env["working_dir"], " ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"]
-    return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
+    return json.loads(subprocess.check_output([
+        "kcov", 
+        "--coveralls-id={}".format(env["travis_job_id"]),
+        "--exclude-pattern=/.cargo,/usr/lib ",
+        "{}coverage/".format(env["working_dir"]), 
+        cli_bin, 
+        "-j"
+    ] + cmd).decode('ascii'))
 
 def fund(addr, amount, cli):
     res = cli.req("sendtoaddress", [addr, amount])
