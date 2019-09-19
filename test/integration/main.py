@@ -26,6 +26,7 @@ def print_error(message):
 def get_env(test_version):
     working_dir = os.getenv("WORKING_DIR")
     running_env = os.getenv("RUNNING_ENV")
+    home = os.getenv("HOME")
     host = os.getenv("HOST")
     bitcoind_host = os.getenv("BITCOIND_HOST")
 
@@ -49,6 +50,7 @@ def get_env(test_version):
         "working_dir": working_dir,
         "host": host,
         "bitcoind_host": bitcoind_host,
+        "home": home,
         "server": {
             "bin": "rustbolt",
             "root": server_dir,
@@ -117,9 +119,15 @@ def run_server(server_id, build_dir, version, env):
     return server
 
 def run_cli(build_dir, env, cmd):
-    print_exec("rbcli {}".format(" ".join(cmd)))
+    print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}/coverage/ rbcli {}".format(env["home"], " ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"]
-    return json.loads(subprocess.check_output([cli_bin, "-j"] + cmd).decode('ascii'))
+    return json.loads(subprocess.check_output([
+        "{}/.cargo/bin/kcov".format(env["home"]), 
+        "--exclude-pattern=/.cargo,/usr/lib ",
+        "{}/coverage/".format(env["home"]), 
+        cli_bin, 
+        "-j"
+    ] + cmd).decode('ascii'))
 
 def fund(addr, amount, cli):
     res = cli.req("sendtoaddress", [addr, amount])

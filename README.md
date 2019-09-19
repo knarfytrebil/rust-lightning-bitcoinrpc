@@ -18,6 +18,7 @@ Currently the project is still unstable, please DO NOT use this in production !
 ```
 
 ## Project Status
+
 [![Build Status](https://travis-ci.org/knarfytrebil/rust-lightning-bitcoinrpc.svg?branch=master)](https://travis-ci.org/knarfytrebil/rust-lightning-bitcoinrpc)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shield)](http://makeapullrequest.com)
 

@@ -5,4 +5,5 @@ ln/
 kcov/
 target/
 server/server*
+coverage/
 venv
