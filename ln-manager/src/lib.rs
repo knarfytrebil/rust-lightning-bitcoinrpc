@@ -203,38 +203,39 @@ impl<T: Larva> LnManager<T> {
 
         info!("Lightning Port binded on 0.0.0.0:{}", &settings.lightning.port);
         let setup_larva = larva.clone();
-        let listener =
-            tokio::net::tcp::TcpListener::bind(&format!("0.0.0.0:{}", settings.lightning.port).parse().unwrap())
-            .unwrap();
+        let listener = tokio::net::tcp::TcpListener::bind(
+            &format!("0.0.0.0:{}", settings.lightning.port)
+            .parse()
+            .unwrap()
+        )
+        .unwrap();
 
         let _ = larva.clone().spawn_task(
             listener
-                .incoming()
-                .for_each(move |sock| {
-                    info!("Got new inbound connection, waiting on them to start handshake...");
-                    Connection::setup_inbound(
-                        peer_manager_listener.clone(),
-                        event_listener.clone(),
-                        sock.unwrap(),
-                        setup_larva.clone(),
-                    );
-                    future::ready(())
-                })
-                .map(|_| Ok(())),
+            .incoming()
+            .for_each(move |sock| {
+                info!("Got new inbound connection, waiting on them to start handshake...");
+                Connection::setup_inbound(
+                    peer_manager_listener.clone(),
+                    event_listener.clone(),
+                    sock.unwrap(),
+                    setup_larva.clone(),
+                );
+                future::ready(())
+            })
+            .map(|_| { Ok(()) }),
         );
-
+        
         let _ = larva.clone().spawn_task(
-            async {
-                let _ = spawn_chain_monitor(
-                    fee_estimator,
-                    rpc_client.clone(),
-                    chain_watcher,
-                    chain_broadcaster,
-                    event_notify.clone(),
-                    larva.clone(),
-                ).await;
-                future::ok(())
-            }.await
+            spawn_chain_monitor(
+                fee_estimator,
+                rpc_client.clone(),
+                chain_watcher,
+                chain_broadcaster,
+                event_notify.clone(),
+                larva.clone(),
+            )
+            .map(|_| { Ok(()) })
         );
 
         // TODO see below
