@@ -25,6 +25,17 @@ services:
     environment:
       RUST_BACKTRACE: full
       TERM: xterm
+      CI: "${CI}"
+      TRAVIS          : "${TRAVIS}"
+      SHIPPABLE       : "${SHIPPABLE}"
+      TRAVIS_BRANCH   : "${TRAVIS_BRANCH}"
+      TRAVIS_COMMIT   : "${TRAVIS_COMMIT}"
+      TRAVIS_JOB_NUMB : "${TRAVIS_JOB_NUMB}"
+      TRAVIS_PULL_REQ : "${TRAVIS_PULL_REQ}"
+      TRAVIS_JOB_ID   : "${TRAVIS_JOB_ID}"
+      TRAVIS_REPO_SLU : "${TRAVIS_REPO_SLU}"
+      TRAVIS_TAG      : "${TRAVIS_TAG}"
+      TRAVIS_OS_NAME  : "${TRAVIS_OS_NAME}"
     depends_on:
       - regtest-0
       - regtest-1

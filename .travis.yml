@@ -3,6 +3,5 @@ sudo: required
 
 services:
     - docker
-
 script:
     - docker-compose -f test/integration/docker-compose.yml up --exit-code-from lightning
