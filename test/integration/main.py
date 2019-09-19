@@ -121,12 +121,12 @@ def run_server(server_id, build_dir, version, env):
     return server
 
 def run_cli(build_dir, env, cmd):
-    print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}coverage/ rbcli {}".format(env["home"], " ".join(cmd)))
+    print_exec("kcov --exclude-pattern=/.cargo,/usr/lib {}/coverage/ rbcli {}".format(env["home"], " ".join(cmd)))
     cli_bin =  build_dir + env["cli"]["bin"]
     return json.loads(subprocess.check_output([
         "{}/.cargo/bin/kcov".format(env["home"]), 
         "--exclude-pattern=/.cargo,/usr/lib ",
-        "{}coverage/".format(env["home"]), 
+        "{}/coverage/".format(env["home"]), 
         cli_bin, 
         "-j"
     ] + cmd).decode('ascii'))
