@@ -10,6 +10,8 @@ services:
     command: bitcoind -regtest -dnsseed -server -listen -rest -rpcbind=0.0.0.0:19011 -rpcuser=admin1 -rpcpassword=123 -rpcport=19011 -rpcallowip=0.0.0.0/0 -deprecatedrpc=generate -disablewallet=0 -addnode=regtest-0:18444 -addnode=regtest-2:18444
     expose:
       - "18444"
+    logging:
+      driver: none
     depends_on:
       - regtest-0
       - regtest-2
@@ -18,6 +20,8 @@ services:
     command: bitcoind -regtest -dnsseed -server -listen -rest -rpcbind=0.0.0.0:19021 -rpcuser=admin1 -rpcpassword=123 -rpcport=19021 -rpcallowip=0.0.0.0/0 -deprecatedrpc=generate -disablewallet=0 -addnode=regtest-0:18444 -addnode=regtest-1:18444
     expose:
       - "18444"
+    logging:
+      driver: none
     depends_on:
       - regtest-0
   lightning:
