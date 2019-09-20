@@ -206,12 +206,15 @@ impl Connection {
         peer_manager: Arc<peer_handler::PeerManager<SocketDescriptor<T>>>,
         event_notify: mpsc::Sender<()>,
         their_node_id: PublicKey,
-        addr: SocketAddr, larva: T) where T: Unpin {
+        addr: SocketAddr, larva: T) {
         let connect_timeout = futures_timer::Delay::new(Duration::from_secs(10)).then(|_| {
             future::ready(std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout reached"))
         });
-        let _ = larva.clone().spawn_task(futures::future::select(
-            TcpStream::connect(&addr), connect_timeout).then(move |either| {
+
+        let _ = larva.clone().spawn_task(
+            futures::future::select(
+                TcpStream::connect(addr).boxed(), connect_timeout
+            ).then(move |either| {
                 match either {
                     future::Either::Left((x, _)) => {
                         if let Ok(stream) = x {

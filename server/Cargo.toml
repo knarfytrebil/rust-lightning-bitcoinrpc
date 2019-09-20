@@ -10,11 +10,12 @@ bitcoin = "0.20"
 bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.7"
 lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", branch = "master" }
-lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", rev = "4c05270" }
+lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git" }
+# lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", rev = "4c05270" }
 # lightning-invoice = { path = "../../rust-lightning-invoice" }
 secp256k1 = "0.15"
-hyper = "0.12"
-futures = { package = "futures-preview", version = "0.3.0-alpha.17", features = ["compat"] }
+hyper = "=0.13.0-alpha.1"
+futures = { package = "futures-preview", version = "0.3.0-alpha.18" }
 serde = "1"
 serde_json = "1"
 serde_derive = "1"
@@ -26,7 +27,8 @@ num-traits = "0.2"
 config = "0.9.2"
 log = "0.4"
 simplelog = "^0.6.0"
-tokio = { git = "https://github.com/tokio-rs/tokio.git" }
+tokio = { version = "=0.2.0-alpha.4" }
+# tokio = { git = "https://github.com/tokio-rs/tokio.git" }
 ln-manager = { path = "../ln-manager" }
 protocol = { path = "../protocol" }
 failure = "0.1.5"

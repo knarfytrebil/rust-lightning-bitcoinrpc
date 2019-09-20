@@ -7,6 +7,8 @@ use std::time::Duration;
 use std::net::ToSocketAddrs;
 use futures::channel::mpsc;
 use crate::executor::Larva;
+use futures::future;
+use futures::FutureExt;
 
 pub trait PeerC {
     fn connect(&self, node: String);
@@ -30,27 +32,13 @@ pub fn connect<T: Larva>(
                 let parse_res = str_node.to_socket_addrs().unwrap().next();
                 if let Some(addr) = parse_res {
                     info!("Attempting to connect to {}...", addr);
-                    match std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(10)) {
-                        Ok(stream) => {
-                            info!("connected, initiating handshake!");
-                            debug!("connected, initiating handshake!");
-                            let peer_manager = peer_manager.clone();
-                            Connection::setup_outbound(
-                                peer_manager,
-                                event_notify,
-                                pk,
-                                tokio::net::TcpStream::from_std(
-                                    stream,
-                                    &tokio::reactor::Handle::default(),
-                                ).unwrap(),
-                                larva,
-                            );
-                        }
-                        Err(e) => {
-                            info!("connection failed {:?}!", e);
-                            debug!("connection failed {:?}!", e);
-                        }
-                    }
+                    Connection::connect_outbound(
+                        peer_manager.clone(),
+                        event_notify,
+                        pk,
+                        addr,
+                        larva
+                    );
                 } else {
                     info!("Couldn't parse host:port into a socket address");
                     debug!("Couldn't parse host:port into a socket address");
