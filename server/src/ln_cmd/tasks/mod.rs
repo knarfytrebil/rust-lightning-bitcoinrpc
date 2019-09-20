@@ -69,7 +69,7 @@ impl Larva for Probe {
         &self,
         task: impl Future<Output = Result<(), ()>> + Send + 'static,
     ) -> Result<(), futures::task::SpawnError> {
-        self.exec.spawn(task.map(|_| { () }));
+        self.exec.spawn(task.map(|_| ()));
         Ok(())
     }
 }

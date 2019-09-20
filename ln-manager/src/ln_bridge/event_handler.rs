@@ -111,7 +111,7 @@ async fn handle_events<T: Larva>(
                 let this = this.clone();
                 let mut sender = self_sender.clone();
                 let deadline = Instant::now().checked_add(time_forwardable).unwrap();
-                let _ = larva.spawn_task(Box::new(tokio::timer::Delay::new(deadline).then(move |_| {
+                let _ = larva.spawn_task(Box::new(tokio::timer::delay(deadline).then(move |_| {
                     this.channel_manager.process_pending_htlc_forwards();
                     let _ = sender.try_send(());
                     future::ok(())

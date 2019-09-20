@@ -10,17 +10,18 @@ bitcoin = "0.20"
 bitcoin-bech32 = "0.7"
 bitcoin_hashes = "0.7"
 lightning = { git = "https://github.com/rust-bitcoin/rust-lightning.git", branch = "master" }
-lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git", rev = "4c05270" }
+lightning-invoice = { git = "https://github.com/knarfytrebil/rust-lightning-invoice.git" }
 # lightning-invoice = { path = "../../rust-lightning-invoice" }
 secp256k1 = "0.15"
-hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
-tokio-io = { git = "https://github.com/tokio-rs/tokio.git" }
-tokio-fs = { git = "https://github.com/tokio-rs/tokio.git" }
-tokio-codec = { git = "https://github.com/tokio-rs/tokio.git" }
-tokio-timer = { git = "https://github.com/tokio-rs/tokio.git" }
-tokio = { git = "https://github.com/tokio-rs/tokio.git" }
-futures-timer = { git = "https://github.com/rustasync/futures-timer.git" }
-futures = { package = "futures-preview", version = "0.3.0-alpha.17" }
+# hyper = { git = "https://github.com/hyperium/hyper.git", branch = "master" }
+hyper = "=0.13.0-alpha.1"
+tokio-io = "=0.2.0-alpha.4"
+tokio-fs = "=0.2.0-alpha.4"
+tokio-codec = "=0.2.0-alpha.4"
+tokio-net = { version = "=0.2.0-alpha.4", features = ["async-traits"] }
+tokio = "=0.2.0-alpha.4"
+futures-timer = "0.4.0"
+futures = { package = "futures-preview", version = "0.3.0-alpha.18" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_derive = "1.0"
@@ -31,8 +32,6 @@ num-derive = "0.2"
 num-traits = "0.2"
 config = "0.9.2"
 log = "0.4"
-runtime = "0.3.0-alpha.6"
-runtime-tokio = "0.3.0-alpha.5"
 failure = "0.1.5"
 
 [build-dependencies]

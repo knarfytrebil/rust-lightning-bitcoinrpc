@@ -17,7 +17,7 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_fs;
 extern crate tokio_io;
-extern crate tokio_timer;
+extern crate tokio_net;
 extern crate futures_timer;
 
 #[macro_use]
@@ -200,32 +200,25 @@ impl<T: Larva> LnManager<T> {
 
         let peer_manager_listener = peer_manager.clone();
         let event_listener = event_notify.clone();
-
         info!("Lightning Port binded on 0.0.0.0:{}", &settings.lightning.port);
+        let addr = &format!("0.0.0.0:{}", settings.lightning.port);
+        let listener = tokio::net::tcp::TcpListener::bind(addr);
         let setup_larva = larva.clone();
-        let listener = tokio::net::tcp::TcpListener::bind(
-            &format!("0.0.0.0:{}", settings.lightning.port)
-            .parse()
-            .unwrap()
-        )
-        .unwrap();
-
         let _ = larva.clone().spawn_task(
-            listener
-            .incoming()
-            .for_each(move |sock| {
-                info!("Got new inbound connection, waiting on them to start handshake...");
-                Connection::setup_inbound(
-                    peer_manager_listener.clone(),
-                    event_listener.clone(),
-                    sock.unwrap(),
-                    setup_larva.clone(),
-                );
-                future::ready(())
-            })
-            .map(|_| { Ok(()) }),
+            listener.await.unwrap()
+                .incoming()
+                .for_each(move |sock| {
+                    info!("Got new inbound connection, waiting on them to start handshake...");
+                    Connection::setup_inbound(
+                        peer_manager_listener.clone(),
+                        event_listener.clone(),
+                        sock.unwrap(),
+                        setup_larva.clone(),
+                    );
+                    future::ready(())
+                })
+                .map(|_| Ok(()))
         );
-        
         let _ = larva.clone().spawn_task(
             spawn_chain_monitor(
                 fee_estimator,
@@ -234,8 +227,7 @@ impl<T: Larva> LnManager<T> {
                 chain_broadcaster,
                 event_notify.clone(),
                 larva.clone(),
-            )
-            .map(|_| { Ok(()) })
+            ).map(|_| Ok(()))
         );
 
         // TODO see below
@@ -275,16 +267,14 @@ fn get_seeds_from_time() -> (u64, u32) {
     (since_the_epoch.as_secs() as u64, since_the_epoch.subsec_nanos() as u32)
 }
 
-pub async fn get_network(
-    rpc_client: &Arc<RPCClient>,
-) -> Result<constants::Network, ()> {
+pub async fn get_network(rpc_client: &Arc<RPCClient>) -> Result<constants::Network, ()> {
     let v = rpc_client.make_rpc_call("getblockchaininfo", &[], false).await?;
     assert!(v["verificationprogress"].as_f64().unwrap() > 0.99);
     assert_eq!(v["bip9_softforks"]["segwit"]["status"].as_str().unwrap(), "active");
     match v["chain"].as_str().unwrap() {
-        "main" => { 
+        "main" => {
             panic!("LOL, you're insane");
-            // Ok(constants::Network::Bitcoin) 
+            // Ok(constants::Network::Bitcoin)
         },
         "test" => Ok(constants::Network::Testnet),
         "regtest" => Ok(constants::Network::Regtest),
