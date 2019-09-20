@@ -6,6 +6,7 @@ RUN set -x \
   && source $HOME/.cargo/env \
   && cargo install cargo-kcov \
   && cargo kcov --print-install-kcov-sh | sh
+
 RUN set -x \
   && apt-get update \
   && apt-get install -y python3 python3-pip \
