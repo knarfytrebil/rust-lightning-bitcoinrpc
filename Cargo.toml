@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+  "cli",
+  "server",
+  "protocol",
+  "ln-manager",
+]

@@ -30,7 +30,15 @@ WORKDIR /lightning
 #   && source $HOME/.cargo/env \
 #   && for D in */; do cd $D && cargo fetch && rm -f Cargo.{toml,lock} src/main.rs && cd ..; done
 
-COPY . /lightning
+# COPY . /lightning
+COPY ./.travis* /lightning/
+COPY ./protocol /lightning/protocol
+COPY ./cli /lightning/cli
+COPY ./ln-manager /lightning/ln-manager
+COPY ./server /lightning/server
+COPY ./test /lightning/test
+
+
 RUN set -x \
   && cd test/integration \
   && pip3 install --user -r requirements.txt
